@@ -8,9 +8,11 @@
     "scheme": "verticemobile",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon"
+      "icon": "./assets/expo.icon",
+      "bundleIdentifier": "com.vertice.mobile"
     },
     "android": {
+      "package": "com.vertice.mobile",
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
