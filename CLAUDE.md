@@ -26,6 +26,13 @@ npm run lint       # ESLint (eslint-config-expo)
 
 There is no test suite configured in this repository yet.
 
+CI (`.github/workflows/ci.yml`, job `build-and-test`) runs `npm ci`, `typecheck`,
+`lint -- --max-warnings 0` and `npx expo-doctor` on every PR and push to `main`; keep all of them
+clean (warnings fail lint). `npm audit --omit=dev --audit-level=high` also runs but is
+non-blocking until the transitive Expo/Metro advisories are dealt with (audit plan P2-05). When
+bumping Expo packages, use `npx expo install <pkg>` / `npx expo install --fix` so `expo-doctor`
+stays green.
+
 ## Architecture
 
 - **Expo Router, `src/app/`** — file-based routing, same mental model as `vertice-web-react`'s
@@ -60,7 +67,7 @@ There is no test suite configured in this repository yet.
 
 ## Running
 
-Requires Node 22 (matching the other JS repos) and, for native builds, Xcode + CocoaPods (iOS) or
+Requires Node 22 (matching the other JS repos; pinned in `.nvmrc` and `engines`) and, for native builds, Xcode + CocoaPods (iOS) or
 Android Studio (Android) — none of which are installed on a fresh machine by default. `npm start`
 + [Expo Go](https://expo.dev/go) sidesteps all of that for early development; switch to a
 [development build](https://docs.expo.dev/develop/development-builds/introduction/) once the app

@@ -1,0 +1,45 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  # PRs: one group per PR, so a new push cancels the superseded run. Pushes to main: one group
+  # per commit (GitHub would otherwise replace a still-pending run in the same group), so every
+  # merged commit gets its own full result.
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run lint -- --max-warnings 0
+      # Fails on Expo SDK version drift (run `npx expo install --fix` to realign).
+      - run: npx expo-doctor
+      # Tests: none yet. P2-05 adds jest-expo + @testing-library/react-native and an
+      # `npm test` step here.
+      - name: Audit production dependencies
+        # TODO(P2-05): make this blocking. Today it reports high/critical transitive advisories
+        # in Expo/Metro tooling (braces, node-forge, shell-quote, source-map-js) that need an
+        # SDK-level upgrade or overrides, which P2-05 handles. Non-blocking until then so the
+        # report stays visible in every run without failing unrelated PRs.
+        continue-on-error: true
+        run: npm audit --omit=dev --audit-level=high

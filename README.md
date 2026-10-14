@@ -12,6 +12,7 @@ wired up, but no product screens implemented yet.
 ## Getting started
 
 ```bash
+nvm use                 # Node 22, from .nvmrc
 cp .env.example .env   # set EXPO_PUBLIC_BFF_URL if not using the default
 npm install
 npm start               # then press i / a / w, or scan the QR code with Expo Go
@@ -32,3 +33,12 @@ npm run lint     # ESLint (eslint-config-expo)
 ```
 
 There is no test suite configured in this repository yet.
+
+## CI
+
+`.github/workflows/ci.yml` runs on every pull request and on pushes to `main`: `npm ci`,
+`npm run typecheck`, `npm run lint -- --max-warnings 0` and `npx expo-doctor`, plus a
+non-blocking `npm audit --omit=dev --audit-level=high` (known transitive Expo/Metro advisories,
+tracked in the audit plan's P2-05). Run the same commands locally before opening a PR. If
+`expo-doctor` reports version drift, `npx expo install --fix` realigns the Expo packages.
+Dependabot (`.github/dependabot.yml`) opens weekly npm and GitHub Actions update PRs.
