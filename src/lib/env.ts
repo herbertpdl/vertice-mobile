@@ -7,3 +7,6 @@ const envSchema = z.object({
 export const env = envSchema.parse({
   EXPO_PUBLIC_BFF_URL: process.env.EXPO_PUBLIC_BFF_URL,
 });
+
+// Deliberate type error to prove the CI gate (reverted in the next commit).
+export const ciGateProbe: number = "not a number";
