@@ -21,6 +21,31 @@ npm start               # then press i / a / w, or scan the QR code with Expo Go
 Running natively (`npm run ios` / `npm run android`) requires Xcode + CocoaPods (iOS) or Android
 Studio (Android) installed locally; `npm start` + Expo Go avoids that for early development.
 
+## Store readiness
+
+Checklist to clear before the first TestFlight / Play internal build. Apple guideline 5.1.1(v)
+and Google Play both require in-app account deletion for apps that create accounts, and both
+need a privacy-policy URL and accurate privacy labels. The backend pieces already exist; each
+item below is about wiring them into this app.
+
+- [ ] **In-app account deletion** — a "Excluir conta" screen that calls `DELETE /api/auth/me`
+  with `{ password }` (re-auth), handles `400 INVALID_CURRENT_PASSWORD`, `409 ACTIVE_CLIENTS`
+  and `429`, and signs out on `204`. Backed by vertice-api `DeleteAccount` (anonymises the
+  account and deletes health-adjacent data).
+- [ ] **Data export** — "Exportar meus dados" calling `GET /api/auth/me/export` (LGPD art. 18 V).
+- [ ] **Privacy policy and terms links** — on registration/first access and in settings, pointing
+  at the web app's `/privacidade` and `/termos` (drafts pending legal review).
+- [ ] **Consent at first access** — gate the client app on TERMS and HEALTH_DATA consent before
+  any workout is recorded: compare `GET /api/auth/me` `consent` with `GET /api/legal/versions`
+  and record with `POST /api/auth/me/consent`.
+- [ ] **App Store privacy nutrition label and Play Data safety form** — fill them in from the
+  data the BFF actually returns, using `vertice-api/docs/data-inventory.md` (account data, CPF,
+  training loads, feedback, session logs; no tracking, no third-party sharing today).
+- [ ] **iOS privacy manifest** (`ios.privacyManifests` in `app.json`) for any native module that
+  needs one, plus `ios.infoPlist` usage strings for any permission the app starts requesting.
+- [ ] **Deep links carrying tokens** (e.g. password setup) use Universal Links / App Links rather
+  than the custom URL scheme (see the audit's SEC-MOB-003).
+
 ## Commands
 
 ```bash
