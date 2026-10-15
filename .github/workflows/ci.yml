@@ -30,6 +30,11 @@ jobs:
           cache: npm
 
       - run: npm ci
+      # src/lib/api/schema.ts is generated from vertice-bff's docs/openapi.json at the commit
+      # pinned in src/lib/api/.bff-ref. Fails when the committed file is stale (run
+      # `npm run api:types` and commit the result). Fetches a public raw.githubusercontent URL.
+      - name: Generated API types are up to date
+        run: npm run api:types -- --check
       - run: npm run typecheck
       - run: npm run lint -- --max-warnings 0
       # Fails on Expo SDK version drift (run `npx expo install --fix` to realign). This compares
