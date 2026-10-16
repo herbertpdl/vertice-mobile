@@ -63,8 +63,11 @@ There is no test suite configured in this repository yet.
 ## CI
 
 `.github/workflows/ci.yml` runs on every pull request and on pushes to `main`: `npm ci`,
-`npm run typecheck`, `npm run lint -- --max-warnings 0` and `npx expo-doctor`, plus a
-non-blocking `npm audit --omit=dev --audit-level=high` (known transitive Expo/Metro advisories,
-tracked in the audit plan's P2-05). Run the same commands locally before opening a PR. If
-`expo-doctor` reports version drift, `npx expo install --fix` realigns the Expo packages.
+`npm run typecheck`, `npm run lint -- --max-warnings 0` and `npx expo install --check`, plus two
+non-blocking steps — `npx expo-doctor` and `npm audit --omit=dev --audit-level=high` (known
+transitive Expo/Metro advisories, tracked in the audit plan's P2-05). Run the same commands
+locally before opening a PR. If `expo install --check` reports version drift, `npx expo install
+--fix` realigns the Expo packages. `expo-doctor` is advisory because `npx` always resolves its
+latest release, so an upstream change can break every PR with no code change here — as >= 1.21
+does today by rejecting `ios.icon`'s Icon Composer `.icon` directory, which is valid for SDK 57.
 Dependabot (`.github/dependabot.yml`) opens weekly npm and GitHub Actions update PRs.
