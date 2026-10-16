@@ -55,8 +55,10 @@ drift check stays green.
   elsewhere. Expo only inlines env vars prefixed `EXPO_PUBLIC_` into the client bundle; anything
   without that prefix is `undefined` at runtime here.
 - **`src/lib/api/client.ts`** exports `apiFetch<T>(path, init?)`, a thin `fetch` wrapper against
-  `EXPO_PUBLIC_BFF_URL`, and `ApiError` (`status`, optional `code` typed as the contract's
-  `ErrorCode`, and `details` — Zod's flattened field errors on `VALIDATION_ERROR`), matching the
+  `EXPO_PUBLIC_BFF_URL`, and `ApiError` (`status`, optional `code` — a `string`, not the
+  generated `ErrorCode` union, since a BFF deployed ahead of an installed build can send a code
+  this spec copy doesn't know; `ErrorCode` is exported for a `switch` over handled codes — and
+  `details`, Zod's flattened field errors on `VALIDATION_ERROR`), matching the
   `{ error: { code, message, details } }` shape `vertice-bff`'s error handler returns. `path` is
   the route exactly as the OpenAPI document names it, **`/api` prefix included**
   (`/api/clients/7`), since that is what the generated `paths` keys are; `/health` has no prefix.

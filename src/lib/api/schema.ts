@@ -873,15 +873,15 @@ export interface components {
             exerciseId: number;
             order: number;
             /** @default 0 */
-            restSecondsBetweenSets: number;
+            restSecondsBetweenSets?: number;
             /** @default  */
-            notes: string;
+            notes?: string;
         };
         CreateWorkoutRequest: {
             name: string;
             dayOfWeek: components["schemas"]["DayOfWeek"];
             /** @default [] */
-            exercises: components["schemas"]["WorkoutExerciseEntry"][];
+            exercises?: components["schemas"]["WorkoutExerciseEntry"][];
         };
         CreatedClient: {
             id: number;
@@ -971,7 +971,7 @@ export interface components {
         ExerciseRequest: {
             name: string;
             /** @default  */
-            description: string;
+            description?: string;
             videoUrl?: string | "";
             muscleGroupIds: number[];
         };
@@ -1150,7 +1150,7 @@ export interface components {
         TrainingPlanRequest: {
             name: string;
             /** @default  */
-            description: string;
+            description?: string;
             clientId: number;
             startDate: string;
             endDate: string;
@@ -1172,7 +1172,7 @@ export interface components {
         UpdateTrainingPlanRequest: {
             name: string;
             /** @default  */
-            description: string;
+            description?: string;
             startDate: string;
             endDate: string;
             level: components["schemas"]["PlanLevel"];
@@ -1180,9 +1180,9 @@ export interface components {
         UpdateWorkoutExerciseRequest: {
             order: number;
             /** @default 0 */
-            restSecondsBetweenSets: number;
+            restSecondsBetweenSets?: number;
             /** @default  */
-            notes: string;
+            notes?: string;
         };
         /** @enum {string} */
         Weekday: "MONDAY" | "TUESDAY" | "WEDNESDAY" | "THURSDAY" | "FRIDAY";
@@ -1205,7 +1205,7 @@ export interface components {
             restSecondsBetweenSets?: number;
             notes?: string;
             /** @default [] */
-            sets: components["schemas"]["ExerciseSetEntry"][];
+            sets?: components["schemas"]["ExerciseSetEntry"][];
         };
         WorkoutFeedback: {
             id: number;

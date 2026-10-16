@@ -5,14 +5,24 @@ import type { components, paths } from "./schema";
 /** The `{ error: { code, message, details? } }` body every vertice-bff error has. */
 type ApiErrorBody = components["schemas"]["ErrorResponse"];
 
-/** vertice-bff's error codes. Key on these, never on `message` (it is English, for logs). */
+/**
+ * The codes vertice-bff documents. Key on `code`, never on `message` (it is English, for logs).
+ * Use this where exhaustiveness is actually wanted (a `switch` over handled codes); `ApiError`'s
+ * own `code` is wider: see below.
+ */
 export type ErrorCode = components["schemas"]["ErrorCode"];
 
 export class ApiError extends Error {
   constructor(
     message: string,
     public readonly status: number,
-    public readonly code?: ErrorCode,
+    /**
+     * Any `code` the BFF sent, not the generated `ErrorCode` union: a BFF deployed ahead of this
+     * build can send a code this copy of the spec does not know yet, and an installed app can
+     * lag the server by months. The value is taken from the wire unchecked, so screens must
+     * handle an unknown code anyway.
+     */
+    public readonly code?: string,
     /**
      * Only on `VALIDATION_ERROR`: Zod's flattened field errors,
      * `{ formErrors: string[], fieldErrors: Record<string, string[]> }`.

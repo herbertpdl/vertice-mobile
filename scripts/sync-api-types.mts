@@ -99,7 +99,10 @@ async function generate(spec: OpenAPI3, sha: string): Promise<string> {
     " */",
     "",
   ].join("\n");
-  const types = astToString(await openapiTS(spec, { silent: true }));
+  // `defaultNonNullable: false`: a request field with a schema default (`description`,
+  // `restSecondsBetweenSets`, ...) is optional on the wire, and the BFF applies the default.
+  // Leaving the option on its default (true) would make those fields required in request types.
+  const types = astToString(await openapiTS(spec, { silent: true, defaultNonNullable: false }));
   return `${banner}\n${types}`;
 }
 
