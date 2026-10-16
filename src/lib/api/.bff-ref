@@ -1,0 +1,3 @@
+# The vertice-bff commit whose docs/openapi.json src/lib/api/schema.ts is generated from.
+# Bump it, run `npm run api:types`, and commit both files. See scripts/sync-api-types.mts.
+d2eb89ab2743a7f1092a3f4aadcb1449da3db273

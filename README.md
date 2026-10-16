@@ -7,7 +7,8 @@ app, unlike [`vertice-web-react`](../vertice-web-react).
 ## Status
 
 Bootstrapped skeleton: Expo Router + TypeScript, with React Query and a thin `apiFetch` helper
-wired up, but no product screens implemented yet.
+wired up, but no product screens implemented yet. The request and response types come from
+[`vertice-bff`](../vertice-bff)'s OpenAPI document — see "The API contract" below.
 
 ## Getting started
 
@@ -56,18 +57,42 @@ npm run android  # start and open in the Android emulator
 npm run web      # start and open in a browser (react-native-web)
 npm run typecheck # tsc --noEmit
 npm run lint     # ESLint (eslint-config-expo)
+npm run api:types # regenerate src/lib/api/schema.ts from vertice-bff's OpenAPI document
 ```
 
 There is no test suite configured in this repository yet.
 
+## The API contract
+
+`src/lib/api/schema.ts` is **generated** from [`vertice-bff`](../vertice-bff)'s
+`docs/openapi.json` (itself generated from its route schemas) at the commit pinned in
+`src/lib/api/.bff-ref`. Never edit it by hand:
+
+```bash
+npm run api:types                  # fetch the pinned commit's spec and rewrite schema.ts
+npm run api:types -- --check       # change nothing; exit 1 if the committed file is stale (CI)
+npm run api:types -- --local       # read ../vertice-bff/docs/openapi.json (unmerged spec changes)
+```
+
+To pick up a contract change: merge it in `vertice-bff`, put that merge commit's full 40-character
+SHA in `src/lib/api/.bff-ref`, run `npm run api:types`, and commit both files. CI runs `--check`,
+so a stale `schema.ts` fails the build. `vertice-bff` is public, so no token is needed (set
+`GITHUB_TOKEN` only to lift GitHub's anonymous rate limit). The generator
+(`openapi-typescript`) is pinned exactly, since its version decides the output.
+
+What stays hand-written: this app's own types and its pt-BR labels for the contract's enums
+(`src/lib/labels.ts`, keyed by the generated types so a renamed enum member fails `typecheck`).
+Labels are per app — `vertice-web-react` keeps its own.
+
 ## CI
 
 `.github/workflows/ci.yml` runs on every pull request and on pushes to `main`: `npm ci`,
-`npm run typecheck`, `npm run lint -- --max-warnings 0` and `npx expo install --check`, plus two
-non-blocking steps — `npx expo-doctor` and `npm audit --omit=dev --audit-level=high` (known
-transitive Expo/Metro advisories, tracked in the audit plan's P2-05). Run the same commands
-locally before opening a PR. If `expo install --check` reports version drift, `npx expo install
---fix` realigns the Expo packages. `expo-doctor` is advisory because `npx` always resolves its
-latest release, so an upstream change can break every PR with no code change here — as >= 1.21
-does today by rejecting `ios.icon`'s Icon Composer `.icon` directory, which is valid for SDK 57.
+`npm run api:types -- --check`, `npm run typecheck`, `npm run lint -- --max-warnings 0` and
+`npx expo install --check`, plus two non-blocking steps — `npx expo-doctor` and `npm audit
+--omit=dev --audit-level=high` (known transitive Expo/Metro advisories, tracked in the audit
+plan's P2-05). Run the same commands locally before opening a PR. If `expo install --check`
+reports version drift, `npx expo install --fix` realigns the Expo packages. `expo-doctor` is
+advisory because `npx` always resolves its latest release, so an upstream change can break every
+PR with no code change here — as >= 1.21 does today by rejecting `ios.icon`'s Icon Composer
+`.icon` directory, which is valid for SDK 57.
 Dependabot (`.github/dependabot.yml`) opens weekly npm and GitHub Actions update PRs.

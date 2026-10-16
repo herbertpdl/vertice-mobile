@@ -22,13 +22,14 @@ npm run android    # start + open Android emulator (needs Android Studio)
 npm run web        # start + open in a browser (react-native-web)
 npm run typecheck  # tsc --noEmit
 npm run lint       # ESLint (eslint-config-expo)
+npm run api:types  # regenerate src/lib/api/schema.ts from vertice-bff's OpenAPI document
 ```
 
 There is no test suite configured in this repository yet.
 
-CI (`.github/workflows/ci.yml`, job `build-and-test`) runs `npm ci`, `typecheck`,
-`lint -- --max-warnings 0` and `npx expo install --check` on every PR and push to `main`; keep all
-of them clean (warnings fail lint). `npx expo-doctor` and `npm audit --omit=dev
+CI (`.github/workflows/ci.yml`, job `build-and-test`) runs `npm ci`, `api:types -- --check`,
+`typecheck`, `lint -- --max-warnings 0` and `npx expo install --check` on every PR and push to
+`main`; keep all of them clean (warnings fail lint). `npx expo-doctor` and `npm audit --omit=dev
 --audit-level=high` also run but are non-blocking — expo-doctor because `npx` always resolves the
 latest release and >= 1.21 flags `ios.icon` (a valid Icon Composer `.icon` directory) as a config
 schema error, `npm audit` until the transitive Expo/Metro advisories are dealt with (audit plan
@@ -45,20 +46,41 @@ drift check stays green.
 - **Path alias**: `@/*` maps to `src/*`, `@/assets/*` maps to `assets/*` (`tsconfig.json`).
 - **No server-side layer.** Unlike `vertice-web-react`, which proxies through its own `/api`
   routes so `BFF_URL` stays server-only, this app has no backend of its own — it calls
-  `vertice-bff`'s REST API directly from the device via `src/lib/api.ts`'s `apiFetch`, so the BFF
-  URL is `EXPO_PUBLIC_BFF_URL` (bundled into the client; see `.env.example`). On a physical
+  `vertice-bff`'s REST API directly from the device via `src/lib/api/client.ts`'s `apiFetch`, so
+  the BFF URL is `EXPO_PUBLIC_BFF_URL` (bundled into the client; see `.env.example`). On a physical
   device, `localhost` refers to the device itself, not your machine — use your machine's LAN IP
   when testing on hardware instead of a simulator/emulator.
 - **`src/lib/env.ts`** parses `process.env` once through a Zod schema at import time (`env`),
   mirroring `vertice-bff`'s `src/config/env.ts` pattern — don't read `process.env` directly
   elsewhere. Expo only inlines env vars prefixed `EXPO_PUBLIC_` into the client bundle; anything
   without that prefix is `undefined` at runtime here.
-- **`src/lib/api.ts`** exports `apiFetch<T>(path, init?)`, a thin `fetch` wrapper against
-  `${EXPO_PUBLIC_BFF_URL}/api`, and `ApiError` (`status` + optional `code`), matching the
-  `{ error: { code, message, details } }` shape `vertice-bff`'s error handler returns. There's no
-  auth/token handling yet — `vertice-bff` issues JWTs (see its `CLAUDE.md`); when wiring up auth
-  here, tokens should go in `expo-secure-store` (not `AsyncStorage`), not committed yet since
-  nothing here needs them.
+- **`src/lib/api/client.ts`** exports `apiFetch<T>(path, init?)`, a thin `fetch` wrapper against
+  `EXPO_PUBLIC_BFF_URL`, and `ApiError` (`status`, optional `code` — a `string`, not the
+  generated `ErrorCode` union, since a BFF deployed ahead of an installed build can send a code
+  this spec copy doesn't know; `ErrorCode` is exported for a `switch` over handled codes — and
+  `details`, Zod's flattened field errors on `VALIDATION_ERROR`), matching the
+  `{ error: { code, message, details } }` shape `vertice-bff`'s error handler returns. `path` is
+  the route exactly as the OpenAPI document names it, **`/api` prefix included**
+  (`/api/clients/7`), since that is what the generated `paths` keys are; `/health` has no prefix.
+  `T` comes from `ApiResult<path, method>` (and request bodies from `ApiBody<path, method>`), so
+  `apiFetch<ApiResult<"/api/auth/me", "get">>("/api/auth/me")` breaks at `npm run typecheck` if
+  that response changes upstream. There's no auth/token handling yet — `vertice-bff` issues JWTs
+  (see its `CLAUDE.md`); when wiring up auth here, tokens should go in `expo-secure-store` (not
+  `AsyncStorage`), not committed yet since nothing here needs them.
+- **`src/lib/api/schema.ts` is generated — never edit it.** `npm run api:types` regenerates it
+  (`scripts/sync-api-types.mts`, run through `tsx`, so `npm run typecheck` covers it)
+  with `openapi-typescript` (pinned exactly) from `vertice-bff`'s `docs/openapi.json` at the
+  commit pinned in `src/lib/api/.bff-ref`, the same way `vertice-bff` pins `vertice-api`'s protos
+  in `protos/.api-ref`. `-- --check` changes nothing and fails when the committed file is stale
+  (CI runs it); `-- --local[=PATH]` reads `../vertice-bff/docs/openapi.json` from a sibling
+  checkout's working tree, for a spec change that isn't merged yet. To adopt a contract change:
+  merge it in `vertice-bff`, put the merge SHA in `.bff-ref`, run `npm run api:types`, commit
+  both. Don't hand-write transport types (XREPO-013) — alias the generated ones
+  (`components["schemas"]["Me"]`).
+- **`src/lib/labels.ts`** holds this app's pt-BR labels for the contract's enums (days, plan
+  levels, set strategies, roles), keyed by the generated enums so a renamed member fails
+  typecheck. Labels stay hand-written and per app: don't import `vertice-web-react`'s, and keep
+  them in this one file.
 - **`src/lib/query-client.ts`** exports a single shared `QueryClient` instance, provided at the
   root in `_layout.tsx` — data-fetching hooks should use React Query (`useQuery`/`useMutation`)
   against `apiFetch`, matching `vertice-web-react`'s use of `@tanstack/react-query`.
