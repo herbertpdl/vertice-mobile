@@ -25,6 +25,38 @@ export const controls = {
   dividerLabelGap: 14,
 } as const;
 
+/**
+ * Fixed sizes of individual M components that are off the 4 pt spacing scale, named after the
+ * component (and the property) they come from.
+ */
+export const sizes = {
+  /** M Badge horizontal padding (vertical is `space[1]`). */
+  badgePaddingHorizontal: 10,
+  /** M Count Pill padding. */
+  countPillPaddingVertical: 2,
+  countPillPaddingHorizontal: 7,
+  /** M Tag height. */
+  tagHeight: 28,
+  /** M Stat Card gap between label, value and helper. */
+  statCardGap: 6,
+  /** M Week Dot diameter and the gap in M Week Dots. */
+  weekDot: 24,
+  weekDotGap: 6,
+  /** M Checkbox box. */
+  checkbox: 24,
+  /** M Progress Bar track height. */
+  progressBarHeight: 6,
+  /** M Exercise Thumb and its play badge. */
+  exerciseThumb: 56,
+  playBadge: 24,
+  /** M Button - Loading gap between spinner and label (M Button's own gap is `space[2]`). */
+  buttonLoadingGap: 10,
+  /** M Field help row gap. */
+  fieldHelpGap: 6,
+  /** M Field focused border width (1 otherwise). */
+  focusBorderWidth: 1.5,
+} as const;
+
 /** Horizontal padding of a screen's content (pen.dev mobile screens use 20 on a 390 frame). */
 export const screenPaddingHorizontal = 20;
 

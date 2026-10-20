@@ -15,4 +15,11 @@ describe("TextArea", () => {
     expect(screen.queryByText(/\/ /)).toBeNull();
     expect(screen.getByText("Obrigatório")).toBeOnTheScreen();
   });
+
+  it("disabled is not editable and says so", async () => {
+    await render(<TextArea label="Notas" value="" disabled onChangeText={() => {}} />);
+    const input = screen.getByLabelText("Notas");
+    expect(input.props.editable).toBe(false);
+    expect(input).toBeDisabled();
+  });
 });

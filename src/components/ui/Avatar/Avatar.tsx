@@ -1,6 +1,6 @@
 import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 
-import { colors, radius } from "@/theme";
+import { colors, radius, type TextVariant } from "@/theme";
 
 import { Text } from "../Text";
 
@@ -13,8 +13,8 @@ export type AvatarProps = {
   style?: StyleProp<ViewStyle>;
 };
 
-/** Initials font size per M Avatar size. */
-const initialsSize: Record<AvatarSize, number> = { 40: 14, 48: 16, 64: 22 };
+/** The initials' text preset per M Avatar size (14 / 16 / 22, all 600). */
+const initialsVariant: Record<AvatarSize, TextVariant> = { 40: "bodyStrong", 48: "bodyLgStrong", 64: "avatarLg" };
 
 /** "Marina Costa" → "MC", "Ana" → "A", "  " → "?". First and last word, uppercased. */
 export function initials(name: string): string {
@@ -36,12 +36,7 @@ export function Avatar({ name, size = 48, style }: AvatarProps) {
       accessibilityElementsHidden
       importantForAccessibility="no-hide-descendants"
     >
-      <Text
-        variant="bodyStrong"
-        color="textSecondary"
-        style={{ fontSize: initialsSize[size] }}
-        allowFontScaling={false}
-      >
+      <Text variant={initialsVariant[size]} color="textSecondary" allowFontScaling={false}>
         {initials(name)}
       </Text>
     </View>

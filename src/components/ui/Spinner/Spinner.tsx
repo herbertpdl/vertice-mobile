@@ -20,19 +20,24 @@ export type SpinnerProps = {
   accessibilityLabel?: string;
 };
 
-/** M Spinner: a rotating lucide `loader-circle`. Static under "reduce motion". */
+/**
+ * M Spinner's glyph: a rotating lucide `loader-circle`, static under "reduce motion". The design's
+ * 44×44 frame around the 24 pt glyph is layout — center the spinner in a 44 pt box where it
+ * stands alone.
+ */
 export function Spinner({ size = 24, color = "primary", accessibilityLabel }: SpinnerProps) {
   const reduceMotion = useReducedMotion();
   const rotation = useSharedValue(0);
 
   useEffect(() => {
     if (reduceMotion) return;
-    rotation.value = withRepeat(withTiming(360, { duration: 900, easing: Easing.linear }), -1);
+    // `set`/`get` rather than `.value`: the React Compiler forbids mutating a hook's return value.
+    rotation.set(withRepeat(withTiming(360, { duration: 900, easing: Easing.linear }), -1));
     return () => cancelAnimation(rotation);
   }, [reduceMotion, rotation]);
 
   const animatedStyle = useAnimatedStyle(() => ({
-    transform: [{ rotate: `${rotation.value}deg` }],
+    transform: [{ rotate: `${rotation.get()}deg` }],
   }));
 
   return (

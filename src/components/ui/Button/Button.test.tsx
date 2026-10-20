@@ -4,7 +4,7 @@ import { StyleSheet } from "react-native";
 
 import { colors } from "@/theme";
 
-import { Button } from "./Button";
+import { Button, buttonFill } from "./Button";
 
 const button = () => screen.getByRole("button");
 const fill = () => StyleSheet.flatten(button().props.style).backgroundColor;
@@ -49,5 +49,26 @@ describe("Button", () => {
     expect(onPress).not.toHaveBeenCalled();
     expect(button()).toBeBusy();
     expect(StyleSheet.flatten(button().props.style).opacity).toBe(0.75);
+  });
+
+  it.each([
+    ["primary", colors.primaryActive],
+    ["secondary", colors.surfaceActive],
+    ["danger", colors.dangerHover],
+    ["ghost", colors.surfaceHover],
+  ] as const)("%s shows its pressed fill while pressed", (variant, expected) => {
+    // The test renderer doesn't drive Pressable's pressed state, so the style rule is tested directly.
+    expect(buttonFill(variant, { pressed: true, disabled: false })).toBe(expected);
+  });
+
+  it.each(["danger", "ghost"] as const)("disabled %s dims its label to tertiary", async (variant) => {
+    await render(<Button label="Excluir" variant={variant} disabled />);
+    expect(StyleSheet.flatten(screen.getByText("Excluir").props.style).color).toBe(colors.textTertiary);
+    if (variant === "danger") expect(fill()).toBe(colors.surfaceActive);
+  });
+
+  it("loading uses the design's 10 pt gap", async () => {
+    await render(<Button label="Salvando…" loading />);
+    expect(StyleSheet.flatten(button().props.style).gap).toBe(10);
   });
 });

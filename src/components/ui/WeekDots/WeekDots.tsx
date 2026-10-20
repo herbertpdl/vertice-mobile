@@ -1,6 +1,6 @@
 import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 
-import { colors, radius } from "@/theme";
+import { colors, radius, sizes } from "@/theme";
 
 import { Text } from "../Text";
 
@@ -42,10 +42,10 @@ export function WeekDots({ days, style }: WeekDotsProps) {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: "row", alignItems: "center", gap: 6 },
+  row: { flexDirection: "row", alignItems: "center", gap: sizes.weekDotGap },
   dot: {
-    width: 24,
-    height: 24,
+    width: sizes.weekDot,
+    height: sizes.weekDot,
     borderRadius: radius.full,
     backgroundColor: colors.surfaceHover,
     alignItems: "center",

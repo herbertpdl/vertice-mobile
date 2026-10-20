@@ -1,7 +1,7 @@
 import { X } from "lucide-react-native";
 import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 
-import { colors, radius, space, TINT_ALPHA, withAlpha, type ColorToken } from "@/theme";
+import { colors, radius, sizes, space, TINT_ALPHA, withAlpha, type ColorToken } from "@/theme";
 
 import { Text } from "../Text";
 
@@ -97,20 +97,20 @@ const styles = StyleSheet.create({
     alignSelf: "flex-start",
     borderRadius: radius.full,
     paddingVertical: space[1],
-    paddingHorizontal: 10,
+    paddingHorizontal: sizes.badgePaddingHorizontal,
     alignItems: "center",
     justifyContent: "center",
   },
   pill: {
     borderRadius: radius.full,
     backgroundColor: colors.primary,
-    paddingVertical: 2,
-    paddingHorizontal: 7,
+    paddingVertical: sizes.countPillPaddingVertical,
+    paddingHorizontal: sizes.countPillPaddingHorizontal,
     alignItems: "center",
     justifyContent: "center",
   },
   tag: {
-    height: 28,
+    height: sizes.tagHeight,
     borderRadius: radius.full,
     backgroundColor: colors.surfaceActive,
     paddingHorizontal: space[3],

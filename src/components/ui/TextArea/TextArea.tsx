@@ -1,7 +1,7 @@
 import { useState, type Ref } from "react";
 import { StyleSheet, TextInput, type StyleProp, type TextInputProps, type ViewStyle } from "react-native";
 
-import { colors, controls, fontFamilies } from "@/theme";
+import { colors, controls, textStyle } from "@/theme";
 
 import { FieldFrame } from "../FieldFrame";
 import { Text } from "../Text";
@@ -71,6 +71,7 @@ export function TextArea({
         cursorColor={colors.primary}
         accessibilityLabel={label}
         accessibilityHint={error ?? help}
+        accessibilityState={{ disabled }}
         onFocus={(event) => {
           setFocused(true);
           onFocus?.(event);
@@ -92,11 +93,9 @@ const styles = StyleSheet.create({
     paddingVertical: controls.textAreaPaddingVertical,
   },
   input: {
+    ...textStyle("bodyLgRelaxed"),
     flex: 1,
     padding: 0,
-    fontFamily: fontFamilies.base.regular,
-    fontSize: 16,
-    lineHeight: Math.round(16 * 1.4),
     color: colors.textPrimary,
     // The box's height minus its vertical padding and 1 pt borders, so a tap anywhere focuses it.
     minHeight: controls.textAreaHeight - 2 * controls.textAreaPaddingVertical - 2,

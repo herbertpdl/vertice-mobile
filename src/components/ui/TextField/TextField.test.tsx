@@ -44,4 +44,20 @@ describe("TextField", () => {
     await render(<TextField label="CPF" disabled />);
     expect(input("CPF").props.editable).toBe(false);
   });
+
+  it("keeps the content still on focus: the thicker border is taken from the padding", async () => {
+    await render(<TextField label="Nome" />);
+    await fireEvent(input("Nome"), "focus");
+    expect(StyleSheet.flatten(input("Nome").parent?.props.style).paddingHorizontal).toBe(15.5);
+  });
+
+  it("disables the password eye with the field", async () => {
+    await render(<TextField label="Senha" password disabled />);
+    expect(screen.getByRole("button", { name: "Mostrar senha" })).toBeDisabled();
+  });
+
+  it("strips Android's input padding", async () => {
+    await render(<TextField label="Nome" />);
+    expect(StyleSheet.flatten(input("Nome").props.style).paddingHorizontal).toBe(0);
+  });
 });

@@ -1,6 +1,6 @@
 import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 
-import { colors, radius } from "@/theme";
+import { colors, radius, sizes } from "@/theme";
 
 export type ProgressTone = "primary" | "success" | "warning" | "danger";
 
@@ -33,7 +33,7 @@ export function ProgressBar({ value, tone = "primary", accessibilityLabel, style
 
 const styles = StyleSheet.create({
   track: {
-    height: 6,
+    height: sizes.progressBarHeight,
     borderRadius: radius.full,
     backgroundColor: colors.surfaceHover,
     overflow: "hidden",

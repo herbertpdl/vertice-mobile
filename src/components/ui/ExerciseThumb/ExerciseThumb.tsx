@@ -3,7 +3,7 @@ import { Dumbbell, Play } from "lucide-react-native";
 import { useState } from "react";
 import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 
-import { colors, overlay, radius } from "@/theme";
+import { colors, overlay, radius, sizes } from "@/theme";
 
 export type ExerciseThumbProps = {
   /** A still image (`videoThumbnailUrl`); null/undefined shows the dumbbell placeholder. */
@@ -19,8 +19,9 @@ export type ExerciseThumbProps = {
  * load falls back to the placeholder.
  */
 export function ExerciseThumb({ imageUri, hasVideo = false, style }: ExerciseThumbProps) {
-  const [failed, setFailed] = useState(false);
-  const showImage = imageUri != null && imageUri !== "" && !failed;
+  // The URI that failed, not a flag: a recycled row given a new URI must try that one.
+  const [failedUri, setFailedUri] = useState<string | null>(null);
+  const showImage = imageUri != null && imageUri !== "" && imageUri !== failedUri;
 
   return (
     <View
@@ -30,12 +31,13 @@ export function ExerciseThumb({ imageUri, hasVideo = false, style }: ExerciseThu
     >
       {showImage ? (
         <Image
+          testID="exercise-thumb-image"
           source={{ uri: imageUri }}
           style={StyleSheet.absoluteFill}
           contentFit="cover"
           transition={150}
           recyclingKey={imageUri}
-          onError={() => setFailed(true)}
+          onError={() => setFailedUri(imageUri)}
         />
       ) : (
         <Dumbbell size={24} color={colors.textTertiary} />
@@ -51,8 +53,8 @@ export function ExerciseThumb({ imageUri, hasVideo = false, style }: ExerciseThu
 
 const styles = StyleSheet.create({
   box: {
-    width: 56,
-    height: 56,
+    width: sizes.exerciseThumb,
+    height: sizes.exerciseThumb,
     borderRadius: radius.md,
     overflow: "hidden",
     backgroundColor: colors.surfaceHover,
@@ -60,8 +62,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   play: {
-    width: 24,
-    height: 24,
+    width: sizes.playBadge,
+    height: sizes.playBadge,
     borderRadius: radius.full,
     backgroundColor: overlay.mediaScrim,
     alignItems: "center",

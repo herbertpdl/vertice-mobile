@@ -2,7 +2,7 @@ import { CircleAlert, Eye, EyeOff, type LucideIcon } from "lucide-react-native";
 import { useState, type Ref } from "react";
 import { Pressable, StyleSheet, TextInput, type StyleProp, type TextInputProps, type ViewStyle } from "react-native";
 
-import { colors, fontFamilies, space } from "@/theme";
+import { colors, space, textStyle } from "@/theme";
 
 import { FieldFrame } from "../FieldFrame";
 
@@ -75,6 +75,8 @@ export function TextField({
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={revealed ? "Ocultar senha" : "Mostrar senha"}
+          accessibilityState={{ disabled }}
+          disabled={disabled}
           hitSlop={12}
           onPress={() => setRevealed((value) => !value)}
         >
@@ -95,11 +97,12 @@ export function TextField({
 
 const styles = StyleSheet.create({
   input: {
+    ...textStyle("bodyLg"),
     flex: 1,
     alignSelf: "stretch",
     paddingVertical: space[3],
-    fontFamily: fontFamilies.base.regular,
-    fontSize: 16,
+    // Android's EditText adds theme padding; the box's own padding is the design's.
+    paddingHorizontal: 0,
     color: colors.textPrimary,
   },
   inputDisabled: { color: colors.textTertiary },

@@ -40,7 +40,7 @@ and account (edit, password, export, delete), consent gate.
 | Topic | Decision |
 |---|---|
 | Styling | `StyleSheet.create` + typed tokens from `src/theme/` (no NativeWind/Tailwind). Never hardcode a color, spacing, radius or font size in a component: import from `@/theme`. |
-| Tokens | `src/theme/tokens.ts` mirrors `web:src/app/globals.css` 1:1 (`--color-surface-hover` → `colors.surfaceHover`, `--space-4` → `space[4]`, `--radius-md` → `radius.md`, `--text-base` → `fontSize.base`). `npm run tokens:check` diffs them against the web file at the commit pinned in `src/theme/.web-ref` (`--local` reads a sibling vertice-web-react checkout), and CI runs it. Mobile-only sizes (52 px control height, 44 pt hit target, off-scale paddings) live in `src/theme/mobile.ts`, named after the pen.dev component they come from; the mobile type scale (17 px nav title, 26 px titles…) lives in `src/theme/typography.ts`. No new colors anywhere: tints are token colors with an alpha via `withAlpha` (`src/theme/color.ts`, PR 3) — e.g. the tab bar's `#141A22CC` is `withAlpha(colors.surface, 0.8)` — and the only non-token colors are the photo overlays (`mediaOverlay`). |
+| Tokens | `src/theme/tokens.ts` mirrors `web:src/app/globals.css` 1:1 (`--color-surface-hover` → `colors.surfaceHover`, `--space-4` → `space[4]`, `--radius-md` → `radius.md`, `--text-base` → `fontSize.base`). `npm run tokens:check` diffs them against the web file at the commit pinned in `src/theme/.web-ref` (`--local` reads a sibling vertice-web-react checkout), and CI runs it. Mobile-only sizes (52 px control height, 44 pt hit target, off-scale paddings) live in `src/theme/mobile.ts`, named after the pen.dev component they come from; the mobile type scale (17 px nav title, 26 px titles…) lives in `src/theme/typography.ts`. No new colors anywhere: tints are token colors with an alpha via `withAlpha` (`src/theme/color.ts`, PR 3) — e.g. the tab bar's `#141A22CC` is `withAlpha(colors.surface, 0.8)` — and the only non-token colors are the black/white overlays (`overlay.mediaScrim`, `overlay.mediaGlyph`, `overlay.backdrop`). Fixed off-scale sizes of single components live in `sizes` (`mobile.ts`), named after the component. |
 | Theme | Dark only (like the web). `app.json` `userInterfaceStyle: "dark"`, `expo-status-bar` `style="light"`, root view background `colors.bg`, splash/adaptive-icon background `colors.bg`. |
 | Fonts | `@expo-google-fonts/inter` (400/500/600/700) and `@expo-google-fonts/space-grotesk` (500/600/700; the design never uses 400) through `useFonts`, imported per weight subpath, splash held until loaded. **Weight is selected by family name, never `fontWeight`** (Android ignores `fontWeight` on custom fonts) — the `Text` primitive maps `weight` → family. |
 | Components | `src/components/ui/<Name>/{<Name>.tsx,index.ts,<Name>.test.tsx}` (design-system kit, 1:1 with `M ` components), `src/components/domain/` (product pieces: rows, cards, sheets), `src/components/layout/` (Screen, NavBar, TabBar). Same one-folder-per-component rule as the web; import through the folder index. |
@@ -93,7 +93,7 @@ from its report; implement from the pen.dev node, not from this list.**
 | `DateField` + `CalendarSheet` | M - Calendário (Sheet) | value is `yyyy-MM-dd` string only |
 | `Checkbox` | M Checkbox | label can contain links |
 | `Chip` | M Chip | selected = primary fill |
-| `Badge` | M Badge (+ tones) | `tone`: neutral/success/warning/danger/info/primary |
+| `Badge` | M Badge (+ tones) | `tone`: neutral/success/warning/danger/info/outline; `CountPill`, `Tag` alongside |
 | `Avatar` | M Avatar | initials, sizes 40/48/64 |
 | `StatCard` | M Stat Card | label, value (heading), helper with tone |
 | `SegmentedTabs` | M Segmented Tabs | optional count pill |
@@ -292,7 +292,7 @@ merged first. Rollback = revert the mobile PR; nothing server-side depends on it
 |---|---|---|---|---|
 | 1 | `docs/mobile-app-spec` | [#14](https://github.com/herbertpdl/vertice-mobile/pull/14) | open | reviewed: 2 blocking + 9 non-blocking, all fixed |
 | 2 | `feat/theme-foundation` | [#15](https://github.com/herbertpdl/vertice-mobile/pull/15) | open (base #14) | reviewed: 2 blocking + 12 non-blocking, all fixed |
-| 3 | `feat/ui-kit-controls` | — | open (base #15) | — |
+| 3 | `feat/ui-kit-controls` | [#16](https://github.com/herbertpdl/vertice-mobile/pull/16) | open (base #15) | reviewed: 2 blocking + 13 non-blocking, all fixed |
 
 ## Decisions log
 - 2026-10-20 — v1 is the **trainer** app because that is what the pen.dev mobile designs cover; the client app needs its own PRD + designs (audit P2-13).
@@ -309,3 +309,8 @@ merged first. Rollback = revert the mobile PR; nothing server-side depends on it
 - 2026-10-20 — Tab bar labels are 12/600 in the final design → `smallStrong`; the `micro` (10) preset was removed.
 - 2026-10-20 — Skeleton pulses between `surfaceHover` and `surfaceActive` (no gradient on RN without a native gradient module) on the web's 1.6 s period.
 - 2026-10-20 — Password fields keep the eye toggle in the error state (the design shows the alert glyph); the danger border and message still mark the error.
+- 2026-10-20 — `Spinner` is the glyph only; the design's 44×44 M Spinner frame is layout (center it in a 44 pt box when it stands alone). Review of #16.
+- 2026-10-20 — `Checkbox` with a string label is a 14 secondary sentence beside the box (the Cadastro terms line); M Checkbox Row is `OptionRow mode="multiple"`. A checkbox error turns the ring danger (no error state in the design). Its toggle is a real 44×44 box (negative margin), not `hitSlop`, which a parent clips.
+- 2026-10-20 — React Compiler + Reanimated 4: shared values use `.get()`/`.set()`, never `.value`.
+- 2026-10-20 — Pressed styles can't be driven in the Jest renderer; components whose pressed look matters expose the style rule as a pure function (`buttonFill`) and test that.
+- 2026-10-20 — Jest maps `lucide-react-native` to its CJS build (`moduleNameMapper`): its `react-native` entry is `.mjs`, which jest-expo's transform doesn't cover. Revisit if lucide changes its dist layout.

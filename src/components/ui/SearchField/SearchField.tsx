@@ -2,7 +2,7 @@ import { Search, X } from "lucide-react-native";
 import type { Ref } from "react";
 import { Pressable, StyleSheet, TextInput, View, type StyleProp, type TextInputProps, type ViewStyle } from "react-native";
 
-import { colors, controls, fontFamilies, radius, space } from "@/theme";
+import { colors, controls, radius, space, textStyle } from "@/theme";
 
 export type SearchFieldProps = Omit<TextInputProps, "style" | "onChangeText" | "value"> & {
   value: string;
@@ -68,11 +68,11 @@ const styles = StyleSheet.create({
     gap: controls.fieldContentGap,
   },
   input: {
+    ...textStyle("bodyLg"),
     flex: 1,
     alignSelf: "stretch",
     paddingVertical: space[2],
-    fontFamily: fontFamilies.base.regular,
-    fontSize: 16,
+    paddingHorizontal: 0,
     color: colors.textPrimary,
   },
 });

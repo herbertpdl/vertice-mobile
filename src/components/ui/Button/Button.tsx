@@ -8,7 +8,7 @@ import {
   type ViewStyle,
 } from "react-native";
 
-import { colors, controls, disabledOpacity, loadingOpacity, radius, space, type ColorToken } from "@/theme";
+import { colors, controls, disabledOpacity, loadingOpacity, radius, sizes, space, type ColorToken } from "@/theme";
 
 import { Spinner } from "../Spinner";
 import { Text } from "../Text";
@@ -43,6 +43,14 @@ const looks: Record<ButtonVariant, Look> = {
   ghost: { fill: "transparent", pressedFill: colors.surfaceHover, label: "primary" },
 };
 
+/** The fill a button shows for a state, per its M Button variant (exported for tests). */
+export function buttonFill(variant: ButtonVariant, state: { pressed: boolean; disabled: boolean }): string {
+  const look = looks[variant];
+  const filled = variant === "primary" || variant === "danger";
+  if (state.disabled && filled) return colors.surfaceActive;
+  return state.pressed ? look.pressedFill : look.fill;
+}
+
 /**
  * M Button and its variants. Disabled follows the design per variant: filled buttons turn
  * `surfaceActive` with a tertiary label, secondary fades to 0.45, ghost dims its label.
@@ -59,7 +67,6 @@ export function Button({
 }: ButtonProps) {
   const disabled = disabledProp === true;
   const look = looks[variant];
-  const filled = variant === "primary" || variant === "danger";
   const labelColor: ColorToken = disabled && variant !== "secondary" ? "textTertiary" : look.label;
 
   return (
@@ -71,13 +78,10 @@ export function Button({
       disabled={disabled || loading}
       style={({ pressed }) => [
         styles.base,
-        {
-          backgroundColor:
-            disabled && filled ? colors.surfaceActive : pressed ? look.pressedFill : look.fill,
-        },
+        { backgroundColor: buttonFill(variant, { pressed, disabled }) },
         look.border === undefined ? null : { borderWidth: 1, borderColor: look.border },
         disabled && variant === "secondary" ? { opacity: disabledOpacity.secondaryButton } : null,
-        loading ? { opacity: loadingOpacity } : null,
+        loading ? styles.loading : null,
         style,
       ]}
     >
@@ -105,4 +109,5 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     gap: space[2],
   },
+  loading: { opacity: loadingOpacity, gap: sizes.buttonLoadingGap },
 });

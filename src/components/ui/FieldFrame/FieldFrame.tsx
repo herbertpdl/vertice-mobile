@@ -1,13 +1,14 @@
 import type { ReactNode } from "react";
 import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 
-import { colors, controls, disabledOpacity, radius, space } from "@/theme";
+import { useAnnounceOnIos } from "@/lib/a11y";
+import { colors, controls, disabledOpacity, radius, sizes, space } from "@/theme";
 
 import { Text } from "../Text";
 
 export type FieldFrameProps = {
   label?: string;
-  /** Shown under the box in danger; replaces `help`. */
+  /** Shown under the box in danger; replaces `help`. Announced when it appears. */
   error?: string;
   /** Neutral helper line under the box ("O aluno receberá um convite por e-mail."). */
   help?: string;
@@ -22,10 +23,14 @@ export type FieldFrameProps = {
   style?: StyleProp<ViewStyle>;
 };
 
+/** How much the 1.5 pt focus border eats into the content, taken back from the padding. */
+const FOCUS_INSET = sizes.focusBorderWidth - 1;
+
 /**
  * The structure every M Field-family component shares: 13/600 label, 52-high surface box with a
  * border that turns primary (1.5) on focus and danger on error, and a 13 help/error line. Inputs
- * (`TextField`, `TextArea`, `SelectField`, `DateField`) render their content inside it.
+ * (`TextField`, `TextArea`, `SelectField`, `DateField`) render their content inside it. The
+ * thicker focus border is compensated in the padding so the content doesn't shift.
  */
 export function FieldFrame({
   label,
@@ -38,7 +43,9 @@ export function FieldFrame({
   boxStyle,
   style,
 }: FieldFrameProps) {
+  useAnnounceOnIos(error);
   const message = error ?? help;
+  const showFocus = focused && error === undefined;
   return (
     <View style={[styles.root, disabled ? styles.disabled : null, style]}>
       {label === undefined ? null : (
@@ -50,12 +57,9 @@ export function FieldFrame({
         style={[
           styles.box,
           disabled ? styles.boxDisabled : null,
-          error !== undefined
-            ? styles.boxError
-            : focused
-              ? styles.boxFocused
-              : null,
+          error !== undefined ? styles.boxError : showFocus ? styles.boxFocused : null,
           boxStyle,
+          showFocus ? styles.focusInset : null,
         ]}
       >
         {children}
@@ -66,7 +70,7 @@ export function FieldFrame({
             variant="caption"
             color={error === undefined ? "textSecondary" : "danger"}
             style={styles.message}
-            // Android reads an error as soon as it appears; iOS gets it as the input's hint.
+            // Android reads an error as soon as it appears; iOS through `useAnnounceOnIos`.
             accessibilityLiveRegion={error === undefined ? "none" : "polite"}
           >
             {message ?? ""}
@@ -93,8 +97,9 @@ const styles = StyleSheet.create({
     gap: controls.fieldContentGap,
   },
   boxDisabled: { backgroundColor: colors.bg },
-  boxFocused: { borderColor: colors.primary, borderWidth: 1.5 },
+  boxFocused: { borderColor: colors.primary, borderWidth: sizes.focusBorderWidth },
+  focusInset: { paddingHorizontal: space[4] - FOCUS_INSET },
   boxError: { borderColor: colors.danger },
-  footer: { flexDirection: "row", alignItems: "center", gap: space[2] },
+  footer: { flexDirection: "row", alignItems: "center", gap: sizes.fieldHelpGap },
   message: { flex: 1 },
 });

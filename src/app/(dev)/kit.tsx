@@ -65,6 +65,8 @@ export default function KitScreen() {
           <Button label="Salvando…" loading />
           <Button label="Desabilitado" disabled />
           <Button label="Desabilitado" variant="secondary" disabled />
+          <Button label="Desabilitado" variant="danger" disabled />
+          <Button label="Desabilitado" variant="ghost" disabled />
         </Section>
 
         <Section title="IconButton">
@@ -73,6 +75,7 @@ export default function KitScreen() {
             <IconButton icon={Search} variant="surface" accessibilityLabel="Buscar" />
             <IconButton icon={Search} variant="plain" accessibilityLabel="Buscar" />
             <IconButton icon={Plus} disabled accessibilityLabel="Novo" />
+            <IconButton icon={Search} variant="surface" disabled accessibilityLabel="Buscar" />
           </Row>
         </Section>
 
@@ -82,6 +85,8 @@ export default function KitScreen() {
           <TextField label="Senha" placeholder="Digite sua senha" password />
           <TextField label="CPF" defaultValue="123.456.789-00" disabled help="Não pode ser alterado." />
           <TextArea label="Descrição" value={notes} onChangeText={setNotes} maxLength={2000} />
+          <TextArea label="Observações" value="" onChangeText={() => {}} error="Campo obrigatório." />
+          <TextArea label="Observações" value="Somente leitura" onChangeText={() => {}} disabled />
           <SearchField value={search} onChangeText={setSearch} placeholder="Buscar aluno" />
         </Section>
 
@@ -160,6 +165,7 @@ export default function KitScreen() {
             }
           />
           <Checkbox checked={false} onChange={() => {}} label="Peito" error="Selecione ao menos um grupo." />
+          <Checkbox checked onChange={() => {}} label="Desabilitado" disabled />
         </Section>
       </ScrollView>
     </SafeAreaView>

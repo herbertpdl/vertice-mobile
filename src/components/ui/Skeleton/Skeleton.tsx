@@ -25,17 +25,18 @@ function useShimmer(style: StyleProp<ViewStyle>) {
 
   useEffect(() => {
     if (reduceMotion) return;
-    progress.value = withRepeat(
+    // `set`/`get` rather than `.value`: the React Compiler forbids mutating a hook's return value.
+    progress.set(withRepeat(
       withTiming(1, { duration: 800, easing: Easing.inOut(Easing.ease) }),
       -1,
       true,
-    );
+    ));
     return () => cancelAnimation(progress);
   }, [reduceMotion, progress]);
 
   const animated = useAnimatedStyle(() => ({
     backgroundColor: interpolateColor(
-      progress.value,
+      progress.get(),
       [0, 1],
       [colors.surfaceHover, colors.surfaceActive],
     ),
@@ -44,7 +45,7 @@ function useShimmer(style: StyleProp<ViewStyle>) {
   return [style, animated];
 }
 
-type SkeletonProps = { style?: StyleProp<ViewStyle> };
+export type SkeletonProps = { style?: StyleProp<ViewStyle> };
 
 const hidden = {
   accessibilityElementsHidden: true,

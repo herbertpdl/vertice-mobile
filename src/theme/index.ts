@@ -6,6 +6,7 @@ export {
   disabledOpacity,
   loadingOpacity,
   screenPaddingHorizontal,
+  sizes,
 } from "./mobile";
 export { fontFamilies, fontFamily, textPresets, textStyle } from "./typography";
 export type { FontFamily, FontWeight, TextVariant } from "./typography";

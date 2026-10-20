@@ -65,8 +65,12 @@ export const textPresets = {
   lead: { family: "base", weight: "regular", size: 16, lineHeight: 1.4 },
   /** Input text, row titles. */
   bodyLg: { family: "base", weight: "regular", size: 16 },
-  /** Button labels, list names. */
+  /** Multi-line input text (M Text Area). */
+  bodyLgRelaxed: { family: "base", weight: "regular", size: 16, lineHeight: 1.4 },
+  /** Button labels, list names; M Avatar 48 initials. */
   bodyLgStrong: { family: "base", weight: "semibold", size: 16 },
+  /** M Avatar 64 initials. */
+  avatarLg: { family: "base", weight: "semibold", size: 22 },
   /** "Não tem uma conta?". */
   bodyMd: { family: "base", weight: "regular", size: 15 },
   bodyMdStrong: { family: "base", weight: "semibold", size: 15 },

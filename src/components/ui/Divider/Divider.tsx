@@ -27,7 +27,7 @@ export function Divider({ label, style }: DividerProps) {
 }
 
 const styles = StyleSheet.create({
-  rule: { height: StyleSheet.hairlineWidth > 0.5 ? StyleSheet.hairlineWidth : 1, backgroundColor: colors.border },
+  rule: { height: 1, backgroundColor: colors.border },
   row: { flexDirection: "row", alignItems: "center", gap: controls.dividerLabelGap },
   flex: { flex: 1 },
 });

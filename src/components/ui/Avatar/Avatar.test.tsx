@@ -1,4 +1,5 @@
 import { render, screen } from "@testing-library/react-native";
+import { StyleSheet } from "react-native";
 
 import { Avatar, initials } from "./Avatar";
 
@@ -18,7 +19,7 @@ describe("Avatar", () => {
   it("renders the initials at the size's font size, hidden from screen readers", async () => {
     await render(<Avatar name="Marina Costa" size={64} />);
     const text = screen.getByText("MC", { includeHiddenElements: true });
-    expect(text.props.style).toEqual(expect.arrayContaining([{ fontSize: 22 }]));
+    expect(StyleSheet.flatten(text.props.style)).toMatchObject({ fontSize: 22, fontFamily: "Inter_600SemiBold" });
     expect(screen.queryByText("MC")).toBeNull();
   });
 });

@@ -1,6 +1,6 @@
 import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 
-import { colors, radius, space, type ColorToken } from "@/theme";
+import { colors, radius, sizes, space, type ColorToken } from "@/theme";
 
 import { Text } from "../Text";
 
@@ -45,6 +45,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: colors.border,
     padding: space[4],
-    gap: 6,
+    gap: sizes.statCardGap,
   },
 });
