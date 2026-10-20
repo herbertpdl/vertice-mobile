@@ -13,8 +13,10 @@ export const fontFamilies = {
     semibold: "Inter_600SemiBold",
     bold: "Inter_700Bold",
   },
+  // The designs never set Space Grotesk below 500; "regular" maps to medium so every
+  // (family, weight) pair still resolves to a loaded face.
   heading: {
-    regular: "SpaceGrotesk_400Regular",
+    regular: "SpaceGrotesk_500Medium",
     medium: "SpaceGrotesk_500Medium",
     semibold: "SpaceGrotesk_600SemiBold",
     bold: "SpaceGrotesk_700Bold",
@@ -35,52 +37,62 @@ type TextPreset = {
   /** Ratio, as in pen.dev (`lineHeight: 1.4`); converted to points by `textStyle`. */
   lineHeight?: number;
   letterSpacing?: number;
-  uppercase?: boolean;
 };
 
 /**
- * The type styles the pen.dev mobile screens use (frame "Vertice — Mobile App"), named by role.
- * Sizes that are not on the web's `--text-*` scale (26, 17, 15, 11, 10) come from the mobile
- * designs, which size for phones; they stay here rather than in `tokens.ts`.
+ * The type styles the pen.dev mobile frames use ("Vertice — Mobile App" and "DS - Mobile
+ * Components", read with instances resolved), named by role. Sizes that are not on the web's
+ * `--text-*` scale (26, 20, 17, 15, 10) come from the mobile designs, which size for phones; they
+ * stay here rather than in `tokens.ts`. Line heights of 1.4–1.5 in the design map to the nearest
+ * `*Relaxed`/`lead` preset.
  */
 export const textPresets = {
   /** "Bem-vindo de volta" — auth hero title. */
   display: { family: "heading", weight: "bold", size: 28 },
-  /** "Alunos", "Bom dia, Ana" — tab screen title. */
+  /** "Alunos", "Bom dia, Ana"; M Stat Card values. */
   title: { family: "heading", weight: "bold", size: 26 },
   /** "Marina Costa", "Supino Reto com Barra" — detail screen title. */
   headline: { family: "heading", weight: "bold", size: 22, lineHeight: 1.25 },
-  /** "Novo aluno" — sheet title. */
-  sheetTitle: { family: "heading", weight: "bold", size: 20 },
+  /** "Novo aluno" — sheet title; detail stat values ("3 de 5", "Hoje"). */
+  titleSm: { family: "heading", weight: "bold", size: 20 },
   /** "Feedbacks recentes" — section header. */
   section: { family: "heading", weight: "semibold", size: 18 },
-  /** "Nenhum aluno encontrado" — empty-state title. */
-  subtitle: { family: "heading", weight: "semibold", size: 17 },
-  /** Centered nav bar title. */
+  /** M Confirm Dialog title ("Esta ação é permanente"); `weight="semibold"` for the calendar month. */
+  headingSm: { family: "heading", weight: "bold", size: 17 },
+  /** Centered nav bar title; empty-state title ("Nenhum aluno encontrado"). */
   navTitle: { family: "base", weight: "semibold", size: 17 },
   /** "Entre para gerenciar seus alunos e treinos." — lead paragraph. */
   lead: { family: "base", weight: "regular", size: 16, lineHeight: 1.4 },
   /** Input text, row titles. */
   bodyLg: { family: "base", weight: "regular", size: 16 },
+  /** Button labels, list names. */
   bodyLgStrong: { family: "base", weight: "semibold", size: 16 },
-  /** Secondary actions, "Não tem uma conta?". */
+  /** "Não tem uma conta?". */
   bodyMd: { family: "base", weight: "regular", size: 15 },
   bodyMdStrong: { family: "base", weight: "semibold", size: 15 },
+  /** Exercise description, share-link explanation. */
+  bodyMdRelaxed: { family: "base", weight: "regular", size: 15, lineHeight: 1.5 },
   body: { family: "base", weight: "regular", size: 14 },
   bodyStrong: { family: "base", weight: "semibold", size: 14 },
+  /** Feedback quotes, plan description, empty-state text. */
+  bodyRelaxed: { family: "base", weight: "regular", size: 14, lineHeight: 1.4 },
   /** Field labels. */
   label: { family: "base", weight: "semibold", size: 13 },
+  /** Help and error lines, secondary row text. */
   caption: { family: "base", weight: "regular", size: 13 },
   small: { family: "base", weight: "regular", size: 12 },
+  /** M Badge, M Stat Card labels. */
   smallStrong: { family: "base", weight: "semibold", size: 12 },
-  /** Badges. */
-  badge: { family: "base", weight: "semibold", size: 11 },
-  /** "PERÍODO", "SEG" — tracked caps. */
-  overline: { family: "base", weight: "semibold", size: 11, letterSpacing: 1, uppercase: true },
-  /** "SÉRIE", tab bar labels. */
-  micro: { family: "base", weight: "semibold", size: 10, letterSpacing: 1, uppercase: true },
-  /** Numbers in the heading face: stat values, times, percentages. */
+  /** M Week Dot letters, M Count Pill, weekday chips ("SEG"). */
+  smallBold: { family: "base", weight: "bold", size: 12 },
+  /** "PERÍODO", "CONTA" — section/table captions (the copy itself is uppercase). */
+  overline: { family: "base", weight: "semibold", size: 12, letterSpacing: 0.5 },
+  /** M Tab Bar labels ("Início"). */
+  micro: { family: "base", weight: "semibold", size: 10 },
+  /** Numbers in the heading face: times, percentages. */
   numeric: { family: "heading", weight: "semibold", size: 14 },
+  /** The tracked "VERTICE" wordmark next to the logo mark. */
+  wordmark: { family: "heading", weight: "bold", size: 18, letterSpacing: 5 },
 } as const satisfies Record<string, TextPreset>;
 
 export type TextVariant = keyof typeof textPresets;
@@ -95,6 +107,5 @@ export function textStyle(variant: TextVariant): TextStyle {
       ? {}
       : { lineHeight: Math.round(preset.size * preset.lineHeight) }),
     ...(preset.letterSpacing === undefined ? {} : { letterSpacing: preset.letterSpacing }),
-    ...(preset.uppercase ? { textTransform: "uppercase" } : {}),
   };
 }

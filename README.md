@@ -87,8 +87,8 @@ Labels are per app — `vertice-web-react` keeps its own.
 ## CI
 
 `.github/workflows/ci.yml` runs on every pull request and on pushes to `main`: `npm ci`,
-`npm run api:types -- --check`, `npm run tokens:check`, `npm run typecheck`, `npm run lint --
---max-warnings 0`, `npm test` and
+`npm run api:types -- --check`, `npm run tokens:check`, `npm run typecheck`,
+`npm run lint -- --max-warnings 0`, `npm test` and
 `npx expo install --check`, plus two non-blocking steps — `npx expo-doctor` and `npm audit
 --omit=dev --audit-level=high` (known transitive Expo/Metro advisories, tracked in the audit
 plan's P2-05). Run the same commands locally before opening a PR. If `expo install --check`

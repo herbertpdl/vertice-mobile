@@ -17,6 +17,10 @@ export default function RootLayout() {
   const ready = fontsLoaded || fontError !== null;
 
   useEffect(() => {
+    if (fontError !== null) console.warn("Fonts failed to load; using the system face.", fontError);
+  }, [fontError]);
+
+  useEffect(() => {
     if (ready) SplashScreen.hide();
   }, [ready]);
 

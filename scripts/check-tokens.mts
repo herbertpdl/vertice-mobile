@@ -2,9 +2,11 @@
  * Checks that `src/theme/tokens.ts` holds exactly the design tokens vertice-web-react declares in
  * `src/app/globals.css` (`:root`'s `--color-*`, `--space-*`, `--radius-*`, `--text-*`) at the
  * commit pinned in `src/theme/.web-ref` — so web and mobile can't drift apart silently. Changes
- * nothing; exit 1 lists every missing, extra or different token.
+ * nothing; exit 1 lists every missing, extra or different token. Parsing and diffing live in
+ * `scripts/lib/tokens.ts` (unit tested).
  *
  *   npm run tokens:check                  # fetch the pinned commit's globals.css
+ *   npm run tokens:check -- --check       # the same (accepted for symmetry with api:types)
  *   npm run tokens:check -- --local       # read ../vertice-web-react/src/app/globals.css instead
  *   npm run tokens:check -- --local=PATH  # ...from another vertice-web-react checkout
  *
@@ -17,10 +19,11 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
-import { colors, fontSize, radius, space } from "../src/theme/tokens";
+import { diffTokens, mobileTokens, parseLocalArg, parseRootTokens } from "./lib/tokens";
 
 const REPO = "herbertpdl/vertice-web-react";
 const CSS_PATH = "src/app/globals.css";
+const FETCH_TIMEOUT_MS = 30_000;
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const refFile = path.join(root, "src", "theme", ".web-ref");
 
@@ -53,65 +56,39 @@ async function readCss(sha: string, local: string | null): Promise<string> {
   const url = `https://raw.githubusercontent.com/${REPO}/${sha}/${CSS_PATH}`;
   const headers: Record<string, string> = { "User-Agent": "vertice-mobile-check-tokens" };
   if (process.env.GITHUB_TOKEN) headers.Authorization = `Bearer ${process.env.GITHUB_TOKEN}`;
-  const res = await fetch(url, { headers });
+  let res: Response;
+  try {
+    res = await fetch(url, { headers, signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+  } catch (error) {
+    return fail(`could not fetch ${url}: ${error instanceof Error ? error.message : String(error)}`);
+  }
   if (!res.ok) fail(`could not fetch ${REPO}@${sha}:${CSS_PATH}: HTTP ${res.status}`);
   return res.text();
 }
 
-/** `--name: value;` declarations of the first `:root { … }` block, keyed by name. */
-function parseRootVars(css: string): Map<string, string> {
-  const block = /:root\s*\{([^}]*)\}/.exec(css)?.[1];
-  if (block === undefined) fail(`${CSS_PATH} has no :root block`);
-  const vars = new Map<string, string>();
-  for (const match of block.matchAll(/--([\w-]+)\s*:\s*([^;]+);/g)) {
-    vars.set(match[1], match[2].trim().toLowerCase());
-  }
-  return vars;
-}
-
-const kebab = (name: string) => name.replace(/[A-Z]/g, (c) => `-${c.toLowerCase()}`);
-
-/** `tokens.ts`, flattened into the web's custom-property names and CSS value spelling. */
-function mobileVars(): Map<string, string> {
-  const vars = new Map<string, string>();
-  for (const [k, v] of Object.entries(colors)) vars.set(`color-${kebab(k)}`, v.toLowerCase());
-  for (const [k, v] of Object.entries(space)) vars.set(`space-${k}`, `${v}px`);
-  for (const [k, v] of Object.entries(radius)) vars.set(`radius-${k}`, `${v}px`);
-  for (const [k, v] of Object.entries(fontSize)) vars.set(`text-${k}`, `${v}px`);
-  return vars;
-}
-
-const TOKEN_PREFIXES = ["color-", "space-", "radius-", "text-"];
-
 async function main(): Promise<void> {
   const args = process.argv.slice(2);
   const localArg = args.find((a) => a === "--local" || a.startsWith("--local="));
-  const unknown = args.filter((a) => a !== localArg);
+  const unknown = args.filter((a) => a !== localArg && a !== "--check");
   if (unknown.length > 0) {
-    fail(`unknown argument(s): ${unknown.join(" ")}\nUsage: check-tokens [--local[=PATH]]`);
+    fail(`unknown argument(s): ${unknown.join(" ")}\nUsage: check-tokens [--check] [--local[=PATH]]`);
   }
-  const local =
-    localArg === undefined
-      ? null
-      : path.resolve(root, localArg.split("=")[1] ?? "../vertice-web-react");
+  let local: string | null;
+  try {
+    const value = parseLocalArg(localArg, "../vertice-web-react");
+    local = value === null ? null : path.resolve(root, value);
+  } catch (error) {
+    fail(error instanceof Error ? error.message : String(error));
+  }
   const sha = parsePin(readFileSync(refFile, "utf8"));
 
-  const web = new Map(
-    [...parseRootVars(await readCss(sha, local))].filter(([name]) =>
-      TOKEN_PREFIXES.some((p) => name.startsWith(p)),
-    ),
-  );
-  const mobile = mobileVars();
-
-  const problems: string[] = [];
-  for (const [name, value] of web) {
-    const mine = mobile.get(name);
-    if (mine === undefined) problems.push(`missing  --${name}: ${value}`);
-    else if (mine !== value) problems.push(`differs  --${name}: web ${value}, mobile ${mine}`);
+  let web: Map<string, string>;
+  try {
+    web = parseRootTokens(await readCss(sha, local));
+  } catch (error) {
+    fail(`${CSS_PATH}: ${error instanceof Error ? error.message : String(error)}`);
   }
-  for (const [name, value] of mobile) {
-    if (!web.has(name)) problems.push(`extra    --${name}: ${value} (not in the web)`);
-  }
+  const problems = diffTokens(web, mobileTokens());
 
   const source = local === null ? `${REPO}@${sha.slice(0, 10)}` : path.join(local, CSS_PATH);
   if (problems.length === 0) {
