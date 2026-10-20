@@ -170,12 +170,12 @@ conventional style (`feat(ui): …`, `chore: …`).
 - [x] Pointer from `CLAUDE.md`
 
 ### PR 2 — `feat/theme-foundation`: tokens, fonts, dark theme, test harness
-- [ ] `src/theme/{tokens,mobile,typography,index}.ts`; `src/theme/.web-ref`; `scripts/check-tokens.mts` + `npm run tokens:check` (+ `--local`, `--check` semantics like `api:types`)
-- [ ] Fonts via `@expo-google-fonts/*` + `useFonts`, splash held until loaded (`expo-splash-screen`)
-- [ ] `app.json`: `userInterfaceStyle: "dark"`, splash/adaptive icon bg `#0A0E14`, `name: "Vertice"`
-- [ ] `Text` primitive (+ test)
-- [ ] `jest-expo` + `@testing-library/react-native`, `npm test`, CI step; tokens test
-- [ ] `CLAUDE.md`/`README.md` updated (styling rules, test command)
+- [x] `src/theme/{tokens,mobile,typography,index}.ts`; `src/theme/.web-ref`; `scripts/check-tokens.mts` + `npm run tokens:check` (+ `--local`, `--check` semantics like `api:types`)
+- [x] Fonts via `@expo-google-fonts/*` + `useFonts`, splash held until loaded (`expo-splash-screen`)
+- [x] `app.json`: `userInterfaceStyle: "dark"`, splash/adaptive icon bg `#0A0E14`, `name: "Vertice"`
+- [x] `Text` primitive (+ test)
+- [x] `jest-expo` + `@testing-library/react-native`, `npm test`, CI step; tokens test
+- [x] `CLAUDE.md`/`README.md` updated (styling rules, test command)
 
 ### PR 3 — `feat/ui-kit-controls`: form & display primitives
 - [ ] `Button`, `IconButton`, `TextField`, `TextArea`, `SearchField`, `Checkbox`, `Chip`, `Badge`, `Avatar`, `StatCard`, `Spinner`, `Skeleton`, `ProgressBar`, `WeekDots`, `Divider`, `TextLink`

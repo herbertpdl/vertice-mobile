@@ -35,8 +35,13 @@ jobs:
       # `npm run api:types` and commit the result). Fetches a public raw.githubusercontent URL.
       - name: Generated API types are up to date
         run: npm run api:types -- --check
+      # src/theme/tokens.ts must equal vertice-web-react's globals.css tokens at the commit pinned
+      # in src/theme/.web-ref (see scripts/check-tokens.mts).
+      - name: Design tokens match the web
+        run: npm run tokens:check
       - run: npm run typecheck
       - run: npm run lint -- --max-warnings 0
+      - run: npm test -- --ci
       # Fails on Expo SDK version drift (run `npx expo install --fix` to realign). This compares
       # the installed packages against the versions the installed Expo SDK expects, which is the
       # signal the old blocking `npx expo-doctor` step was here for, without depending on the
@@ -53,8 +58,6 @@ jobs:
         # once upstream accepts `.icon` directories.
         continue-on-error: true
         run: npx expo-doctor
-      # Tests: none yet. P2-05 adds jest-expo + @testing-library/react-native and an
-      # `npm test` step here.
       - name: Audit production dependencies
         # TODO(P2-05): make this blocking. Today it reports high/critical transitive advisories
         # in Expo/Metro tooling (braces, node-forge, shell-quote, source-map-js) that need an

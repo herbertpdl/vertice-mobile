@@ -1,0 +1,3 @@
+# The vertice-web-react commit whose src/app/globals.css src/theme/tokens.ts mirrors.
+# Bump it, update tokens.ts until `npm run tokens:check` passes, and commit both.
+8baf45be7acc17d3440b433f22348b522c007639

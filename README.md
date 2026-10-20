@@ -58,9 +58,9 @@ npm run web      # start and open in a browser (react-native-web)
 npm run typecheck # tsc --noEmit
 npm run lint     # ESLint (eslint-config-expo)
 npm run api:types # regenerate src/lib/api/schema.ts from vertice-bff's OpenAPI document
+npm run tokens:check # check src/theme/tokens.ts against vertice-web-react's design tokens
+npm test         # unit and component tests (jest-expo)
 ```
-
-There is no test suite configured in this repository yet.
 
 ## The API contract
 
@@ -87,7 +87,8 @@ Labels are per app — `vertice-web-react` keeps its own.
 ## CI
 
 `.github/workflows/ci.yml` runs on every pull request and on pushes to `main`: `npm ci`,
-`npm run api:types -- --check`, `npm run typecheck`, `npm run lint -- --max-warnings 0` and
+`npm run api:types -- --check`, `npm run tokens:check`, `npm run typecheck`, `npm run lint --
+--max-warnings 0`, `npm test` and
 `npx expo install --check`, plus two non-blocking steps — `npx expo-doctor` and `npm audit
 --omit=dev --audit-level=high` (known transitive Expo/Metro advisories, tracked in the audit
 plan's P2-05). Run the same commands locally before opening a PR. If `expo install --check`
