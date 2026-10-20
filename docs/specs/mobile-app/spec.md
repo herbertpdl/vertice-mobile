@@ -13,7 +13,11 @@
     prefixed `M `).
   - `O3tUmW` **Vertice — Mobile App** — the mobile screens (`M - <Nome>`), in rows.
 - **Web counterpart:** [vertice-web-react](https://github.com/herbertpdl/vertice-web-react) —
-  same tokens, same pt-BR copy, same validation rules, same error-code copy.
+  same tokens, same pt-BR copy, same validation rules, same error-code copy. Below, `web:<path>`
+  is shorthand for `https://github.com/herbertpdl/vertice-web-react/blob/main/<path>` and
+  `bff:<path>` for `https://github.com/herbertpdl/vertice-bff/blob/main/<path>`.
+- **Audit IDs** (P2-05, P2-13, …) refer to the cross-repo health audit's plan,
+  `audits/2026-10-09/implementation-plan.md` in the Vertice workspace root (not in any repo).
 
 ## 1. Scope
 
@@ -25,8 +29,8 @@ and account (edit, password, export, delete), consent gate.
 **Out of scope (v1), tracked as follow-ups:**
 - **Client (student) experience** (do a workout, record sets, feedback, progress) — audit item
   P2-13 recommends mobile be the client app; the design file only has trainer screens today. It
-  needs a PRD (`prd-creator`) and designs first. Until then a `CLIENT` who logs in sees a
-  "use the web / app do aluno em breve" screen and can sign out (see PR 6).
+  needs a PRD (`prd-creator`) and designs first. Until then any non-`TRAINER` session
+  (`CLIENT`, `ADMIN`) sees an "app do aluno em breve" notice and can sign out (see PR 6).
 - Password reset ("Esqueceu a senha?") — **no BFF endpoint exists**; the link is removed from the
   design.
 - Push notifications, offline editing, biometrics, tablets/landscape (portrait phone only).
@@ -36,21 +40,22 @@ and account (edit, password, export, delete), consent gate.
 | Topic | Decision |
 |---|---|
 | Styling | `StyleSheet.create` + typed tokens from `src/theme/` (no NativeWind/Tailwind). Never hardcode a color, spacing, radius or font size in a component: import from `@/theme`. |
-| Tokens | `src/theme/tokens.ts` mirrors `vertice-web-react/src/app/globals.css` 1:1 (`--color-surface-hover` → `colors.surfaceHover`, `--space-4` → `space[4]`, `--radius-md` → `radius.md`, `--text-base` → `fontSize.base`). `npm run tokens:check` diffs them against the web file at the commit pinned in `src/theme/.web-ref` (`--local` reads `../vertice-web-react`), and CI runs it. Mobile-only values (tab bar blur tint, 52 px control height, 17 px nav title) live in `src/theme/mobile.ts`, named after the pen.dev component they come from. |
+| Tokens | `src/theme/tokens.ts` mirrors `web:src/app/globals.css` 1:1 (`--color-surface-hover` → `colors.surfaceHover`, `--space-4` → `space[4]`, `--radius-md` → `radius.md`, `--text-base` → `fontSize.base`). `npm run tokens:check` diffs them against the web file at the commit pinned in `src/theme/.web-ref` (`--local` reads a sibling vertice-web-react checkout), and CI runs it. Mobile-only values (tab bar blur tint, 52 px control height, 17 px nav title) live in `src/theme/mobile.ts`, named after the pen.dev component they come from. |
 | Theme | Dark only (like the web). `app.json` `userInterfaceStyle: "dark"`, `expo-status-bar` `style="light"`, root view background `colors.bg`, splash/adaptive-icon background `colors.bg`. |
 | Fonts | `@expo-google-fonts/inter` (400/500/600/700) and `@expo-google-fonts/space-grotesk` (500/600/700) through `useFonts`, splash held until loaded. **Weight is selected by family name, never `fontWeight`** (Android ignores `fontWeight` on custom fonts) — the `Text` primitive maps `weight` → family. |
 | Components | `src/components/ui/<Name>/{<Name>.tsx,index.ts,<Name>.test.tsx}` (design-system kit, 1:1 with `M ` components), `src/components/domain/` (product pieces: rows, cards, sheets), `src/components/layout/` (Screen, NavBar, TabBar). Same one-folder-per-component rule as the web; import through the folder index. |
 | Kit preview | A dev-only route `src/app/(dev)/kit.tsx` (guarded by `__DEV__`, not linked in release) renders every kit component in every state — the mobile stand-in for the web's Storybook. |
-| Navigation | Expo Router. Groups: `(auth)` (login, cadastro), `(app)` behind the session with `(tabs)` (`index`=Início, `alunos`, `exercicios`, `perfil`) and stack screens pushed over the tabs. Guards with `Stack.Protected`. Bottom-sheet screens (Novo aluno, Editar aluno, Link de acesso, Editar perfil…) are routes with `presentation: "formSheet"` (native sheet, swipe to dismiss). In-form pickers (select, date, multi-select) use the kit `Sheet` (RN `Modal`). |
-| Tab bar | Custom `tabBar` for `Tabs` rendering the `M Tab Bar` capsule (blur via `expo-blur`, safe-area bottom inset). |
+| Navigation | Expo Router. Groups: `(auth)` (login, cadastro), `(app)` behind the session with `(tabs)` (`index`=Início, `alunos`, `exercicios`, `perfil`) and stack screens pushed over the tabs. Guards with `Stack.Protected`. Bottom-sheet screens (Novo aluno, Editar aluno, Link de acesso, Editar perfil…) are routes with `presentation: "formSheet"` (native sheet, swipe to dismiss on iOS; react-native-screens documents a fallback to `modal` on Android — verify on an Android device in PR 4 and, if it reads wrong, render those routes with the kit `Sheet` on Android). In-form pickers (select, date, multi-select) use the kit `Sheet` (RN `Modal`). React Navigation is vendored by expo-router in SDK 57: import its hooks (`usePreventRemove`, …) from `expo-router/react-navigation`, never `@react-navigation/*`. |
+| Tab bar | Custom `tabBar` for `Tabs` rendering the `M Tab Bar` capsule with a safe-area bottom inset. Blur via `expo-blur` on iOS; on Android use the design's translucent `#141A22CC` surface without blur (Android blur needs an explicit blur target and costs frames). |
 | Status bar | The `M Status Bar` in the design is the device's; never draw it. Screens use safe-area insets (`react-native-safe-area-context`). |
 | Server state | TanStack Query, query keys per resource (`["clients"]`, `["client", id, "overview"]`, `["trainingPlan", id]`, `["workout", id, "full"]`, `["exercises", filters]`, `["me"]`, `["dashboard"]`…); mutations invalidate by key (same convention as the web). `focusManager` on `AppState`, `onlineManager` on `@react-native-community/netinfo`, no retries on 4xx. Pull-to-refresh on every list. |
-| API modules | `src/lib/api/<resource>.ts` thin typed wrappers over `apiFetch` (as the web's `src/lib/api/*.ts`), types aliased from the generated schema in `src/lib/api/types.ts`. Never inline `apiFetch` in a screen. |
-| Auth | `POST /api/auth/login` returns `{ token, user }`. Token in `expo-secure-store` (never AsyncStorage), sent as `Authorization: Bearer`. `AuthProvider` (`src/lib/auth/`) restores it at boot (splash stays up), exposes `signIn/signOut`; any 401 from `apiFetch` signs out and clears the query cache. v1 is trainer-only: a `CLIENT` session lands on the "app do aluno" notice. |
-| Consent | After sign-in, `GET /api/auth/me` `consent.termsVersion` vs the embedded `LEGAL_VERSIONS` (same as the web's `src/lib/legal/versions.ts`): outdated → blocking consent screen → `POST /api/auth/me/consent`. Fails closed (error + "Tentar novamente"). |
-| Forms | `react-hook-form` + `zod` + `@hookform/resolvers`. Schemas ported from `vertice-web-react/src/lib/validation/*` (same bounds and pt-BR messages; `bounds.ts` copied, contract enums asserted against the generated types in a test). Read values with `useWatch`, never `watch()` (React Compiler). |
-| Errors | `ApiError` keyed by `code`; pt-BR copy from `src/lib/api/errorMessages.ts` (port of the web's), never `error.message`. `FORBIDDEN`/`NOT_FOUND` on a detail screen → back to the list with a toast. |
-| Dates | Port `vertice-web-react/src/lib/format.ts`, `plans.ts`, `calendar.ts` + tests. Instants formatted in `America/Sao_Paulo`; business dates (`yyyy-MM-dd`) never pass through `new Date()` in local time. **Verify Hermes honours `Intl.DateTimeFormat` `timeZone`** (test on device in PR 5; add `@formatjs/intl-datetimeformat` polyfill if not). Dashboard `completedToday` uses `completedAt` once the `.bff-ref` bump lands (see audit follow-ups). |
+| API modules | `src/lib/api/<resource>.ts` thin typed wrappers over `apiFetch` (as `web:src/lib/api/`), types aliased from the generated schema in `src/lib/api/types.ts`. Never inline `apiFetch` in a screen. Paths are the generated keys, `/api` prefix included. |
+| Auth | `POST /api/auth/login` returns `{ token, user }`. Token in `expo-secure-store` (never AsyncStorage), sent as `Authorization: Bearer`. `AuthProvider` (`src/lib/auth/`) restores it at boot (splash stays up), exposes `signIn/signOut`. A 401 on an **authenticated** call signs out and clears the query cache; the public calls (`/api/auth/login`, `/api/auth/register`, `/api/legal/versions`, `/api/auth/password/setup`) are exempt, so login keeps its own "e-mail ou senha inválidos" copy. v1 is trainer-only: any non-`TRAINER` session lands on the "app do aluno" notice. **Token lifetime:** the BFF issues 8 h JWTs with no refresh token (audit P2-05 step 3, undecided). v1 accepts re-login after expiry; an expiry mid-edit in the workout editor keeps the local draft in memory, shows the login sheet over it and retries the save after sign-in (PR 11). A refresh token is a BFF change tracked outside this spec. |
+| Consent | After sign-in, compare `GET /api/auth/me` `consent.termsVersion` with **`GET /api/legal/versions` `.terms`** (the BFF's current version — mobile ships no copy of the texts, it opens the web's live `/termos`, so an embedded constant would go stale; see the comment in `web:src/lib/legal/versions.ts`). Outdated or missing → blocking consent screen → `POST /api/auth/me/consent` with that version. Cadastro sends the same value as `acceptedTermsVersion`. Fails closed: if either call fails, error state + "Tentar novamente", never the app. |
+| Forms | `react-hook-form` + `zod` + `@hookform/resolvers`. Schemas ported from `web:src/lib/validation/` (same bounds and pt-BR messages; `bounds.ts` copied, contract enums asserted against the generated types in a test). Read values with `useWatch`, never `watch()` (React Compiler). |
+| Errors | `ApiError` keyed by `code`; pt-BR copy from `src/lib/api/errorMessages.ts` (port of `web:src/lib/api/errorMessages.ts`), never `error.message`. `FORBIDDEN`/`NOT_FOUND` on a detail screen → back to the list with a toast. |
+| Dates | Port `web:src/lib/format.ts`, `web:src/lib/plans.ts`, `web:src/lib/calendar.ts` + their tests. Instants formatted in `America/Sao_Paulo`; business dates (`yyyy-MM-dd`) never pass through `new Date()` in local time. **Verify Hermes honours `Intl.DateTimeFormat` `timeZone`** (test on device in PR 5; add `@formatjs/intl-datetimeformat` polyfill if not). PR 5 bumps `.bff-ref` to vertice-bff `main` so `Dashboard.completedToday[].completedAt` (an instant) exists; render it in `America/Sao_Paulo` and **never use the deprecated `time`** (`HH:MM` UTC, ~3 h ahead of the trainer's clock). |
+| Crash reporting | `@sentry/react-native` with PII scrubbing (audit P2-05 step 5) lands in PR 14, before the first internal build — not in v1's feature PRs, which have no build to report from. |
 | Media | `expo-image` for thumbnails (YouTube `img.youtube.com/vi/<id>/hqdefault.jpg`, else a dumbbell placeholder). Videos open externally (`expo-web-browser`) — no inline player in v1. |
 | Sharing / files | Access links via RN `Share`. Data export: `GET /api/auth/me/export` → `expo-file-system` → `expo-sharing`. |
 | Accessibility | Every pressable has `accessibilityRole` + `accessibilityLabel`; min 44×44 hit area (`hitSlop` where the visual is smaller); `accessibilityState` for selected/disabled/checked; field errors announced (`accessibilityLiveRegion`/`AccessibilityInfo.announceForAccessibility`); respect `allowFontScaling` (cap with `maxFontSizeMultiplier` on dense rows only). |
@@ -116,32 +121,35 @@ from its report; implement from the pen.dev node, not from this list.**
 | `(app)/feedbacks` | M - Feedbacks | `GET /api/feedback` |
 | `(app)/(tabs)/alunos` | M - Alunos, M - Alunos (Vazio), M - Alunos (Loading) | `GET /api/clients` |
 | `(app)/alunos/novo` (sheet) | M - Novo Aluno (Sheet), M - Novo Aluno (Sucesso) | `POST /api/clients` |
-| `(app)/alunos/[id]` | M - Detalhe do Aluno (+ Feedbacks, Progresso, Loading) | `GET /api/clients/{id}/overview`, `GET /api/training-plans?clientId=`, `GET /api/feedback`, `GET /api/exercises/{id}/progress?clientId=` |
+| `(app)/alunos/[id]` | M - Detalhe do Aluno (+ Feedbacks, Progresso, Loading) | `GET /api/clients/{id}/overview`, `GET /api/training-plans?clientId=`, `GET /api/feedback` (no `clientId` filter exists: the tab filters `EnrichedFeedback.clientId` client-side until audit P2-06 adds `?clientId=`), `GET /api/exercises/{id}/progress?clientId=` |
 | `(app)/alunos/[id]/editar` (sheet) | M - Editar Aluno (Sheet), M - Ações do Aluno | `PATCH /api/clients/{id}` |
 | `(app)/alunos/[id]/acesso` (sheet) | M - Link de Acesso (Sheet) | `POST /api/clients/{id}/setup-token` |
 | — (confirm) | M - Encerrar Vínculo (Confirm) | `DELETE /api/clients/{id}` |
-| `(app)/planos/novo?clientId=`, `(app)/planos/[id]/editar` | M - Novo Plano, M - Calendário (Sheet) | `POST/PATCH /api/training-plans` |
+| `(app)/planos/novo?clientId=`, `(app)/planos/[id]/editar` | M - Novo Plano, M - Calendário (Sheet) | `POST /api/training-plans`, `PATCH /api/training-plans/{id}` |
 | `(app)/planos/[id]` | M - Detalhe do Plano (+ Loading), M - Excluir Plano | `GET/DELETE /api/training-plans/{id}` |
-| `(app)/planos/[planId]/treinos/novo?dayOfWeek=`, `(app)/treinos/[id]` | M - Editor de Treino (+ Novo, Salvando), M - Adicionar Exercício (Sheet), M - Descartar alterações, M - Excluir Treino | `GET /api/workouts/{id}/full`, `POST /api/training-plans/{planId}/workouts`, `PATCH /api/workouts/{id}` + `PUT /api/workouts/{id}/exercises`, `DELETE /api/workouts/{id}` |
+| `(app)/planos/[id]/treinos/novo?dayOfWeek=`, `(app)/treinos/[id]` | M - Editor de Treino (+ Novo, Salvando), M - Adicionar Exercício (Sheet), M - Descartar alterações, M - Excluir Treino | `GET /api/workouts/{id}/full`, `POST /api/training-plans/{planId}/workouts`, `PATCH /api/workouts/{id}` + `PUT /api/workouts/{workoutId}/exercises`, `DELETE /api/workouts/{id}` |
 | `(app)/(tabs)/exercicios` | M - Catálogo de Exercícios, M - Exercícios (Loading) | `GET /api/exercises?muscleGroupId=&q=`, `GET /api/muscle-groups` |
 | `(app)/exercicios/[id]` | M - Detalhe do Exercício (+ padrão), M - Excluir Exercício | `GET/DELETE /api/exercises/{id}` |
-| `(app)/exercicios/novo`, `(app)/exercicios/[id]/editar` | M - Novo Exercício, M - Grupos Musculares (Sheet) | `POST/PATCH /api/exercises` |
+| `(app)/exercicios/novo`, `(app)/exercicios/[id]/editar` | M - Novo Exercício, M - Grupos Musculares (Sheet) | `POST /api/exercises`, `PATCH /api/exercises/{id}` |
 | `(app)/(tabs)/perfil` | M - Perfil | `GET /api/auth/me` |
 | `(app)/perfil/editar` (sheet) | M - Editar Perfil (Sheet) | `PATCH /api/auth/me` |
 | `(app)/perfil/senha` | M - Alterar Senha | `POST /api/auth/password` |
 | `(app)/perfil/excluir` | M - Excluir Conta | `DELETE /api/auth/me` |
 | — | export (action on Perfil) | `GET /api/auth/me/export` |
 | legal | links | open web `/termos`, `/privacidade` with `expo-web-browser` |
-| `(app)/aluno` | (role notice; built from `EmptyState`) | `CLIENT` role in v1 |
+| `(app)/aluno` | (role notice; built from `EmptyState`) | any non-`TRAINER` role in v1 |
 
 **Workout editor on mobile uses explicit save** (design: "Alterações não salvas" + Descartar /
 Salvar treino), not the web's debounced autosave. New workout: one nested
-`POST /training-plans/{planId}/workouts`. Existing: `PATCH /workouts/{id}` (name/day) then
-`PUT /workouts/{id}/exercises` (whole tree). A 409 `PRECONDITION_FAILED` on the `PUT` (a client
-already recorded data) falls back to per-item endpoints (`/workout-exercises`, `/exercise-sets`),
+`POST /api/training-plans/{planId}/workouts`. Existing: `PATCH /api/workouts/{id}` (name/day)
+then `PUT /api/workouts/{workoutId}/exercises` (whole tree). A 409 `PRECONDITION_FAILED` on the
+`PUT` (a client already recorded data) falls back to the per-item endpoints
+(`/api/workout-exercises/{id}`, `/api/workout-exercises/{workoutExerciseId}/sets`,
+`/api/exercise-sets/{id}`),
 the same rule as the web's autosave engine — read
 [the web spec](https://github.com/herbertpdl/vertice-web-react/blob/main/docs/specs/create-workout-with-exercises/spec.md)
-before PR 11. Leaving with unsaved changes asks to discard (`usePreventRemove`).
+before PR 11. Leaving with unsaved changes asks to discard (`usePreventRemove` from
+`expo-router/react-navigation`).
 
 ### 3.4 Design agent report (componentization + screen changes)
 _Pending — filled in when the design agent finishes. Lists every new `M ` component (node id,
@@ -179,7 +187,8 @@ conventional style (`feat(ui): …`, `chore: …`).
 - [ ] tests; added to the kit preview
 
 ### PR 5 — `feat/api-auth-foundation` (audit P2-05)
-- [ ] `apiFetch`: `Headers` merge, bearer token, 15 s timeout (AbortController), network/parse errors → `ApiError`, `Content-Type` only with a body, `retryAfter`; 401 → sign-out hook
+- [ ] bump `src/lib/api/.bff-ref` to vertice-bff `main` + `npm run api:types` (picks up `completedToday[].completedAt`)
+- [ ] `apiFetch`: `Headers` merge, bearer token, 15 s timeout (AbortController), network/parse errors → `ApiError`, `Content-Type` only with a body, `retryAfter`; 401 on authenticated calls → sign-out hook (public auth routes exempt)
 - [ ] `env.ts`: URL validation; release builds require `https:` and refuse localhost
 - [ ] `src/lib/auth/` (SecureStore storage, `AuthProvider`, `useSession`), `src/lib/api/{types,auth,errorMessages}.ts`
 - [ ] query client: no 4xx retries, `focusManager`/`onlineManager`
@@ -188,8 +197,8 @@ conventional style (`feat(ui): …`, `chore: …`).
 - [ ] tests for `apiFetch`, `env`, auth storage
 
 ### PR 6 — `feat/auth-screens`
-- [ ] route groups + `Stack.Protected` guards; splash during restore
-- [ ] Login (+ error banner/field errors, 401/429 copy), Cadastro (+ terms links, `acceptedTermsVersion`), consent gate, `CLIENT` notice
+- [ ] route groups + `Stack.Protected` guards; splash during restore; delete the scaffold `src/app/index.tsx` (it would collide with `(app)/(tabs)/index` at `/`)
+- [ ] Login (+ error banner/field errors, 401/429 copy), Cadastro (+ terms links, `acceptedTermsVersion` from `GET /api/legal/versions`), consent gate (versions from the BFF, fail closed), non-`TRAINER` notice
 - [ ] tests (validation, submit, error mapping)
 
 ### PR 7 — `feat/home-dashboard`
@@ -215,9 +224,10 @@ conventional style (`feat(ui): …`, `chore: …`).
 
 ### PR 14 — `chore/store-readiness`
 - [ ] App identity (name, icons, splash), `eas.json` profiles, iOS privacy manifest, Android permissions audit, `expo-doctor` clean
+- [ ] `@sentry/react-native` with PII scrubbing (audit P2-05 step 5), before the first internal build
 
 ### Later (separate PRDs)
-- Client app (audit P2-13), password reset, push notifications, crash reporting (`@sentry/react-native`, P2-05 step 5).
+- Client app (audit P2-13), password reset, push notifications, refresh tokens (audit P2-05 step 3, BFF).
 
 ## 5. Merge and deploy order
 Mobile-only: no API or BFF change is required for v1 (every endpoint above already exists at the
@@ -228,7 +238,7 @@ merged first. Rollback = revert the mobile PR; nothing server-side depends on it
 
 | PR | Branch | GitHub | Status | Review |
 |---|---|---|---|---|
-| 1 | `docs/mobile-app-spec` | — | open | — |
+| 1 | `docs/mobile-app-spec` | [#14](https://github.com/herbertpdl/vertice-mobile/pull/14) | open | reviewed: 2 blocking + 9 non-blocking, all fixed |
 
 ## Decisions log
 - 2026-10-20 — v1 is the **trainer** app because that is what the pen.dev mobile designs cover; the client app needs its own PRD + designs (audit P2-13).
@@ -236,3 +246,6 @@ merged first. Rollback = revert the mobile PR; nothing server-side depends on it
 - 2026-10-20 — Workout editor uses explicit save on mobile (design), keeping the web's 409 → per-item fallback rule.
 - 2026-10-20 — "Esqueceu a senha?" removed: no reset endpoint in the BFF.
 - 2026-10-20 — PRs are stacked because merges are left to the owner.
+- 2026-10-20 — Consent compares against `GET /api/legal/versions`, not an embedded constant (mobile doesn't ship the texts). Review of #14.
+- 2026-10-20 — v1 accepts re-login after the 8 h token expires; refresh tokens are a BFF decision (audit P2-05 step 3) outside this spec.
+- 2026-10-20 — Sentry moves into PR 14 (before the first internal build) instead of "later".
