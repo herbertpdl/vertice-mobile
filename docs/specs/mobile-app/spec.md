@@ -243,14 +243,16 @@ conventional style (`feat(ui): …`, `chore: …`).
 - [ ] **device checklist** (none available here): Android keyboard inside `Sheet` and over `Screen` footers (`KeyboardAvoidingView behavior="height"`); pickers nested in a sheet present and dismiss on iOS (kit → Abrir sheet); `formSheet` routes on Android — moved to PR 8, the first route sheet
 
 ### PR 5 — `feat/api-auth-foundation` (audit P2-05)
-- [ ] bump `src/lib/api/.bff-ref` to vertice-bff `main` + `npm run api:types` (picks up `completedToday[].completedAt`)
-- [ ] `apiFetch`: `Headers` merge, bearer token, 15 s timeout (AbortController), network/parse errors → `ApiError`, `Content-Type` only with a body, `retryAfter`; 401 on authenticated calls → sign-out hook (public auth routes exempt)
-- [ ] `env.ts`: URL validation; release builds require `https:` and refuse localhost
-- [ ] `src/lib/auth/` (SecureStore storage, `AuthProvider`, `useSession`), `src/lib/api/{types,auth,errorMessages}.ts`
-- [ ] query client: no 4xx retries, `focusManager`/`onlineManager`
-- [ ] port validation schemas + tests; Hermes `Intl` timeZone check on a device (`format`/`calendar`/`plans` landed in PR 4)
-- [ ] root `ErrorBoundary`
-- [ ] tests for `apiFetch`, `env`, auth storage
+- [x] bump `src/lib/api/.bff-ref` to vertice-bff `main` (`0a98343`) + `npm run api:types` (picks up `completedToday[].completedAt`)
+- [x] `apiFetch`/`apiClient`: bearer token, 15 s timeout, network/timeout/parse failures → `ApiError` (web constructor shape), `Content-Type` only with a body, `retryAfter`; 401 on authenticated calls → sign-out; public routes `{ auth: false }`; `apiDownload` + `attachmentFilename`
+- [x] `env.ts`: http(s) URL, trailing slash trimmed; release builds require `https:` and refuse loopback hosts
+- [x] `src/lib/auth/` (`tokenStorage` on SecureStore, `AuthProvider`/`useAuth`, `useMe`); splash held until the session is restored
+- [x] ported from the web: `src/lib/api/*` resource modules (+ mobile `auth.ts`/`legal.ts`, `changePassword`), `types.ts`, `errorMessages.ts`, `rateLimit.ts`, `src/lib/validation/*`, `src/lib/masks/cpf.ts`, with their tests (vitest → jest)
+- [x] query client: no 4xx retries, `focusManager` ← AppState, `onlineManager` ← NetInfo
+- [x] root `ErrorBoundary` (design's error state + retry)
+- [x] tests: `apiFetch`, `env`, token storage, `shouldRetry`, `AuthProvider` (restore, sign in/out, 401 → expired)
+- [ ] Hermes `Intl` `timeZone` check on a device (none here) — the format tests run in Node's ICU
+- [ ] `eas.json` profiles per environment — with PR 14 (store readiness), which owns the build setup
 
 ### PR 6 — `feat/auth-screens`
 - [ ] route groups + `Stack.Protected` guards; splash during restore; delete the scaffold `src/app/index.tsx` (it would collide with `(app)/(tabs)/index` at `/`)
@@ -298,6 +300,7 @@ merged first. Rollback = revert the mobile PR; nothing server-side depends on it
 | 2 | `feat/theme-foundation` | [#15](https://github.com/herbertpdl/vertice-mobile/pull/15) | open (base #14) | reviewed: 2 blocking + 12 non-blocking, all fixed |
 | 3 | `feat/ui-kit-controls` | [#16](https://github.com/herbertpdl/vertice-mobile/pull/16) | open (base #15) | reviewed: 2 blocking + 13 non-blocking, all fixed |
 | 4 | `feat/ui-kit-layout` | [#17](https://github.com/herbertpdl/vertice-mobile/pull/17) | open (base #16) | reviewed: 1 blocking + 24 non-blocking, fixed (device-only items listed below) |
+| 5 | `feat/api-auth-foundation` | — | open (base #17) | — |
 
 ## Decisions log
 - 2026-10-20 — v1 is the **trainer** app because that is what the pen.dev mobile designs cover; the client app needs its own PRD + designs (audit P2-13).
@@ -326,3 +329,5 @@ merged first. Rollback = revert the mobile PR; nothing server-side depends on it
 - 2026-10-20 — `plans.ts` moved into PR 4 with `format.ts`/`calendar.ts` because it is the same port with the same hostile-TZ test run; its first consumer is PR 9. Review of #17.
 - 2026-10-20 — Toasts render under the root `Stack`, so a sheet covers them: screens show a toast after the sheet that raised it has closed.
 - 2026-10-20 — Tab labels cap font scaling at 1.2× so the floating capsule keeps the height `tabBarInset` assumes (measuring it at runtime was judged not worth a context for v1).
+- 2026-10-20 — `ApiError` takes the web's constructor shape (`{ code, message, details }, status, retryAfter`) so error handling and its tests port unchanged; this app adds `NETWORK_ERROR`/`TIMEOUT`.
+- 2026-10-20 — Only the token is persisted; the user (role, consent) always comes from `GET /api/auth/me`, so nothing about the user can be stale after an upstream change.
