@@ -76,7 +76,7 @@ describe("Text", () => {
   it("keeps the copy's own case and applies tracking", async () => {
     await render(
       <>
-        <Text variant="micro">Início</Text>
+        <Text variant="smallStrong">Início</Text>
         <Text variant="overline">PERÍODO</Text>
       </>,
     );

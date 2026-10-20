@@ -151,9 +151,60 @@ the same rule as the web's autosave engine — read
 before PR 11. Leaving with unsaved changes asks to discard (`usePreventRemove` from
 `expo-router/react-navigation`).
 
-### 3.4 Design agent report (componentization + screen changes)
-_Pending — filled in when the design agent finishes. Lists every new `M ` component (node id,
-states, values) and every new/changed screen._
+### 3.4 Design agent report (componentization + screen changes, 2026-10-20)
+The pen.dev mobile library was completed by a design agent. **Read component values from the
+nodes below with the `pencil` MCP tools (`Get(id, {depth: 4})`), not from screenshots.** All
+"variant" components are refs of their base, so the base node holds the shared values.
+
+**Components (`Tskd4` "DS - Mobile Components")**
+- Display: M Avatar 40/48/64 `rVxKA`/`xAmSK`/`z4Xig`; M Badge `qOr6I` (12/600) + Success
+  `iCugD`, Warning `J9zCv`, Danger `LTrgl`, Info `pmgXd` (token at alpha `1F`), Outline `adZeY`
+  ("Padrão"); M Count Pill `O1ESX`; M Tag `uETze`; M Segmented Item `K6PhW`/`REEma` + M Segmented
+  Tabs `v9G09`; M Section Header `sv3eO`; M Text Link `oHqfx`; M Divider `ESP64`, M Divider Or
+  `l9XwhF`; M Week Dot `FqDOR`/`CuLWM` + M Week Dots `q3GDI`; M Progress Bar `fhBQZ`
+  (+ `S55v4X`/`nbim9`/`eqgdu`); M Exercise Thumb `B1Qbv` / Placeholder `VlSAC`; M Video Thumbnail
+  `d2jZxp` (16:9, "Abrir vídeo" chip); M Link Box `a7neI`; M Chart Bar `q6w9CK`; M Stat Card
+  `yzS8w` (helper line "M Stat Helper", 12/400 secondary); M Chip Selected `DtWsn`.
+- Feedback/state: M Form Error Banner `eTYNh`, M Info Banner `nDrZ6`, M Toast `wFGNi` / Error
+  `qSNZf`, M Offline Banner `irpee`, M Error Banner `SH4JF`, M Empty State `hsoLm`, M Skeleton
+  Line/Circle/Block `i7sVM`/`WnOD9`/`IBxjG`, M Spinner `sGfl4`.
+- Lists: M Feedback Row `Yg7CH`, M Plan Ending Row `eQknn`, M Completed Workout Row `xXYu3`,
+  M Student Card `a4GBj`, M Exercise Card `h5cL2Q`, M Exercise Pick Card `tuqxK` / Selected
+  `G9IlS`, M Plan Card `Vp90W`, M Day Row `YgwDL` / Rest `dNJzA`, M Info Row `RBaKm`, M Info Card
+  `CMEEF`, M List Row `gYNSF` / Danger `kUKZs`, M Option Row `SYKiv` / Selected `Poa8p`,
+  M Checkbox `jojI8` / Unchecked `Z4GVdW`, M Checkbox Row `M661r`.
+- Fields: M Field `L8Z17V` + Focused `H6v9F`, Error `f2OTg`, Disabled `W4DHW2`; M Password Field
+  `Y2DD0`; M Select Field `xchSE` / Filled `r4vY0` / Error `iTwTj`; M Date Field `mw9kO`; M Multi
+  Select Field `WwAvf`; M Text Area `SeqUo`; M Search Field `G8t7w`.
+- Buttons: M Button `t7suk` + Pressed `klUcP`, Disabled `UN500`; M Button Secondary `qy8Ln` +
+  Pressed `X1KUWy`, Disabled `C5osK`; M Button Danger `Hdg01` + Pressed `MEqN4`; M Button Ghost
+  `QrAfu`; M Button - Loading `PZ0j2`; M Icon Button `e5TOp`.
+- Editor: M Set Header `P0pNp`, M Set Row `Y2DJbG`, M Add Row Button `Q7cS7J`, M Note Field
+  `uRAng`, M Exercise Editor Card `u7UuK`, M Save Bar `Tnzr5`, M Add Exercise Button `xNs92`.
+- Overlays: M Bottom Sheet `v2tHV` (fill `surface`, radius 24/24/0/0, padding 10/20/34/20,
+  content slot `h17Ktb`, footer slot `LMB94`), M Action Sheet `s1sqQY`, M Confirm Dialog `kJk3l`
+  (w330, radius xl, backdrop `#000000A8`), M Calendar `nOtrs`.
+- Bars: M Nav Bar `U5IlyK`, M Tab Bar `s5B19Z` (labels 12/600), M Status Bar `xFIOQ` (device — not drawn).
+
+**Screens (`O3tUmW`)** — rows A `yzHNt` (auth & home), B `P1HFEq` (gestão), C `fWcYT` (loading),
+D `w5l59E` (perfil & conta), E `ooZRN` (alunos & feedbacks), F `iJX0Q` (planos, treinos,
+exercícios, sheets, confirms), G `oV2Mh` (estados). Screen ids are listed by row in the design
+file; §3.3 maps them to routes.
+
+**Design decisions to follow**
+- ⋮ in the nav bar opens an M Action Sheet: Aluno (Editar aluno, Link de acesso, Encerrar
+  vínculo), Plano (Editar plano, Excluir plano — the "Editar plano" button stays too), Editor
+  (Excluir treino), own Exercício (Excluir exercício). Starter exercises have no ⋮ and no edit.
+- Plan edit form = Novo Plano layout, nav title "Editar plano", button "Salvar".
+- Plan status from dates: Ativo → Success badge, Agendado → Info, Encerrado → neutral.
+- Single-select sheets close on tap (no footer); day of week uses the same 7-option sheet.
+  Muscle groups use the multi-select sheet with "Aplicar (n)", at least one required.
+- `textTertiary` (~3.5:1) only for icons, placeholders, disabled and other-month calendar days;
+  all metadata text uses `textSecondary` (AA).
+- Inline text links (Cadastro terms) are underlined; tag remove "x" is hidden in fields (edit
+  through the sheet).
+- Sheets keep 34 pt bottom padding above the home indicator; dialogs are centred over the
+  `#000000A8` backdrop. Toasts: bottom, inset 20, above the tab bar or Save Bar.
 
 ## 4. PR plan
 
@@ -178,9 +229,10 @@ conventional style (`feat(ui): …`, `chore: …`).
 - [x] `CLAUDE.md`/`README.md` updated (styling rules, test command)
 
 ### PR 3 — `feat/ui-kit-controls`: form & display primitives
-- [ ] `Button`, `IconButton`, `TextField`, `TextArea`, `SearchField`, `Checkbox`, `Chip`, `Badge`, `Avatar`, `StatCard`, `Spinner`, `Skeleton`, `ProgressBar`, `WeekDots`, `Divider`, `TextLink`
-- [ ] tests per component; `(dev)/kit` preview route
-- [ ] Parity check against pen.dev nodes (values from `Get(node)`, not screenshots)
+- [x] `Button` (primary/secondary/danger/ghost, pressed, disabled per variant, loading, icon), `IconButton`, `FieldFrame` (shared M Field structure), `TextField` (focus/error/help/disabled/password), `TextArea` (counter), `SearchField` (clear), `Checkbox` (rich label + `InlineLink`), `Chip`, `Badge` (+ `CountPill`, `Tag`), `Avatar` (+ `initials`), `StatCard`, `Spinner`, `Skeleton`, `ProgressBar`, `WeekDots`, `Divider`, `TextLink`, `ExerciseThumb` (expo-image) — `src/components/ui/index.ts` barrel
+- [x] `src/theme/color.ts` (`withAlpha`, `TINT_ALPHA`, `overlay`), per-component `disabledOpacity`, named off-scale sizes in `mobile.ts`; `src/lib/video.ts` (YouTube still, http(s)-only)
+- [x] tests per component (RNTL 14: `await fireEvent…`, `toBeSelected`/`toBeBusy`/`toBeChecked`); `jest.setup.ts` with the Worklets/Reanimated mocks; lucide mapped to its CJS build
+- [x] `(dev)/kit` preview route, checked on react-native-web at 390 pt against the pen.dev values
 
 ### PR 4 — `feat/ui-kit-layout`: layout, navigation & overlays
 - [ ] `Screen`, `NavBar`, `TabBar`, `SectionHeader`, `SegmentedTabs`, `EmptyState`, `ErrorState`, `FormErrorBanner`, `OfflineBanner`, `Toast` (+ provider), `Sheet`, `ActionSheet`, `ConfirmDialog`, `SelectField`/`SelectSheet`, `MultiSelectField`, `DateField`/`CalendarSheet`
@@ -240,6 +292,7 @@ merged first. Rollback = revert the mobile PR; nothing server-side depends on it
 |---|---|---|---|---|
 | 1 | `docs/mobile-app-spec` | [#14](https://github.com/herbertpdl/vertice-mobile/pull/14) | open | reviewed: 2 blocking + 9 non-blocking, all fixed |
 | 2 | `feat/theme-foundation` | [#15](https://github.com/herbertpdl/vertice-mobile/pull/15) | open (base #14) | reviewed: 2 blocking + 12 non-blocking, all fixed |
+| 3 | `feat/ui-kit-controls` | — | open (base #15) | — |
 
 ## Decisions log
 - 2026-10-20 — v1 is the **trainer** app because that is what the pen.dev mobile designs cover; the client app needs its own PRD + designs (audit P2-13).
@@ -252,3 +305,7 @@ merged first. Rollback = revert the mobile PR; nothing server-side depends on it
 - 2026-10-20 — Sentry moves into PR 14 (before the first internal build) instead of "later".
 - 2026-10-20 — Typography presets follow the pen.dev frames *as normalized by the design agent* (no 11 px text; badges 12/600; overline 12/600 tracked 0.5, copy already uppercase; tab labels 10/600 mixed case). Re-read the design with `resolveInstances: true` before adding a preset. Review of #15.
 - 2026-10-20 — `tsconfig` sets `types: ["jest", "node"]` (TS 6 no longer auto-includes `@types/*`); jest globals type-check in app code too — accepted for simplicity.
+- 2026-10-20 — Bottom/action sheet fill changed in pen.dev from `#10161F` (not a token) to `$color-surface`; fields inside keep their borders, so contrast holds.
+- 2026-10-20 — Tab bar labels are 12/600 in the final design → `smallStrong`; the `micro` (10) preset was removed.
+- 2026-10-20 — Skeleton pulses between `surfaceHover` and `surfaceActive` (no gradient on RN without a native gradient module) on the web's 1.6 s period.
+- 2026-10-20 — Password fields keep the eye toggle in the error state (the design shows the alert glyph); the danger border and message still mark the error.
