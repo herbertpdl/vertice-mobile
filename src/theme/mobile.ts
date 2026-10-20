@@ -55,6 +55,51 @@ export const sizes = {
   fieldHelpGap: 6,
   /** M Field focused border width (1 otherwise). */
   focusBorderWidth: 1.5,
+  /** M Empty State icon disc and glyph. */
+  emptyDisc: 72,
+  emptyIcon: 30,
+  /** M Form Error Banner / M Info Banner padding and gap (also the M Offline Banner gap). */
+  bannerPadding: 14,
+  bannerGap: 10,
+  /** M List Row height and gap. */
+  listRowHeight: 56,
+  listRowGap: 14,
+  /** M Multi Select Field gap between tags. */
+  multiSelectTagGap: 6,
+  /** M Empty State button minimum width. */
+  emptyButtonMinWidth: 200,
+  /** M Option Row / M Checkbox Row height. */
+  optionRowHeight: 52,
+  /** M Info Row vertical padding and label column width. */
+  infoRowPaddingVertical: 13,
+  infoLabelWidth: 96,
+  /** M Segmented Tabs gap between items, and the gap inside an item (label ↔ count). */
+  segmentedGap: 2,
+  segmentedItemGap: 6,
+  /** M Tab Bar capsule padding, tab pill radius, icon ↔ label gap. */
+  tabCapsulePadding: 6,
+  tabItemRadius: 22,
+  tabItemGap: 3,
+  /** M Bottom Sheet grabber. */
+  grabberWidth: 36,
+  grabberHeight: 5,
+  /** M Bottom Sheet content gap between fields. */
+  sheetContentGap: 18,
+  /** M Calendar day cell height and selection circle. */
+  calendarCell: 44,
+  calendarDay: 40,
+  calendarWeekdayHeight: 32,
+  /** M Confirm Dialog width and icon disc. */
+  dialogWidth: 330,
+  dialogIcon: 48,
+  /** M Toast padding, and its distance from the bottom (clears the floating tab bar). */
+  toastPaddingVertical: 14,
+  toastBottomClearance: 96,
+  /** M Confirm Dialog: stacked buttons gap and error row vertical padding. */
+  dialogButtonGap: 10,
+  dialogErrorPaddingVertical: 10,
+  /** M Bottom Sheet top padding (above the grabber). */
+  sheetPaddingTop: 10,
 } as const;
 
 /** Horizontal padding of a screen's content (pen.dev mobile screens use 20 on a 390 frame). */

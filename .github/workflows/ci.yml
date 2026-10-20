@@ -42,6 +42,9 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint -- --max-warnings 0
       - run: npm test -- --ci
+      # The date modules again, one zone ahead of UTC and one behind: nothing may depend on the
+      # host's zone (src/lib/format.ts explains why both are needed).
+      - run: npm run test:hostile-tz -- --ci
       # Fails on Expo SDK version drift (run `npx expo install --fix` to realign). This compares
       # the installed packages against the versions the installed Expo SDK expects, which is the
       # signal the old blocking `npx expo-doctor` step was here for, without depending on the

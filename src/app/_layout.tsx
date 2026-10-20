@@ -4,6 +4,7 @@ import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 
+import { ToastProvider } from "@/components/ui/Toast";
 import { queryClient } from "@/lib/query-client";
 import { colors } from "@/theme";
 import { useAppFonts } from "@/theme/fonts";
@@ -29,14 +30,16 @@ export default function RootLayout() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* The app is dark-only (`userInterfaceStyle: "dark"` in app.json). */}
-      <StatusBar style="light" />
-      <Stack
-        screenOptions={{
-          headerShown: false,
-          contentStyle: { backgroundColor: colors.bg },
-        }}
-      />
+      <ToastProvider>
+        {/* The app is dark-only (`userInterfaceStyle: "dark"` in app.json). */}
+        <StatusBar style="light" />
+        <Stack
+          screenOptions={{
+            headerShown: false,
+            contentStyle: { backgroundColor: colors.bg },
+          }}
+        />
+      </ToastProvider>
     </QueryClientProvider>
   );
 }

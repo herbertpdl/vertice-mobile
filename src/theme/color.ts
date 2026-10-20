@@ -12,6 +12,9 @@ export function withAlpha(hex: string, alpha: number): string {
 /** The alpha of the design's tinted badge backgrounds (`1F`). */
 export const TINT_ALPHA = 0x1f / 255;
 
+/** The lighter alpha of inline banners and the dialog's error row (`14`). */
+export const SOFT_TINT_ALPHA = 0x14 / 255;
+
 /**
  * The only non-token colors the mobile designs use, all pure black/white overlays: the scrim
  * behind a play glyph on a photo (`#000000B3`) and the glyph (`#FFFFFF`), and the backdrop behind
@@ -22,4 +25,6 @@ export const overlay = {
   mediaScrim: "#000000b3",
   mediaGlyph: "#ffffff",
   backdrop: "#000000a8",
+  /** Drop shadows (M Tab Bar, M Toast, M Confirm Dialog): black, opacity set per shadow. */
+  shadow: "#000000",
 } as const;

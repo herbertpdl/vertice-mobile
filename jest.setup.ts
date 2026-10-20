@@ -10,3 +10,7 @@ jest.mock("react-native-reanimated", () => ({
   ...require("react-native-reanimated/src/mock"),
   useReducedMotion: jest.fn(() => false),
 }));
+
+// Components read safe-area insets; the library's own mock answers zero insets without a
+// `SafeAreaProvider` (a test that needs real insets wraps its tree in one).
+jest.mock("react-native-safe-area-context", () => require("react-native-safe-area-context/jest/mock").default);
