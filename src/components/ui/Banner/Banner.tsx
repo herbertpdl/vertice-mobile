@@ -72,7 +72,8 @@ export function StatusBanner({ kind, message, action }: StatusBannerProps) {
           accessibilityRole="button"
           accessibilityLabel={action.label}
           onPress={action.onPress}
-          hitSlop={{ top: 10, bottom: 10, left: 8, right: 8 }}
+          hitSlop={{ left: 8, right: 8 }}
+          style={styles.action}
         >
           <Text variant="label" color={look.tone}>
             {action.label}
@@ -101,4 +102,5 @@ const styles = StyleSheet.create({
     paddingVertical: space[2],
   },
   flex: { flex: 1 },
+  action: { minHeight: controls.hitTarget, justifyContent: "center" },
 });

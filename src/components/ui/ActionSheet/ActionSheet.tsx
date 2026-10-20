@@ -77,7 +77,5 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     overflow: "hidden",
     backgroundColor: colors.surface,
-    borderWidth: 1,
-    borderColor: colors.border,
   },
 });

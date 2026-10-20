@@ -3,7 +3,7 @@ import type { BottomTabBarProps } from "expo-router/tabs";
 import { House, Users } from "lucide-react-native";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
-import { TabBar, tabBarInset } from "./TabBar";
+import { TabBar, tabScreenBottomPadding } from "./TabBar";
 
 function props(index: number) {
   const navigation = {
@@ -46,6 +46,13 @@ describe("TabBar", () => {
   });
 
   it("insets tab content past the floating capsule", () => {
-    expect(tabBarInset(34)).toBeGreaterThan(34 + 69);
+    expect(tabScreenBottomPadding(34)).toBeGreaterThan(34 + 12 + 69);
+  });
+
+  it("leaves out routes hidden with href: null", async () => {
+    const { all } = props(0);
+    (all.descriptors["alunos-1"].options as { tabBarItemStyle?: object }).tabBarItemStyle = { display: "none" };
+    await render(<TabBar {...all} />);
+    expect(screen.queryByRole("tab", { name: "Alunos" })).toBeNull();
   });
 });

@@ -28,3 +28,16 @@ export const overlay = {
   /** Drop shadows (M Tab Bar, M Toast, M Confirm Dialog): black, opacity set per shadow. */
   shadow: "#000000",
 } as const;
+
+/**
+ * The design's drop shadows (black at an opacity; RN's `shadowRadius` is about half the design's
+ * blur). `elevation` is Android's approximation of the same depth.
+ */
+export const shadows = {
+  /** M Tab Bar: #00000066, y 10, blur 28. */
+  tabBar: { shadowColor: overlay.shadow, shadowOpacity: 0.4, shadowOffset: { width: 0, height: 10 }, shadowRadius: 14, elevation: 12 },
+  /** M Toast: #00000066, y 8, blur 24. */
+  toast: { shadowColor: overlay.shadow, shadowOpacity: 0.4, shadowOffset: { width: 0, height: 8 }, shadowRadius: 12, elevation: 10 },
+  /** M Confirm Dialog: #00000080, y 16, blur 40. */
+  dialog: { shadowColor: overlay.shadow, shadowOpacity: 0.5, shadowOffset: { width: 0, height: 16 }, shadowRadius: 20, elevation: 16 },
+} as const;

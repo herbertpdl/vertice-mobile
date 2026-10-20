@@ -62,7 +62,7 @@
     "api:types": "tsx scripts/sync-api-types.mts",
     "test": "jest",
     "tokens:check": "tsx scripts/check-tokens.mts",
-    "test:hostile-tz": "TZ=Pacific/Kiritimati jest src/lib && TZ=Pacific/Honolulu jest src/lib"
+    "test:hostile-tz": "TZ=Pacific/Kiritimati jest src/lib --ci && TZ=Pacific/Honolulu jest src/lib --ci"
   },
   "private": true,
   "jest": {

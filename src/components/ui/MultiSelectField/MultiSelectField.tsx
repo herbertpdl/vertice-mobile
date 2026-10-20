@@ -2,20 +2,18 @@ import { ChevronDown } from "lucide-react-native";
 import { useState } from "react";
 import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 
-import { sizes } from "@/theme";
+import { sizes, space } from "@/theme";
 
 import { Tag } from "../Badge";
 import { Button } from "../Button";
 import { OptionRow } from "../OptionRow";
-import { PickerField } from "../SelectField";
+import { PickerField, type PickerOption } from "../PickerField";
 import { Sheet } from "../Sheet";
-
-export type MultiSelectOption<T extends string | number> = { value: T; label: string };
 
 export type MultiSelectFieldProps<T extends string | number> = {
   label: string;
   values: T[];
-  options: MultiSelectOption<T>[];
+  options: PickerOption<T>[];
   onChange: (values: T[]) => void;
   placeholder?: string;
   sheetTitle?: string;
@@ -76,6 +74,7 @@ export function MultiSelectField<T extends string | number>({
         disabled={disabled}
         onOpen={() => setDraft(values)}
         style={style}
+        contentStyle={styles.boxContent}
       />
       <Sheet
         visible={draft !== null}
@@ -112,4 +111,6 @@ export function MultiSelectField<T extends string | number>({
 const styles = StyleSheet.create({
   tags: { flex: 1, flexDirection: "row", gap: sizes.multiSelectTagGap, overflow: "hidden" },
   flex: { flex: 1 },
+  // M Multi Select Field's box padding: 10 before the tags, 12 after the chevron.
+  boxContent: { paddingLeft: 10, paddingRight: space[3] },
 });

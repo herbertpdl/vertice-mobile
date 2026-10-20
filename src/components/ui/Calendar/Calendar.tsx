@@ -29,6 +29,9 @@ export function Calendar({ value, onChange, min, max }: CalendarProps) {
   const today = todayLocalIso();
   const [month, setMonth] = useState(() => monthOf(value ?? today));
   const title = formatMonthTitle(firstDayOfMonth(month));
+  // Paging stops at the bounds: no month whose every day is out of range.
+  const canGoBack = min === undefined || firstDayOfMonth(month) > min;
+  const canGoForward = max === undefined || firstDayOfMonth(shiftMonth(month, 1)) <= max;
 
   return (
     <View style={styles.root}>
@@ -41,6 +44,7 @@ export function Calendar({ value, onChange, min, max }: CalendarProps) {
           variant="plain"
           iconSize={20}
           accessibilityLabel="Mês anterior"
+          disabled={!canGoBack}
           onPress={() => setMonth((m) => shiftMonth(m, -1))}
         />
         <IconButton
@@ -48,6 +52,7 @@ export function Calendar({ value, onChange, min, max }: CalendarProps) {
           variant="plain"
           iconSize={20}
           accessibilityLabel="Próximo mês"
+          disabled={!canGoForward}
           onPress={() => setMonth((m) => shiftMonth(m, 1))}
         />
       </View>

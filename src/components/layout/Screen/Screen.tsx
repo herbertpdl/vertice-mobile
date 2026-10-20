@@ -13,7 +13,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { colors, screenPaddingHorizontal, space } from "@/theme";
 
-import { tabBarInset } from "../TabBar";
+import { tabScreenBottomPadding } from "../TabBar";
 
 export type ScreenProps = {
   children: ReactNode;
@@ -47,12 +47,14 @@ export function Screen({
   contentStyle,
 }: ScreenProps) {
   const insets = useSafeAreaInsets();
-  const bottom = inTabs ? tabBarInset(insets.bottom) : footer === undefined ? insets.bottom + space[6] : space[6];
+  const bottom = inTabs ? tabScreenBottomPadding(insets.bottom) : footer === undefined ? insets.bottom + space[6] : space[6];
 
   return (
     <KeyboardAvoidingView
       style={[styles.root, { paddingTop: insets.top }]}
-      behavior={Platform.OS === "ios" ? "padding" : undefined}
+      // "height" on Android too: SDK 57 is edge-to-edge, so the window's adjustResize can't be
+      // relied on to lift the content and footer above the keyboard.
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
     >
       {header}
       {scroll ? (

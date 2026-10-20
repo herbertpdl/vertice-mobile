@@ -59,5 +59,5 @@ const styles = StyleSheet.create({
   label: { flex: 1 },
   box: { width: sizes.checkbox, height: sizes.checkbox, borderRadius: radius.sm, alignItems: "center", justifyContent: "center" },
   boxOn: { backgroundColor: colors.primary },
-  boxOff: { borderWidth: 1.5, borderColor: colors.borderStrong },
+  boxOff: { borderWidth: sizes.checkboxBorderWidth, borderColor: colors.borderStrong },
 });

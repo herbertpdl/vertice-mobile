@@ -3,4 +3,4 @@ export { NavBar } from "./NavBar";
 export type { NavBarAction, NavBarProps } from "./NavBar";
 export { Screen } from "./Screen";
 export type { ScreenProps } from "./Screen";
-export { tabBarInset, TabBar } from "./TabBar";
+export { tabScreenBottomPadding, TabBar } from "./TabBar";

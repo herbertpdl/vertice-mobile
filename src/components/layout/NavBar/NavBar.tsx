@@ -14,11 +14,17 @@ export type NavBarAction = {
 
 export type NavBarProps = {
   title: string;
-  /** Back handler; defaults to `router.back()`. Pass `null` for a screen with no way back. */
+  /** Back handler; defaults to `router.back()` (home without history). `null`: no way back. */
   onBack?: (() => void) | null;
   /** The right-hand button (⋮, pencil). */
   action?: NavBarAction;
 };
+
+/** Back, or home when the screen was opened with no history (a deep link, a cold start). */
+function goBack() {
+  if (router.canGoBack()) router.back();
+  else router.replace("/");
+}
 
 /**
  * M Nav Bar: 44 pt back chevron (26), centered 17/600 title, 44 pt action (22, secondary). The
@@ -35,7 +41,7 @@ export function NavBar({ title, onBack, action }: NavBarProps) {
           variant="plain"
           iconSize={26}
           accessibilityLabel="Voltar"
-          onPress={onBack ?? (() => router.back())}
+          onPress={onBack ?? goBack}
         />
       )}
       <Text variant="navTitle" align="center" numberOfLines={1} style={styles.title} accessibilityRole="header">

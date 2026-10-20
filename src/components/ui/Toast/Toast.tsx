@@ -1,10 +1,10 @@
 import { CircleAlert, CircleCheck } from "lucide-react-native";
 import { createContext, use, useEffect, useRef, useState, type ReactNode } from "react";
-import { AccessibilityInfo, StyleSheet, View } from "react-native";
+import { AccessibilityInfo, Platform, StyleSheet, View } from "react-native";
 import Animated, { FadeInDown, FadeOutDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { colors, overlay, radius, screenPaddingHorizontal, sizes, space } from "@/theme";
+import { colors, radius, screenPaddingHorizontal, shadows, sizes, space, tabBarInset } from "@/theme";
 
 import { Text } from "../Text";
 
@@ -27,9 +27,11 @@ export function useToast(): ToastApi {
 }
 
 /**
- * Hosts one toast at a time at the bottom of the screen, above the tab bar and the home
- * indicator, inset 20 (the design's placement). A new toast replaces the current one. Toasts are
- * announced to screen readers and never take focus.
+ * Hosts one toast at a time at the bottom of the screen, just above where the floating tab bar
+ * (and, at about the same height, a M Save Bar) ends, inset 20 — the design's placement. A new
+ * toast replaces the current one. Toasts are announced to screen readers and never take focus.
+ * The host lives under the root `Stack`, so a modal or form sheet covers it: **show a toast
+ * after the sheet that triggered it has closed**, not while it is open.
  */
 export function ToastProvider({ children }: { children: ReactNode }) {
   const insets = useSafeAreaInsets();
@@ -46,7 +48,8 @@ export function ToastProvider({ children }: { children: ReactNode }) {
     show: (message, tone = "success") => {
       nextId.current += 1;
       setToast({ id: nextId.current, message, tone });
-      AccessibilityInfo.announceForAccessibility(message);
+      // Android reads it through the toast's live region; announcing too would read it twice.
+      if (Platform.OS === "ios") AccessibilityInfo.announceForAccessibility(message);
     },
   };
 
@@ -55,7 +58,7 @@ export function ToastProvider({ children }: { children: ReactNode }) {
       {children}
       <View
         pointerEvents="box-none"
-        style={[styles.host, { bottom: insets.bottom + sizes.toastBottomClearance }]}
+        style={[styles.host, { bottom: tabBarInset(insets.bottom) + space[3] }]}
       >
         {toast === null ? null : (
           <Animated.View key={toast.id} entering={FadeInDown} exiting={FadeOutDown}>
@@ -97,12 +100,7 @@ const styles = StyleSheet.create({
     borderRadius: radius.lg,
     borderWidth: 1,
     backgroundColor: colors.surfaceActive,
-    // M Toast shadow: #00000066, y 8, blur 24.
-    shadowColor: overlay.shadow,
-    shadowOpacity: 0.4,
-    shadowOffset: { width: 0, height: 8 },
-    shadowRadius: 12,
-    elevation: 10,
+    ...shadows.toast,
   },
   flex: { flex: 1 },
 });

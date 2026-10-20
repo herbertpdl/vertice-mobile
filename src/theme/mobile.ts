@@ -92,9 +92,17 @@ export const sizes = {
   /** M Confirm Dialog width and icon disc. */
   dialogWidth: 330,
   dialogIcon: 48,
-  /** M Toast padding, and its distance from the bottom (clears the floating tab bar). */
+  /** M Toast padding. */
   toastPaddingVertical: 14,
-  toastBottomClearance: 96,
+  /** M Checkbox / M Checkbox Row unchecked ring width. */
+  checkboxBorderWidth: 1.5,
+  /**
+   * M Tab Bar capsule height at the default text size: padding 6 + tab (8 + 22 icon + 3 + ~16
+   * label + 8) + 6. Tab labels cap their font scaling (`TAB_LABEL_MAX_SCALE`) so this holds.
+   */
+  tabBarCapsuleHeight: 69,
+  /** M Tab Bar's padding below the capsule, above the home indicator. */
+  tabBarBottomGap: 12,
   /** M Confirm Dialog: stacked buttons gap and error row vertical padding. */
   dialogButtonGap: 10,
   dialogErrorPaddingVertical: 10,
@@ -117,3 +125,15 @@ export const disabledOpacity = {
 
 /** Opacity of `M Button - Loading`. */
 export const loadingOpacity = 0.75;
+
+/** The largest font scale tab labels follow, so the floating capsule keeps its height. */
+export const TAB_LABEL_MAX_SCALE = 1.2;
+
+/**
+ * How far from the bottom the floating M Tab Bar reaches (its top edge), for a given bottom safe
+ * area inset. Tab screens pad their content by this (plus breathing room) so their last row clears
+ * the capsule; toasts sit just above it.
+ */
+export function tabBarInset(safeAreaBottom: number): number {
+  return safeAreaBottom + sizes.tabBarBottomGap + sizes.tabBarCapsuleHeight;
+}

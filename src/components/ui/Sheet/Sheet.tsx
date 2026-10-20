@@ -53,10 +53,13 @@ export function SheetModal({
       onRequestClose={close}
       onDismiss={onDismiss}
     >
-      <KeyboardAvoidingView style={styles.fill} behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      {/* "height" on Android: the modal is edge-to-edge, so adjustResize won't lift the panel. */}
+      <KeyboardAvoidingView style={styles.fill} behavior={Platform.OS === "ios" ? "padding" : "height"}>
         <Pressable
           style={[StyleSheet.absoluteFill, styles.backdrop]}
           onPress={close}
+          disabled={!dismissible}
+          accessible={dismissible}
           accessibilityRole="button"
           accessibilityLabel="Fechar"
         />

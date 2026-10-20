@@ -1,2 +1,2 @@
 export { MultiSelectField } from "./MultiSelectField";
-export type { MultiSelectOption, MultiSelectFieldProps } from "./MultiSelectField";
+export type { MultiSelectFieldProps } from "./MultiSelectField";

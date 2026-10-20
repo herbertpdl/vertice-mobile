@@ -4,7 +4,7 @@ import Animated, { ZoomIn } from "react-native-reanimated";
 
 import { useAnnounceOnIos } from "@/lib/a11y";
 import { useSingleFlight } from "@/lib/useSingleFlight";
-import { colors, overlay, radius, sizes, SOFT_TINT_ALPHA, space, TINT_ALPHA, withAlpha } from "@/theme";
+import { colors, overlay, radius, shadows, sizes, SOFT_TINT_ALPHA, space, TINT_ALPHA, withAlpha } from "@/theme";
 
 import { Button } from "../Button";
 import { Text } from "../Text";
@@ -47,7 +47,14 @@ export function ConfirmDialog({
   };
 
   return (
-    <Modal visible={visible} transparent animationType="fade" statusBarTranslucent onRequestClose={cancel}>
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      statusBarTranslucent
+      navigationBarTranslucent
+      onRequestClose={cancel}
+    >
       <View style={styles.backdrop}>
         <Animated.View
           entering={ZoomIn.duration(180)}
@@ -101,12 +108,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     padding: space[6],
     gap: space[4],
-    // M Confirm Dialog shadow: #00000080, y 16, blur 40.
-    shadowColor: overlay.shadow,
-    shadowOpacity: 0.5,
-    shadowOffset: { width: 0, height: 16 },
-    shadowRadius: 20,
-    elevation: 16,
+    ...shadows.dialog,
   },
   icon: {
     width: sizes.dialogIcon,

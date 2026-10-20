@@ -285,6 +285,18 @@ export default function KitScreen() {
       >
         <TextField label="Nome completo" placeholder="Nome do aluno" />
         <TextField label="E-mail" defaultValue="bruno.ferreira" error="Informe um e-mail válido." />
+        {/* Pickers inside a sheet: a modal over a modal — check this one on both platforms. */}
+        <SelectField
+          label="Nível"
+          value={level}
+          onChange={setLevel}
+          options={[
+            { value: "BEGINNER", label: "Iniciante" },
+            { value: "INTERMEDIATE", label: "Intermediário" },
+            { value: "ADVANCED", label: "Avançado" },
+          ]}
+        />
+        <DateField label="Início" value={date} onChange={setDate} />
       </Sheet>
       <ActionSheet
         visible={overlay === "actions"}

@@ -5,7 +5,7 @@ import type { StyleProp, ViewStyle } from "react-native";
 import { formatDateNumeric } from "@/lib/format";
 
 import { Calendar } from "../Calendar";
-import { PickerField } from "../SelectField";
+import { PickerField } from "../PickerField";
 import { Sheet } from "../Sheet";
 
 export type DateFieldProps = {

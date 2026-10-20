@@ -1,1 +1,1 @@
-export { tabBarInset, TabBar } from "./TabBar";
+export { tabScreenBottomPadding, TabBar } from "./TabBar";

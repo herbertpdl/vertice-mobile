@@ -1,2 +1,2 @@
-export { PickerField, SelectField, PickerOptions } from "./SelectField";
-export type { SelectOption, SelectFieldProps } from "./SelectField";
+export { SelectField } from "./SelectField";
+export type { SelectFieldProps } from "./SelectField";

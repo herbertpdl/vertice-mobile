@@ -1,24 +1,24 @@
 import { BlurView } from "expo-blur";
 import type { BottomTabBarProps } from "expo-router/tabs";
-import { Platform, Pressable, StyleSheet, View } from "react-native";
+import { Platform, Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { Text } from "@/components/ui/Text";
-import { colors, overlay, radius, sizes, space, withAlpha } from "@/theme";
+import { colors, radius, shadows, sizes, space, TAB_LABEL_MAX_SCALE, tabBarInset, withAlpha } from "@/theme";
 
 /** M Tab Bar's capsule fill: `surface` at `CC` (80%) — translucent over the content behind it. */
 const CAPSULE_FILL = withAlpha(colors.surface, 0xcc / 255);
-/** Capsule padding (6) + item (8 + 22 icon + 3 + ~16 label + 8) + padding (6). */
-const CAPSULE_HEIGHT = 69;
-/** M Tab Bar's padding below the capsule, above the home indicator. */
-const BOTTOM_GAP = space[3];
-
 /**
  * How much bottom padding a tab screen's scroll content needs so its last row clears the floating
  * capsule (which overlays the content, so it can blur what scrolls under it).
  */
-export function tabBarInset(safeAreaBottom: number): number {
-  return safeAreaBottom + BOTTOM_GAP + CAPSULE_HEIGHT + space[4];
+export function tabScreenBottomPadding(safeAreaBottom: number): number {
+  return tabBarInset(safeAreaBottom) + space[4];
+}
+
+/** Routes hidden from the bar (expo-router's `href: null` sets `tabBarItemStyle.display: "none"`). */
+function isHidden(itemStyle: StyleProp<ViewStyle>): boolean {
+  return StyleSheet.flatten(itemStyle)?.display === "none";
 }
 
 /**
@@ -31,7 +31,7 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
 
   return (
     <View
-      style={[styles.wrap, { paddingBottom: insets.bottom + BOTTOM_GAP }]}
+      style={[styles.wrap, { paddingBottom: insets.bottom + sizes.tabBarBottomGap }]}
       pointerEvents="box-none"
     >
       <View style={styles.capsule} accessibilityRole="tablist">
@@ -40,6 +40,7 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
         ) : null}
         {state.routes.map((route, index) => {
           const { options } = descriptors[route.key];
+          if (isHidden(options.tabBarItemStyle)) return null;
           const focused = state.index === index;
           const label = options.title ?? route.name;
           const tint = focused ? colors.primary : colors.textTertiary;
@@ -60,7 +61,12 @@ export function TabBar({ state, descriptors, navigation }: BottomTabBarProps) {
               style={[styles.item, focused ? styles.itemFocused : null]}
             >
               {options.tabBarIcon?.({ focused, color: tint, size: 22 })}
-              <Text variant="smallStrong" color={focused ? "primary" : "textTertiary"} numberOfLines={1}>
+              <Text
+                variant="smallStrong"
+                color={focused ? "primary" : "textTertiary"}
+                numberOfLines={1}
+                maxFontSizeMultiplier={TAB_LABEL_MAX_SCALE}
+              >
                 {label}
               </Text>
             </Pressable>
@@ -88,12 +94,7 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     backgroundColor: CAPSULE_FILL,
     overflow: "hidden",
-    // M Tab Bar shadow: #00000066, y 10, blur 28.
-    shadowColor: overlay.shadow,
-    shadowOpacity: 0.4,
-    shadowOffset: { width: 0, height: 10 },
-    shadowRadius: 14,
-    elevation: 12,
+    ...shadows.tabBar,
   },
   item: {
     flex: 1,
