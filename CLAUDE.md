@@ -134,6 +134,8 @@ broken, use `PATH=/opt/homebrew/opt/node@22/bin:$PATH`). The app uses native mod
 doesn't ship (`expo-dev-client`, Sentry), so it runs as a **development build**: `npm run ios` /
 `npm run android` once (native build + install), then `npm start` and press `i` / `a`. Rebuild only
 when native dependencies or `app.json` change. `android/` and `ios/` are generated (git-ignored).
+The scripts set `SENTRY_DISABLE_AUTO_UPLOAD=true`: Sentry's source-map upload step runs in local
+native builds too and fails without the Sentry secrets (calling `npx expo run:*` directly needs it set).
 
 - **Backend**: `vertice-api` and `vertice-bff` on `localhost:8080` / `:3000` (see `vertice-local`);
   the web on `:5173` only serves the legal pages the app links to. `.env` points at `localhost`.
