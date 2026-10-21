@@ -8,6 +8,8 @@ import {
   formatMonthTitle,
   formatRecentInstant,
   formatDayMonth,
+  formatPlanRange,
+  formatWeight,
   greetingFor,
   formatDateRange,
   formatDateShort,
@@ -229,6 +231,21 @@ describe("formatRecentInstant edge cases", () => {
 describe("formatDayMonth", () => {
   it("drops the 'de'", () => {
     expect(formatDayMonth("2026-05-24")).toBe("24 mai");
+  });
+});
+
+describe("formatPlanRange", () => {
+  it("adds the year only when it isn't this year's", () => {
+    expect(formatPlanRange("2026-03-01", "2026-05-24", "2026-10-21")).toBe("01 mar – 24 mai");
+    expect(formatPlanRange("2025-10-07", "2025-12-20", "2026-10-21")).toBe("07 out – 20 dez 2025");
+  });
+});
+
+describe("formatWeight", () => {
+  it("uses the pt-BR decimal comma and no trailing zeros", () => {
+    expect(formatWeight(42.5)).toBe("42,5");
+    expect(formatWeight(40)).toBe("40");
+    expect(formatWeight(1000.25)).toBe("1.000,25");
   });
 });
 

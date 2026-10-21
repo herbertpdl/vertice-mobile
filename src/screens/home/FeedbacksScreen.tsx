@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { router } from "expo-router";
 import { MessageSquare } from "lucide-react-native";
 import { FlatList, RefreshControl, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -61,7 +62,12 @@ export function FeedbacksScreen() {
             />
           }
           renderItem={({ item, index }) => (
-            <FeedbackRow feedback={item} withDay last={index === feedback.data.length - 1} />
+            <FeedbackRow
+              feedback={item}
+              withDay
+              last={index === feedback.data.length - 1}
+              onPress={() => router.push(`/alunos/${item.clientId}`)}
+            />
           )}
           refreshControl={
             <RefreshControl

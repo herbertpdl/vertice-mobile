@@ -30,3 +30,28 @@ export function planStatus(
   if (today > endDate) return "completed";
   return "active";
 }
+
+/** The status badge's tone per status (pen.dev: Ativo = success, Agendado = info, Encerrado = neutral). */
+export const planStatusTone = {
+  active: "success",
+  scheduled: "info",
+  completed: "neutral",
+} as const satisfies Record<PlanStatus, "success" | "info" | "neutral">;
+
+type DatedPlan = { startDate: string; endDate: string };
+
+/**
+ * A student's plans as the Planos tab lists them: active first, then scheduled (soonest first),
+ * then finished (most recent first). Business-date string comparisons only.
+ */
+export function sortPlans<P extends DatedPlan>(plans: P[], today: string = todayLocalIso()): P[] {
+  const rank: Record<PlanStatus, number> = { active: 0, scheduled: 1, completed: 2 };
+  return [...plans].sort((a, b) => {
+    const sa = planStatus(a.startDate, a.endDate, today);
+    const sb = planStatus(b.startDate, b.endDate, today);
+    if (sa !== sb) return rank[sa] - rank[sb];
+    if (sa === "scheduled") return a.startDate.localeCompare(b.startDate);
+    return b.endDate.localeCompare(a.endDate);
+  });
+}
+

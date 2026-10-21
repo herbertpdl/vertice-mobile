@@ -106,7 +106,12 @@ function DashboardContent({ data, firstName }: { data: DashboardData; firstName:
           <EmptyLine text="Nenhum feedback recente." />
         ) : (
           feedback.map((item, index) => (
-            <FeedbackRow key={item.id} feedback={item} last={index === feedback.length - 1} />
+            <FeedbackRow
+              key={item.id}
+              feedback={item}
+              last={index === feedback.length - 1}
+              onPress={() => router.push(`/alunos/${item.clientId}`)}
+            />
           ))
         )}
       </View>

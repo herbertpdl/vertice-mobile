@@ -15,6 +15,11 @@ import type {
 /** The roster's query key (the web's too). */
 export const studentsQueryKey = ["students"] as const;
 
+/** One student's overview (`GET /api/clients/{id}/overview`). */
+export function studentQueryKey(id: number) {
+  return ["student", id] as const;
+}
+
 export function fetchStudents(init?: Pick<ApiRequestInit, "signal">) {
   return apiClient.get<ClientSummary[]>("/api/clients", undefined, init);
 }

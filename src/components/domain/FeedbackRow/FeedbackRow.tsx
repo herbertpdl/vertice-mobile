@@ -12,25 +12,32 @@ export type FeedbackRowProps = {
   /** Opens the student. Without it the row is static. */
   onPress?: () => void;
   last?: boolean;
+  /**
+   * `trainer` (default): avatar + student name, "workout · plan". `student`: inside one student's
+   * page — no avatar, the workout as the title and "Plano: …" under it.
+   */
+  perspective?: "trainer" | "student";
 };
 
 /** M Feedback Row: avatar, student, when, "workout · plan", the quoted comment. */
-export function FeedbackRow({ feedback, withDay = false, onPress, last = false }: FeedbackRowProps) {
+export function FeedbackRow({ feedback, withDay = false, onPress, last = false, perspective = "trainer" }: FeedbackRowProps) {
   const when = formatRecentInstant(feedback.createdAt, { withDay });
-  const context = `${feedback.workoutName} · ${feedback.trainingPlanName}`;
+  const student = perspective === "student";
+  const title = student ? feedback.workoutName : feedback.clientName;
+  const context = student ? `Plano: ${feedback.trainingPlanName}` : `${feedback.workoutName} · ${feedback.trainingPlanName}`;
   return (
     <Pressable
       onPress={onPress}
       disabled={onPress === undefined}
       accessibilityRole={onPress === undefined ? undefined : "button"}
-      accessibilityLabel={`${feedback.clientName}, ${when}, ${context}: ${feedback.text}`}
+      accessibilityLabel={`${title}, ${when}, ${context}: ${feedback.text}`}
       style={({ pressed }) => [styles.row, last ? null : styles.rule, pressed ? styles.pressed : null]}
     >
-      <Avatar name={feedback.clientName} size={40} />
+      {student ? null : <Avatar name={feedback.clientName} size={40} />}
       <View style={styles.col}>
         <View style={styles.top}>
           <Text variant="bodyMdStrong" numberOfLines={1} style={styles.flex}>
-            {feedback.clientName}
+            {title}
           </Text>
           <Text variant="small" color="textSecondary">
             {when}

@@ -1,4 +1,4 @@
-import { planStatus, planStatusLabels } from "./plans";
+import { planStatus, planStatusLabels, sortPlans } from "./plans";
 
 /** 22:00 on Sunday 2026-10-18 in São Paulo (-03:00), which is already Monday in UTC. */
 const SUNDAY_EVENING = new Date("2026-10-19T01:00:00Z");
@@ -37,3 +37,17 @@ describe("planStatusLabels", () => {
     });
   });
 });
+
+describe("sortPlans", () => {
+  it("puts the active plan first, then scheduled soonest, then finished most recent", () => {
+    const plans = [
+      { name: "old", startDate: "2025-10-07", endDate: "2025-12-20" },
+      { name: "next", startDate: "2026-12-01", endDate: "2027-01-31" },
+      { name: "recent", startDate: "2026-01-06", endDate: "2026-02-28" },
+      { name: "active", startDate: "2026-09-01", endDate: "2026-11-24" },
+      { name: "later", startDate: "2027-02-01", endDate: "2027-03-01" },
+    ];
+    expect(sortPlans(plans, "2026-10-21").map((p) => p.name)).toEqual(["active", "next", "later", "recent", "old"]);
+  });
+});
+

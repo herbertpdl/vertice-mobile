@@ -268,7 +268,7 @@ conventional style (`feat(ui): …`, `chore: …`).
 - [x] `completedToday[].completedAt` formatted in São Paulo; the deprecated `time` is never read
 - [x] Feedbacks (`M - Feedbacks` / `(Vazio)`): newest first, "Hoje, 07:40 / Ontem, 19:12 / Seg, 18:40" timestamps (`formatRecentInstant`), pull to refresh
 - [x] domain rows: `FeedbackRow`, `PlanEndingRow` (≤ 7 days → warning badge), `CompletedWorkoutRow`; `greetingFor`, `formatRecentInstant` (+ hostile-TZ tests)
-- [ ] feedback rows open the student (wired in PR 9 when `/alunos/[id]` exists); plan-ending rows stay static (the dashboard gives no ids)
+- [x] feedback rows open the student (PR 9); plan-ending rows stay static (the dashboard gives no ids)
 
 ### PR 8 — `feat/students-list`
 - [x] Alunos tab (`M - Alunos`, `(Vazio)`, `(Loading)`): count / "N resultados para a busca", "+" (Novo aluno), search (case- and accent-insensitive), plan filter chips (as the web), `M Student Card`s (plan or "Sem plano ativo" in warning, this week's last workout or "Sem treino nesta semana", Mon–Fri `WeekDots`), empty roster vs empty search (Limpar busca), skeleton, error strip / offline banner, pull to refresh
@@ -277,7 +277,13 @@ conventional style (`feat(ui): …`, `chore: …`).
 - [x] tests: roster logic, screen (filters, search, empty states, error, create + copy, setup null), `StudentCard`; the test query client no longer leaks the mutation GC timer that kept Jest alive
 
 ### PR 9 — `feat/student-detail`
-- [ ] Detalhe do aluno (overview stats, Planos/Feedbacks/Progresso tabs), action sheet, Editar aluno, Link de acesso, Encerrar vínculo
+- [x] `M - Detalhe do Aluno` (+ Loading): identity (avatar 64, name, e-mail, "Plano ativo"/"Sem plano" badge), four compact stat cards from `GET /api/clients/{id}/overview` (active plan + period, "3 de 5 treinos concluídos", last workout "Hoje · às 07:40", adherence over 4 weeks), `SegmentedTabs`, footer "Novo plano" (→ PR 10)
+- [x] Planos tab: `GET /api/training-plans?clientId=`, `PlanCard`s sorted active → scheduled → finished, status from dates (Ativo/Agendado/Encerrado), empty state
+- [x] Feedbacks tab (count pill): `GET /api/feedback` filtered by `clientId` client-side (no server filter yet), student-perspective `FeedbackRow`
+- [x] Progresso tab: exercise `SelectField` (all exercises, as the web) → `GET /api/exercises/{id}/progress?clientId=` → `WeightChart` (last 8 weeks, latest bar full primary), empty states
+- [x] ⋮ → `ActionSheet`: Editar aluno (`EditStudentSheet`: CPF left empty keeps the stored one, "Remover o CPF"), Link de acesso (`AccessLinkSheet`: generate on demand, 409 → "já definiu a senha"), Encerrar vínculo (`ConfirmDialog` → `DELETE /api/clients/{id}`, back to the roster)
+- [x] 403/404 → back with a toast (`useRedirectOnError`); feedback rows on Início/Feedbacks now open the student
+- [x] `/planos/[id]` and `/planos/novo` placeholders (PR 10); tests for the screen, `PlanCard`, `WeightChart`
 
 ### PR 10 — `feat/training-plans`
 - [ ] Detalhe do plano (week rows, rest days → add workout), Novo/Editar plano form with `DateField`, Excluir plano
@@ -315,6 +321,7 @@ merged first. Rollback = revert the mobile PR; nothing server-side depends on it
 | 6 | `feat/auth-screens` | [#19](https://github.com/herbertpdl/vertice-mobile/pull/19) | open (base #18) | reviewed: 2 blocking + 18 non-blocking, fixed or logged |
 | 7 | `feat/home-dashboard` | [#20](https://github.com/herbertpdl/vertice-mobile/pull/20) | open (base #19) | reviewed: 2 blocking + 10 non-blocking, fixed or logged |
 | 8 | `feat/students-list` | [#21](https://github.com/herbertpdl/vertice-mobile/pull/21) | open (base #20) | reviewed: 2 blocking + 21 non-blocking, fixed or logged |
+| 9 | `feat/student-detail` | — | open (base #21) | — |
 
 ## Decisions log
 - 2026-10-20 — v1 is the **trainer** app because that is what the pen.dev mobile designs cover; the client app needs its own PRD + designs (audit P2-13).
@@ -368,3 +375,4 @@ merged first. Rollback = revert the mobile PR; nothing server-side depends on it
 - 2026-10-21 — Feedback inside a sheet (link copied) is shown in place, never as a toast (the sheet covers the toast host). Sheets that hold a flow are remounted with a new `key` per opening, so they start clean without a reset effect (the React Compiler forbids synchronous `setState` in effects).
 - 2026-10-21 — A 409 on Novo aluno goes on the e-mail field (as the web); a `setup: null` answer offers "Gerar link de acesso" inline. Mutations carrying the setup token use `gcTime: 0`.
 - 2026-10-21 — M - Alunos (Loading) keeps the real search field and chips (they work on an empty list) instead of the design's skeletons for them. The schema's "E-mail inválido" stays (design: "Informe um e-mail válido.").
+- 2026-10-21 — Access links are generated on demand from the student page (a token is shown once; the previous link stops working, which the sheet says before generating). The design's "Ela"/"ele" copy is neutralized with the first name.
