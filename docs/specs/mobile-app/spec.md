@@ -263,7 +263,12 @@ conventional style (`feat(ui): …`, `chore: …`).
 - [ ] visual pass on web/device (the integrated browser hung during this PR)
 
 ### PR 7 — `feat/home-dashboard`
-- [ ] `(tabs)` layout with `TabBar`; Início (dashboard + skeleton + error/retry + pull to refresh); Feedbacks list
+- [x] `(app)/(tabs)` with `TabBar` (Início, Alunos, Exercícios, Perfil; the last three are "em breve" placeholders until PRs 8, 12, 13)
+- [x] Início (`M - Dashboard`): greeting by São Paulo hour + first name, "N feedbacks novos · M planos terminando", four stat cards, three sections (3 rows each, empty lines), `M - Dashboard (Loading)` skeleton, error state with retry, pull to refresh, `M Offline Banner` while offline (`useIsOffline` ← React Query `onlineManager`)
+- [x] `completedToday[].completedAt` formatted in São Paulo; the deprecated `time` is never read
+- [x] Feedbacks (`M - Feedbacks` / `(Vazio)`): newest first, "Hoje, 07:40 / Ontem, 19:12 / Seg, 18:40" timestamps (`formatRecentInstant`), pull to refresh
+- [x] domain rows: `FeedbackRow`, `PlanEndingRow` (≤ 7 days → warning badge), `CompletedWorkoutRow`; `greetingFor`, `formatRecentInstant` (+ hostile-TZ tests)
+- [ ] feedback rows open the student (wired in PR 9 when `/alunos/[id]` exists); plan-ending rows stay static (the dashboard gives no ids)
 
 ### PR 8 — `feat/students-list`
 - [ ] Alunos (search, filter chips, `WeekDots`, empty/no-results, skeleton); Novo aluno sheet + success (share link)
@@ -305,6 +310,7 @@ merged first. Rollback = revert the mobile PR; nothing server-side depends on it
 | 4 | `feat/ui-kit-layout` | [#17](https://github.com/herbertpdl/vertice-mobile/pull/17) | open (base #16) | reviewed: 1 blocking + 24 non-blocking, fixed (device-only items listed below) |
 | 5 | `feat/api-auth-foundation` | [#18](https://github.com/herbertpdl/vertice-mobile/pull/18) | open (base #17) | reviewed: 1 blocking + 12 non-blocking, fixed |
 | 6 | `feat/auth-screens` | [#19](https://github.com/herbertpdl/vertice-mobile/pull/19) | open (base #18) | reviewed: 2 blocking + 18 non-blocking, fixed or logged |
+| 7 | `feat/home-dashboard` | — | open (base #19) | — |
 
 ## Decisions log
 - 2026-10-20 — v1 is the **trainer** app because that is what the pen.dev mobile designs cover; the client app needs its own PRD + designs (audit P2-13).

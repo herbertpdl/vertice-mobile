@@ -6,6 +6,8 @@ import {
   formatDateNumeric,
   formatMonthYear,
   formatMonthTitle,
+  formatRecentInstant,
+  greetingFor,
   formatDateRange,
   formatDateShort,
   formatDateTime,
@@ -180,3 +182,33 @@ describe("formatMonthTitle", () => {
     expect(formatMonthTitle("2027-03-31")).toBe("Março 2027");
   });
 });
+
+describe("greetingFor", () => {
+  it("greets by the hour in São Paulo, whatever the device's zone", () => {
+    expect(greetingFor(new Date("2026-10-21T13:59:00Z"))).toBe("Bom dia"); // 10:59 BRT
+    expect(greetingFor(new Date("2026-10-21T15:00:00Z"))).toBe("Boa tarde"); // 12:00
+    expect(greetingFor(new Date("2026-10-21T21:00:00Z"))).toBe("Boa noite"); // 18:00
+    expect(greetingFor(new Date("2026-10-22T02:30:00Z"))).toBe("Boa noite"); // 23:30 on the 21st
+  });
+});
+
+describe("formatRecentInstant", () => {
+  const now = new Date("2026-10-21T15:00:00Z"); // Wed 21/10, 12:00 in São Paulo
+
+  it("today is just the clock (or 'Hoje, …'), in São Paulo time", () => {
+    expect(formatRecentInstant("2026-10-21T10:40:00Z", { now })).toBe("07:40");
+    expect(formatRecentInstant("2026-10-21T10:40:00Z", { now, withDay: true })).toBe("Hoje, 07:40");
+  });
+
+  it("counts business days: 23:30 UTC on the 20th is still yesterday evening in Brazil", () => {
+    expect(formatRecentInstant("2026-10-20T22:12:00Z", { now })).toBe("Ontem");
+    expect(formatRecentInstant("2026-10-20T22:12:00Z", { now, withDay: true })).toBe("Ontem, 19:12");
+    expect(formatRecentInstant("2026-10-21T02:30:00Z", { now })).toBe("Ontem"); // 23:30 on the 20th
+  });
+
+  it("names the weekday within a week, and the date after", () => {
+    expect(formatRecentInstant("2026-10-19T21:40:00Z", { now, withDay: true })).toBe("Seg, 18:40");
+    expect(formatRecentInstant("2026-10-10T11:02:00Z", { now, withDay: true })).toBe("10 de out, 08:02");
+  });
+});
+
