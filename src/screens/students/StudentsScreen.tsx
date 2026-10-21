@@ -5,10 +5,10 @@ import { useState } from "react";
 import { FlatList, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { NewStudentSheet, StudentCard, studentsQueryKey } from "@/components/domain";
+import { NewStudentSheet, StudentCard } from "@/components/domain";
 import { Screen, tabScreenBottomPadding } from "@/components/layout";
 import { Chip, EmptyState, ErrorState, IconButton, SearchField, Skeleton, StatusBanner, Text } from "@/components/ui";
-import { fetchStudents } from "@/lib/api/students";
+import { fetchStudents, studentsQueryKey } from "@/lib/api/students";
 import type { ClientSummary } from "@/lib/api/types";
 import { useIsOffline } from "@/lib/network";
 import { usePullToRefresh } from "@/lib/usePullToRefresh";
@@ -24,7 +24,13 @@ export function StudentsScreen() {
   const [query, setQuery] = useState("");
   const [filter, setFilter] = useState<RosterFilter>("all");
   const [creating, setCreating] = useState(false);
-  const students = useQuery({ queryKey: studentsQueryKey, queryFn: () => fetchStudents() });
+  // A new key per opening remounts the sheet: each "Novo aluno" starts empty, with no old token.
+  const [sheetKey, setSheetKey] = useState(0);
+  const openNewStudent = () => {
+    setSheetKey((key) => key + 1);
+    setCreating(true);
+  };
+  const students = useQuery({ queryKey: studentsQueryKey, queryFn: ({ signal }) => fetchStudents({ signal }) });
   const pull = usePullToRefresh(() => students.refetch());
   const retry = { label: "Tentar", onPress: () => void students.refetch() };
 
@@ -43,11 +49,11 @@ export function StudentsScreen() {
             <Skeleton.Line width={160} />
           ) : (
             <Text variant="body" color="textSecondary">
-              {rosterSubtitle(all.length, shown.length, narrowed)}
+              {rosterSubtitle(all.length, shown.length, filter, query)}
             </Text>
           )}
         </View>
-        <IconButton icon={Plus} accessibilityLabel="Novo aluno" onPress={() => setCreating(true)} />
+        <IconButton icon={Plus} accessibilityLabel="Novo aluno" onPress={openNewStudent} />
       </View>
       <SearchField value={query} onChangeText={setQuery} placeholder="Buscar aluno" />
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips}>
@@ -101,7 +107,7 @@ export function StudentsScreen() {
                 icon={UserPlus}
                 title="Nenhum aluno ainda"
                 message="Cadastre seu primeiro aluno para montar planos e acompanhar os treinos."
-                action={{ label: "Novo aluno", onPress: () => setCreating(true) }}
+                action={{ label: "Novo aluno", onPress: openNewStudent }}
               />
             )
           }
@@ -119,7 +125,7 @@ export function StudentsScreen() {
           }
         />
       )}
-      <NewStudentSheet visible={creating} onClose={() => setCreating(false)} />
+      <NewStudentSheet key={sheetKey} visible={creating} onClose={() => setCreating(false)} />
     </Screen>
   );
 }
@@ -146,15 +152,15 @@ function RosterSkeleton() {
 
 const styles = StyleSheet.create({
   padded: { paddingHorizontal: screenPaddingHorizontal },
-  list: { paddingHorizontal: screenPaddingHorizontal, gap: 10 },
+  list: { paddingHorizontal: screenPaddingHorizontal, gap: sizes.cardListGap },
   header: { paddingTop: space[3], gap: space[4], paddingBottom: space[1] },
   head: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: space[3] },
-  titleCol: { flex: 1, gap: 3 },
+  titleCol: { flex: 1, gap: sizes.rowLinesGap },
   chips: { gap: space[2] },
-  skeleton: { gap: 10 },
+  skeleton: { gap: sizes.cardListGap },
   skeletonCard: {
     padding: sizes.studentCardPadding,
-    gap: sizes.studentCardPadding,
+    gap: sizes.skeletonCardGap,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,

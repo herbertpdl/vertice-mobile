@@ -7,4 +7,4 @@ export { ENDING_SOON_DAYS, PlanEndingRow } from "./PlanEndingRow";
 export { StudentCard } from "./StudentCard";
 export { AccessLinkPanel } from "./AccessLinkPanel";
 export type { AccessLinkPanelProps } from "./AccessLinkPanel";
-export { studentsQueryKey, NewStudentSheet } from "./NewStudentSheet";
+export { NewStudentSheet } from "./NewStudentSheet";

@@ -44,7 +44,7 @@ export function SearchField({
       {value === "" ? null : (
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel="Limpar busca"
+          accessibilityLabel="Apagar o texto da busca"
           hitSlop={12}
           onPress={() => onChangeText("")}
         >

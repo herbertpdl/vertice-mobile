@@ -1,7 +1,7 @@
 import { setupLink } from "@/lib/api/students";
 import type { ClientSummary, PasswordSetup } from "@/lib/api/types";
 import { env } from "@/lib/env";
-import { daysUntil, formatDateShort, formatTimeOfDay, todayLocalIso } from "@/lib/format";
+import { daysUntil, formatDayMonth, formatTimeOfDay, todayLocalIso } from "@/lib/format";
 
 export type RosterFilter = "all" | "withPlan" | "withoutPlan";
 
@@ -26,9 +26,21 @@ export function filterRoster(students: ClientSummary[], filter: RosterFilter, qu
   });
 }
 
-/** "32 alunos cadastrados", or "0 resultados para a busca" while searching or filtering. */
-export function rosterSubtitle(total: number, shown: number, narrowed: boolean): string {
-  if (narrowed) return `${shown} ${shown === 1 ? "resultado" : "resultados"} para a busca`;
+const FILTER_SUBTITLES: Record<Exclude<RosterFilter, "all">, [string, string]> = {
+  withPlan: ["aluno com plano ativo", "alunos com plano ativo"],
+  withoutPlan: ["aluno sem plano", "alunos sem plano"],
+};
+
+/**
+ * "32 alunos cadastrados"; "0 resultados para a busca" while searching; "3 alunos sem plano"
+ * when only a filter chip narrows the list.
+ */
+export function rosterSubtitle(total: number, shown: number, filter: RosterFilter, query: string): string {
+  if (query.trim() !== "") return `${shown} ${shown === 1 ? "resultado" : "resultados"} para a busca`;
+  if (filter !== "all") {
+    const [one, many] = FILTER_SUBTITLES[filter];
+    return `${shown} ${shown === 1 ? one : many}`;
+  }
   return `${total} ${total === 1 ? "aluno cadastrado" : "alunos cadastrados"}`;
 }
 
@@ -41,7 +53,7 @@ export function studentAccessLink(token: string): string {
 export function accessLinkExpiry({ expiresAt }: PasswordSetup, now: Date = new Date()): string {
   const day = todayLocalIso(new Date(expiresAt));
   const days = daysUntil(day, todayLocalIso(now));
-  const when = `${formatDateShort(day)}, ${formatTimeOfDay(expiresAt)}`;
+  const when = `${formatDayMonth(day)}, ${formatTimeOfDay(expiresAt)}`;
   if (new Date(expiresAt).getTime() <= now.getTime()) return `Expirado · ${when}`;
   const relative = days <= 0 ? "Expira hoje" : days === 1 ? "Expira amanhã" : `Expira em ${days} dias`;
   return `${relative} · ${when}`;

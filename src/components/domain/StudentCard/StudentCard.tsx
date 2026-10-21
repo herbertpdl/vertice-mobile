@@ -1,7 +1,7 @@
 import { ChevronRight, Timer } from "lucide-react-native";
 import { Pressable, StyleSheet, View } from "react-native";
 
-import { Avatar, Text, WeekDots } from "@/components/ui";
+import { Avatar, Text, WeekDots, weekSummary } from "@/components/ui";
 import type { ClientSummary } from "@/lib/api/types";
 import { formatRecentInstant } from "@/lib/format";
 import { DAY_INITIAL, DAY_NAMES } from "@/lib/labels";
@@ -16,11 +16,17 @@ export function StudentCard({ student, onPress }: { student: ClientSummary; onPr
   const plan = student.currentPlan?.name ?? "Sem plano ativo";
   const last =
     student.lastWorkoutAt === null ? "Sem treino nesta semana" : formatRecentInstant(student.lastWorkoutAt, { withDay: true });
+  const days = student.weekActivity.map((day) => ({
+    letter: DAY_INITIAL[day.dayOfWeek],
+    name: DAY_NAMES[day.dayOfWeek],
+    done: day.completed,
+  }));
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
-      accessibilityLabel={`${student.name}, ${plan}, último treino: ${last}`}
+      // One element for the whole card, so the week (otherwise hidden inside it) is read too.
+      accessibilityLabel={`${student.name}, ${plan}, último treino: ${last}. ${weekSummary(days)}`}
       style={({ pressed }) => [styles.card, pressed ? styles.pressed : null]}
     >
       <View style={styles.top}>
@@ -42,13 +48,7 @@ export function StudentCard({ student, onPress }: { student: ClientSummary; onPr
             {last}
           </Text>
         </View>
-        <WeekDots
-          days={student.weekActivity.map((day) => ({
-            letter: DAY_INITIAL[day.dayOfWeek],
-            name: DAY_NAMES[day.dayOfWeek],
-            done: day.completed,
-          }))}
-        />
+        <WeekDots days={days} />
       </View>
     </Pressable>
   );
@@ -65,7 +65,7 @@ const styles = StyleSheet.create({
   },
   pressed: { backgroundColor: colors.surfaceHover },
   top: { flexDirection: "row", alignItems: "center", gap: space[3] },
-  identity: { flex: 1, gap: 3 },
+  identity: { flex: 1, gap: sizes.rowLinesGap },
   bottom: { flexDirection: "row", alignItems: "center", gap: space[3] },
   last: { flex: 1, flexDirection: "row", alignItems: "center", gap: sizes.inlineLinkGap },
   flex: { flex: 1 },

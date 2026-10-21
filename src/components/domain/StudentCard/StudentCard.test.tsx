@@ -17,7 +17,11 @@ const base = {
 describe("StudentCard", () => {
   it("flags a student without a plan and without a workout this week", async () => {
     await render(<StudentCard student={base} onPress={() => {}} />);
-    expect(screen.getByRole("button", { name: "Diego Martins, Sem plano ativo, último treino: Sem treino nesta semana" })).toBeOnTheScreen();
+    expect(
+      screen.getByRole("button", {
+        name: "Diego Martins, Sem plano ativo, último treino: Sem treino nesta semana. Esta semana: Segunda concluído",
+      }),
+    ).toBeOnTheScreen();
     expect(StyleSheet.flatten(screen.getByText("Sem plano ativo", { includeHiddenElements: true }).props.style).color).toBe(colors.warning);
   });
 
@@ -28,6 +32,6 @@ describe("StudentCard", () => {
         onPress={() => {}}
       />,
     );
-    expect(screen.getByRole("button", { name: /^Diego Martins, Base, último treino: 06 jan, 07:40$/ })).toBeOnTheScreen();
+    expect(screen.getByRole("button", { name: /^Diego Martins, Base, último treino: 06 jan, 07:40\. Esta semana/ })).toBeOnTheScreen();
   });
 });

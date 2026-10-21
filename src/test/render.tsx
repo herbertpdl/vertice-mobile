@@ -11,7 +11,7 @@ import { ToastProvider } from "@/components/ui/Toast";
  */
 export function testQueryClient(): QueryClient {
   return new QueryClient({
-    defaultOptions: { queries: { retry: false, gcTime: Infinity }, mutations: { retry: false, gcTime: Infinity } },
+    defaultOptions: { queries: { retry: false, gcTime: Infinity }, mutations: { retry: false, gcTime: Infinity, networkMode: "always" } },
   });
 }
 

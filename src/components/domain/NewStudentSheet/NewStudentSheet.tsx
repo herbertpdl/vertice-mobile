@@ -7,9 +7,10 @@ import { StyleSheet, View } from "react-native";
 
 import { FormTextField } from "@/components/form";
 import { Banner, Button, Sheet, Text } from "@/components/ui";
-import { apiErrorMessage } from "@/lib/api/errorMessages";
-import { createStudent } from "@/lib/api/students";
-import type { CreatedStudent } from "@/lib/api/types";
+import { ApiError } from "@/lib/api/client";
+import { apiErrorMessage, errorMessages } from "@/lib/api/errorMessages";
+import { createStudent, issueStudentSetupToken, studentsQueryKey } from "@/lib/api/students";
+import type { CreatedStudent, PasswordSetup } from "@/lib/api/types";
 import { maskCpf } from "@/lib/masks/cpf";
 import { onlyDigits } from "@/lib/validation/cpf";
 import { studentSchema, type StudentInput } from "@/lib/validation/students";
@@ -17,39 +18,61 @@ import { colors, radius, sizes, space, TINT_ALPHA, withAlpha } from "@/theme";
 
 import { AccessLinkPanel } from "../AccessLinkPanel";
 
-export const studentsQueryKey = ["students"] as const;
+/** The dashboard's query key (its "Alunos ativos" count changes with the roster). */
+const dashboardQueryKey = ["dashboard"] as const;
 
 /**
  * M - Novo Aluno (Sheet) → M - Novo Aluno (Sucesso): creates the client (no password) and shows
- * the first-access link to share. The created student — token included — lives only in this
- * component's state: the token is shown once and never cached.
+ * the first-access link to share. The token is shown once: it lives in this component's state,
+ * and the mutations that carry it (and the CPF) are dropped from the mutation cache at once
+ * (`gcTime: 0`). The parent gives it a new `key` each time it opens, so every opening starts from
+ * an empty form — resetting on close instead would flash the form while the success sheet fades.
  */
 export function NewStudentSheet({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const queryClient = useQueryClient();
   const [created, setCreated] = useState<CreatedStudent | null>(null);
-  const { control, handleSubmit, reset, setFocus } = useForm<StudentInput>({
+  const [setup, setSetup] = useState<PasswordSetup | null>(null);
+  const {
+    control,
+    handleSubmit,
+    setFocus,
+    setError,
+    formState: { isSubmitting },
+  } = useForm<StudentInput>({
     resolver: zodResolver(studentSchema),
     defaultValues: { name: "", email: "", cpf: "" },
   });
   const create = useMutation({
+    gcTime: 0,
     mutationFn: (values: StudentInput) =>
       createStudent({ name: values.name.trim(), email: values.email, cpf: onlyDigits(values.cpf) }),
     onSuccess: (student) => {
       setCreated(student);
+      setSetup(student.setup);
       void queryClient.invalidateQueries({ queryKey: studentsQueryKey });
+      void queryClient.invalidateQueries({ queryKey: dashboardQueryKey });
+    },
+    onError: (error) => {
+      // Same as the web: the BFF answers one 409 for a taken e-mail or CPF; show it on the e-mail.
+      if (error instanceof ApiError && error.code === "CONFLICT") {
+        setError("email", { message: errorMessages.CONFLICT });
+      }
     },
   });
+  const reissue = useMutation({
+    gcTime: 0,
+    mutationFn: (id: number) => issueStudentSetupToken(id),
+    onSuccess: setSetup,
+  });
 
+  const busy = isSubmitting || create.isPending;
   const close = () => {
-    if (create.isPending) return;
-    onClose();
-    setCreated(null);
-    create.reset();
-    reset();
+    if (!busy) onClose();
   };
   const submit = handleSubmit((values) => {
     if (!create.isPending) create.mutate(values);
   });
+  const conflict = create.error instanceof ApiError && create.error.code === "CONFLICT";
 
   if (created !== null) {
     return (
@@ -63,10 +86,20 @@ export function NewStudentSheet({ visible, onClose }: { visible: boolean; onClos
             Compartilhe o link de acesso para que ele defina a senha e comece a usar o app.
           </Text>
         </View>
-        {created.setup === null ? (
-          <Banner tone="info" message="Não foi possível gerar o link agora. Gere um novo link na página do aluno." />
+        {setup === null ? (
+          <>
+            <Banner tone="info" message="Não foi possível gerar o link de acesso. Tente gerar de novo." />
+            {reissue.isError ? <Banner message={apiErrorMessage(reissue.error, "Não foi possível gerar o link")} /> : null}
+            <Button
+              label="Gerar link de acesso"
+              loading={reissue.isPending}
+              onPress={() => {
+                if (!reissue.isPending) reissue.mutate(created.id);
+              }}
+            />
+          </>
         ) : (
-          <AccessLinkPanel studentName={created.name} setup={created.setup} />
+          <AccessLinkPanel studentName={created.name} setup={setup} />
         )}
       </Sheet>
     );
@@ -76,16 +109,16 @@ export function NewStudentSheet({ visible, onClose }: { visible: boolean; onClos
     <Sheet
       visible={visible}
       onClose={close}
-      dismissible={!create.isPending}
+      dismissible={!busy}
       title="Novo aluno"
       footer={
         <>
-          <Button label="Cancelar" variant="secondary" style={styles.flex} disabled={create.isPending} onPress={close} />
-          <Button label="Criar aluno" style={styles.flex} loading={create.isPending} onPress={() => void submit()} />
+          <Button label="Cancelar" variant="secondary" style={styles.flex} disabled={busy} onPress={close} />
+          <Button label="Criar aluno" style={styles.flex} loading={busy} onPress={() => void submit()} />
         </>
       }
     >
-      {create.isError ? <Banner message={apiErrorMessage(create.error, "Não foi possível criar o aluno")} /> : null}
+      {create.isError && !conflict ? <Banner message={apiErrorMessage(create.error, "Não foi possível criar o aluno")} /> : null}
       <FormTextField
         control={control}
         name="name"

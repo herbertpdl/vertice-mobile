@@ -18,7 +18,10 @@ export const queryClient = new QueryClient({
   defaultOptions: {
     // Same freshness as the web (`src/app/providers.tsx` there): 30 s.
     queries: { staleTime: 30_000, retry: shouldRetry },
-    mutations: { retry: false },
+    // Mutations fail fast offline (`apiFetch` → NETWORK_ERROR) instead of pausing until the
+    // connection returns: a paused mutation stays "pending", which would lock the sheet or dialog
+    // that started it.
+    mutations: { retry: false, networkMode: "always" },
   },
 });
 

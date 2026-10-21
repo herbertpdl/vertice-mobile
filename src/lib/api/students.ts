@@ -1,4 +1,4 @@
-import { apiClient } from "./client";
+import { apiClient, type ApiRequestInit } from "./client";
 import type { components } from "./schema";
 import type {
   ClientDetail,
@@ -12,8 +12,11 @@ import type {
 // name), even though the REST shape it returns is the trainer's "students"
 // list — hence the naming mismatch between this file and the URL path.
 
-export function fetchStudents() {
-  return apiClient.get<ClientSummary[]>("/api/clients");
+/** The roster's query key (the web's too). */
+export const studentsQueryKey = ["students"] as const;
+
+export function fetchStudents(init?: Pick<ApiRequestInit, "signal">) {
+  return apiClient.get<ClientSummary[]>("/api/clients", undefined, init);
 }
 
 /**

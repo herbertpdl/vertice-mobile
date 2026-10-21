@@ -27,10 +27,12 @@ describe("filterRoster", () => {
 
 describe("rosterSubtitle", () => {
   it("counts the roster, or the results while narrowed", () => {
-    expect(rosterSubtitle(32, 32, false)).toBe("32 alunos cadastrados");
-    expect(rosterSubtitle(1, 1, false)).toBe("1 aluno cadastrado");
-    expect(rosterSubtitle(32, 0, true)).toBe("0 resultados para a busca");
-    expect(rosterSubtitle(32, 1, true)).toBe("1 resultado para a busca");
+    expect(rosterSubtitle(32, 32, "all", "")).toBe("32 alunos cadastrados");
+    expect(rosterSubtitle(1, 1, "all", " ")).toBe("1 aluno cadastrado");
+    expect(rosterSubtitle(32, 0, "all", "anderson")).toBe("0 resultados para a busca");
+    expect(rosterSubtitle(32, 1, "withPlan", "ana")).toBe("1 resultado para a busca");
+    expect(rosterSubtitle(32, 3, "withoutPlan", "")).toBe("3 alunos sem plano");
+    expect(rosterSubtitle(32, 1, "withPlan", "")).toBe("1 aluno com plano ativo");
   });
 });
 
@@ -42,10 +44,10 @@ describe("studentAccessLink", () => {
 
 describe("accessLinkExpiry", () => {
   const now = new Date("2026-10-20T17:30:00Z"); // 14:30 in São Paulo
-  it("counts business days to the expiry and shows it in São Paulo time", () => {
-    expect(accessLinkExpiry({ token: "t", expiresAt: "2026-10-23T17:30:00Z" }, now)).toBe("Expira em 3 dias · 23 de out, 14:30");
-    expect(accessLinkExpiry({ token: "t", expiresAt: "2026-10-21T12:00:00Z" }, now)).toBe("Expira amanhã · 21 de out, 09:00");
-    expect(accessLinkExpiry({ token: "t", expiresAt: "2026-10-20T23:00:00Z" }, now)).toBe("Expira hoje · 20 de out, 20:00");
-    expect(accessLinkExpiry({ token: "t", expiresAt: "2026-10-19T10:00:00Z" }, now)).toBe("Expirado · 19 de out, 07:00");
+  it("counts calendar days (in São Paulo) to the expiry and shows it in São Paulo time", () => {
+    expect(accessLinkExpiry({ token: "t", expiresAt: "2026-10-23T17:30:00Z" }, now)).toBe("Expira em 3 dias · 23 out, 14:30");
+    expect(accessLinkExpiry({ token: "t", expiresAt: "2026-10-21T12:00:00Z" }, now)).toBe("Expira amanhã · 21 out, 09:00");
+    expect(accessLinkExpiry({ token: "t", expiresAt: "2026-10-20T23:00:00Z" }, now)).toBe("Expira hoje · 20 out, 20:00");
+    expect(accessLinkExpiry({ token: "t", expiresAt: "2026-10-19T10:00:00Z" }, now)).toBe("Expirado · 19 out, 07:00");
   });
 });

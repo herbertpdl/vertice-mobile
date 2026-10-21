@@ -69,5 +69,5 @@ export { TextLink, InlineLink } from "./TextLink";
 export type { TextLinkProps, InlineLinkProps } from "./TextLink";
 export { TOAST_DURATION_MS, useToast, ToastProvider, Toast } from "./Toast";
 export type { ToastTone } from "./Toast";
-export { WeekDots } from "./WeekDots";
+export { weekSummary, WeekDots } from "./WeekDots";
 export type { WeekDay, WeekDotsProps } from "./WeekDots";
