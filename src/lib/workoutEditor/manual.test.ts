@@ -108,11 +108,15 @@ describe("the engine with saving left to the trainer (delayMs: null)", () => {
   });
 
   it("rests after a save that an edit made during it left dirty (no stuck \"saving\")", async () => {
-    const { engine } = manual();
+    const t = transport();
+    const { engine } = manual(t);
+    // The edit lands while the PATCH is in flight.
+    t.patchWorkout.mockImplementationOnce(async () => {
+      engine.dispatch({ type: "setName", name: "Treino C" });
+      return {};
+    });
     engine.dispatch({ type: "setName", name: "Treino B" });
-    const saving = engine.finish();
-    engine.dispatch({ type: "setName", name: "Treino C" });
-    await saving;
+    await engine.finish();
     expect(engine.getState()).toMatchObject({ status: "saved", dirty: true });
   });
 
