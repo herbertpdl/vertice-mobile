@@ -27,12 +27,12 @@ npm run web        # start + open in a browser (react-native-web)
 npm run typecheck  # tsc --noEmit
 npm run lint       # ESLint (eslint-config-expo)
 npm run api:types  # regenerate src/lib/api/schema.ts from vertice-bff's OpenAPI document
+npm run tokens:check # src/theme/tokens.ts vs vertice-web-react's globals.css at src/theme/.web-ref (-- --local for a sibling checkout)
+npm test           # jest-expo + @testing-library/react-native (tests next to the code, *.test.ts[x])
 ```
 
-There is no test suite configured in this repository yet.
-
 CI (`.github/workflows/ci.yml`, job `build-and-test`) runs `npm ci`, `api:types -- --check`,
-`typecheck`, `lint -- --max-warnings 0` and `npx expo install --check` on every PR and push to
+`tokens:check`, `typecheck`, `lint -- --max-warnings 0`, `npm test` and `npx expo install --check` on every PR and push to
 `main`; keep all of them clean (warnings fail lint). `npx expo-doctor` and `npm audit --omit=dev
 --audit-level=high` also run but are non-blocking — expo-doctor because `npx` always resolves the
 latest release and >= 1.21 flags `ios.icon` (a valid Icon Composer `.icon` directory) as a config
@@ -90,6 +90,17 @@ drift check stays green.
   against `apiFetch`, matching `vertice-web-react`'s use of `@tanstack/react-query`.
 - **Forms**: `react-hook-form` + `@hookform/resolvers` + `zod` are installed to match
   `vertice-web-react`'s form stack, not yet used anywhere.
+- **Design system (`src/theme/`, `src/components/ui/`)** — the app is dark-only and styled with
+  `StyleSheet` + typed tokens; never hardcode a color, spacing, radius or font size. `tokens.ts`
+  mirrors vertice-web-react's `src/app/globals.css` 1:1 (`--color-surface-hover` →
+  `colors.surfaceHover`, `--space-4` → `space[4]`) and `npm run tokens:check` enforces it against
+  the pinned `src/theme/.web-ref`; mobile-only sizes live in `mobile.ts`. Text goes through the
+  `Text` component (`variant` = a role of the pen.dev mobile type scale in `typography.ts`):
+  **a font weight is a font family on React Native, so never set `fontWeight`** — `Text`'s
+  `weight` prop picks the family. Fonts (Inter, Space Grotesk) load in the root layout via
+  `useAppFonts`, which holds the splash until they're ready. Kit components are generated from the
+  pen.dev mobile library ("DS - Mobile Components", `M *` components) — one folder per component
+  (`<Name>/<Name>.tsx`, `index.ts`, `<Name>.test.tsx`), imported through the folder index.
 - **Icons**: `lucide-react-native` (+ `react-native-svg` peer dep) mirrors `vertice-web-react`'s
   use of `lucide-react`, for icon parity between web and mobile.
 

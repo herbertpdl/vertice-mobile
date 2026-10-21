@@ -40,9 +40,9 @@ and account (edit, password, export, delete), consent gate.
 | Topic | Decision |
 |---|---|
 | Styling | `StyleSheet.create` + typed tokens from `src/theme/` (no NativeWind/Tailwind). Never hardcode a color, spacing, radius or font size in a component: import from `@/theme`. |
-| Tokens | `src/theme/tokens.ts` mirrors `web:src/app/globals.css` 1:1 (`--color-surface-hover` → `colors.surfaceHover`, `--space-4` → `space[4]`, `--radius-md` → `radius.md`, `--text-base` → `fontSize.base`). `npm run tokens:check` diffs them against the web file at the commit pinned in `src/theme/.web-ref` (`--local` reads a sibling vertice-web-react checkout), and CI runs it. Mobile-only values (tab bar blur tint, 52 px control height, 17 px nav title) live in `src/theme/mobile.ts`, named after the pen.dev component they come from. |
+| Tokens | `src/theme/tokens.ts` mirrors `web:src/app/globals.css` 1:1 (`--color-surface-hover` → `colors.surfaceHover`, `--space-4` → `space[4]`, `--radius-md` → `radius.md`, `--text-base` → `fontSize.base`). `npm run tokens:check` diffs them against the web file at the commit pinned in `src/theme/.web-ref` (`--local` reads a sibling vertice-web-react checkout), and CI runs it. Mobile-only sizes (52 px control height, 44 pt hit target, off-scale paddings) live in `src/theme/mobile.ts`, named after the pen.dev component they come from; the mobile type scale (17 px nav title, 26 px titles…) lives in `src/theme/typography.ts`. No new colors anywhere: tints are token colors with an alpha via `withAlpha` (`src/theme/color.ts`, PR 3) — e.g. the tab bar's `#141A22CC` is `withAlpha(colors.surface, 0.8)` — and the only non-token colors are the photo overlays (`mediaOverlay`). |
 | Theme | Dark only (like the web). `app.json` `userInterfaceStyle: "dark"`, `expo-status-bar` `style="light"`, root view background `colors.bg`, splash/adaptive-icon background `colors.bg`. |
-| Fonts | `@expo-google-fonts/inter` (400/500/600/700) and `@expo-google-fonts/space-grotesk` (500/600/700) through `useFonts`, splash held until loaded. **Weight is selected by family name, never `fontWeight`** (Android ignores `fontWeight` on custom fonts) — the `Text` primitive maps `weight` → family. |
+| Fonts | `@expo-google-fonts/inter` (400/500/600/700) and `@expo-google-fonts/space-grotesk` (500/600/700; the design never uses 400) through `useFonts`, imported per weight subpath, splash held until loaded. **Weight is selected by family name, never `fontWeight`** (Android ignores `fontWeight` on custom fonts) — the `Text` primitive maps `weight` → family. |
 | Components | `src/components/ui/<Name>/{<Name>.tsx,index.ts,<Name>.test.tsx}` (design-system kit, 1:1 with `M ` components), `src/components/domain/` (product pieces: rows, cards, sheets), `src/components/layout/` (Screen, NavBar, TabBar). Same one-folder-per-component rule as the web; import through the folder index. |
 | Kit preview | A dev-only route `src/app/(dev)/kit.tsx` (guarded by `__DEV__`, not linked in release) renders every kit component in every state — the mobile stand-in for the web's Storybook. |
 | Navigation | Expo Router. Groups: `(auth)` (login, cadastro), `(app)` behind the session with `(tabs)` (`index`=Início, `alunos`, `exercicios`, `perfil`) and stack screens pushed over the tabs. Guards with `Stack.Protected`. Bottom-sheet screens (Novo aluno, Editar aluno, Link de acesso, Editar perfil…) are routes with `presentation: "formSheet"` (native sheet, swipe to dismiss on iOS; react-native-screens documents a fallback to `modal` on Android — verify on an Android device in PR 4 and, if it reads wrong, render those routes with the kit `Sheet` on Android). In-form pickers (select, date, multi-select) use the kit `Sheet` (RN `Modal`). React Navigation is vendored by expo-router in SDK 57: import its hooks (`usePreventRemove`, …) from `expo-router/react-navigation`, never `@react-navigation/*`. |
@@ -170,12 +170,12 @@ conventional style (`feat(ui): …`, `chore: …`).
 - [x] Pointer from `CLAUDE.md`
 
 ### PR 2 — `feat/theme-foundation`: tokens, fonts, dark theme, test harness
-- [ ] `src/theme/{tokens,mobile,typography,index}.ts`; `src/theme/.web-ref`; `scripts/check-tokens.mts` + `npm run tokens:check` (+ `--local`, `--check` semantics like `api:types`)
-- [ ] Fonts via `@expo-google-fonts/*` + `useFonts`, splash held until loaded (`expo-splash-screen`)
-- [ ] `app.json`: `userInterfaceStyle: "dark"`, splash/adaptive icon bg `#0A0E14`, `name: "Vertice"`
-- [ ] `Text` primitive (+ test)
-- [ ] `jest-expo` + `@testing-library/react-native`, `npm test`, CI step; tokens test
-- [ ] `CLAUDE.md`/`README.md` updated (styling rules, test command)
+- [x] `src/theme/{tokens,mobile,typography,fonts,index}.ts`; `src/theme/.web-ref`; `scripts/check-tokens.mts` (+ `scripts/lib/tokens.ts`) + `npm run tokens:check` (`--local[=PATH]`; `--check` accepted, it never writes)
+- [x] Fonts via `@expo-google-fonts/*` + `useFonts`, splash held until loaded (`expo-splash-screen`)
+- [x] `app.json`: `userInterfaceStyle: "dark"`, splash/adaptive icon bg `#0A0E14`, `name: "Vertice"`
+- [x] `Text` primitive (+ test)
+- [x] `jest-expo` + `@testing-library/react-native`, `npm test`, CI step; tests for the token parser/diff (`scripts/lib/tokens.test.ts`) and every text preset
+- [x] `CLAUDE.md`/`README.md` updated (styling rules, test command)
 
 ### PR 3 — `feat/ui-kit-controls`: form & display primitives
 - [ ] `Button`, `IconButton`, `TextField`, `TextArea`, `SearchField`, `Checkbox`, `Chip`, `Badge`, `Avatar`, `StatCard`, `Spinner`, `Skeleton`, `ProgressBar`, `WeekDots`, `Divider`, `TextLink`
@@ -239,6 +239,7 @@ merged first. Rollback = revert the mobile PR; nothing server-side depends on it
 | PR | Branch | GitHub | Status | Review |
 |---|---|---|---|---|
 | 1 | `docs/mobile-app-spec` | [#14](https://github.com/herbertpdl/vertice-mobile/pull/14) | open | reviewed: 2 blocking + 9 non-blocking, all fixed |
+| 2 | `feat/theme-foundation` | [#15](https://github.com/herbertpdl/vertice-mobile/pull/15) | open (base #14) | reviewed: 2 blocking + 12 non-blocking, all fixed |
 
 ## Decisions log
 - 2026-10-20 — v1 is the **trainer** app because that is what the pen.dev mobile designs cover; the client app needs its own PRD + designs (audit P2-13).
@@ -249,3 +250,5 @@ merged first. Rollback = revert the mobile PR; nothing server-side depends on it
 - 2026-10-20 — Consent compares against `GET /api/legal/versions`, not an embedded constant (mobile doesn't ship the texts). Review of #14.
 - 2026-10-20 — v1 accepts re-login after the 8 h token expires; refresh tokens are a BFF decision (audit P2-05 step 3) outside this spec.
 - 2026-10-20 — Sentry moves into PR 14 (before the first internal build) instead of "later".
+- 2026-10-20 — Typography presets follow the pen.dev frames *as normalized by the design agent* (no 11 px text; badges 12/600; overline 12/600 tracked 0.5, copy already uppercase; tab labels 10/600 mixed case). Re-read the design with `resolveInstances: true` before adding a preset. Review of #15.
+- 2026-10-20 — `tsconfig` sets `types: ["jest", "node"]` (TS 6 no longer auto-includes `@types/*`); jest globals type-check in app code too — accepted for simplicity.
