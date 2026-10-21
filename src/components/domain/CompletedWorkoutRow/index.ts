@@ -1,0 +1,1 @@
+export { CompletedWorkoutRow } from "./CompletedWorkoutRow";

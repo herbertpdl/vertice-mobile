@@ -191,3 +191,58 @@ export function daysLeftLabel(daysLeft: number): string {
   if (daysLeft === 1) return "1 dia";
   return `${daysLeft} dias`;
 }
+
+// --- Mobile-only helpers ---------------------------------------------------------------------
+
+const businessHourFormatter = new Intl.DateTimeFormat("en-US", {
+  timeZone: BUSINESS_TIME_ZONE,
+  hour: "2-digit",
+  hour12: false,
+});
+
+const weekdayShortFormatter = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: BUSINESS_TIME_ZONE,
+  weekday: "short",
+});
+
+/** The dashboard greeting for the business-zone hour: "Bom dia" (< 12), "Boa tarde" (< 18), "Boa noite". */
+export function greetingFor(now: Date = new Date()): string {
+  // Read the hour from the parts with `hour12: false` (as `timeOfDayFormatter` does), not by
+  // parsing the formatted string: some ICUs render midnight as "24".
+  const part = businessHourFormatter.formatToParts(now).find((p) => p.type === "hour")?.value ?? "0";
+  const hour = Number(part) % 24;
+  if (hour < 12) return "Bom dia";
+  if (hour < 18) return "Boa tarde";
+  return "Boa noite";
+}
+
+/**
+ * A recent instant as the feedback rows show it, counted in business days: today → "07:40"
+ * (`"Hoje, 07:40"` with `withDay`), yesterday → "Ontem" (`"Ontem, 19:12"`), within the last
+ * week → "Ter" (`"Ter, 18:40"`), older → "24 mai" (`"24 mai, 08:02"`). An empty or invalid
+ * instant (the BFF passes a missing proto timestamp through as `""`) gives `""`.
+ */
+export function formatRecentInstant(
+  isoTimestamp: string,
+  { withDay = false, now = new Date() }: { withDay?: boolean; now?: Date } = {},
+): string {
+  const instant = new Date(isoTimestamp);
+  if (isoTimestamp === "" || Number.isNaN(instant.getTime())) return "";
+  const time = formatTimeOfDay(isoTimestamp);
+  const day = todayLocalIso(instant);
+  const age = daysUntil(todayLocalIso(now), day);
+  let label: string;
+  if (age <= 0) return withDay ? `Hoje, ${time}` : time;
+  if (age === 1) label = "Ontem";
+  else if (age < 7) {
+    const weekday = weekdayShortFormatter.format(instant).replace(".", "");
+    label = weekday.charAt(0).toLocaleUpperCase("pt-BR") + weekday.slice(1);
+  } else label = formatDayMonth(day);
+  return withDay ? `${label}, ${time}` : label;
+}
+
+/** A business date as the mobile designs write it, without "de": "24 mai". */
+export function formatDayMonth(isoDate: string): string {
+  return formatDateShort(isoDate).replace(" de ", " ");
+}
+

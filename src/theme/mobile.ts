@@ -66,6 +66,8 @@ export const sizes = {
   listRowGap: 14,
   /** M Multi Select Field gap between tags. */
   multiSelectTagGap: 6,
+  /** M Empty State's vertical padding when it fills a screen (M - Feedbacks (Vazio)). */
+  emptyScreenPaddingVertical: 96,
   /** M Empty State button minimum width. */
   emptyButtonMinWidth: 200,
   /** M Option Row / M Checkbox Row height. */
@@ -99,6 +101,24 @@ export const sizes = {
   loadingGroupGap: 14,
   /** Logo Mark's frame (the mark is inset inside it). */
   logoMark: 34,
+  /** M Feedback Row / M Plan Ending Row / M Completed Workout Row vertical padding and gaps. */
+  feedbackRowPaddingVertical: 16,
+  planEndingRowPaddingVertical: 14,
+  completedRowPaddingVertical: 13,
+  rowColumnGap: 14,
+  /** Gap between a row's title and subtitle lines (M Plan Ending Row 3, M Completed Workout Row 2). */
+  rowLinesGap: 3,
+  rowLinesGapTight: 2,
+  /** Skeleton placeholders of the dashboard/feedback loading screens (M - Dashboard (Loading)). */
+  skeletonTitleWidth: 190,
+  skeletonTitleHeight: 24,
+  skeletonSubtitleWidth: 240,
+  skeletonStatHeight: 96,
+  skeletonSectionWidth: 150,
+  skeletonSectionHeight: 16,
+  skeletonAvatar: 44,
+  /** M - Dashboard: gap between the screen's groups (greeting, stats, sections). */
+  dashboardGroupGap: 28,
   /** "Não tem uma conta? Cadastre-se": gap between the sentence and its link. */
   inlineLinkGap: 6,
   /** M Checkbox / M Checkbox Row unchecked ring width. */
