@@ -9,6 +9,7 @@ import {
   formatRecentInstant,
   formatDayMonth,
   formatPlanRange,
+  formatPlanPeriod,
   formatWeight,
   greetingFor,
   formatDateRange,
@@ -238,6 +239,11 @@ describe("formatPlanRange", () => {
   it("adds the year only when it isn't this year's", () => {
     expect(formatPlanRange("2026-03-01", "2026-05-24", "2026-10-21")).toBe("01 mar – 24 mai");
     expect(formatPlanRange("2025-10-07", "2025-12-20", "2026-10-21")).toBe("07 out – 20 dez 2025");
+  });
+
+  it("writes both years when the plan crosses one", () => {
+    expect(formatPlanRange("2026-12-01", "2027-02-24", "2026-10-21")).toBe("01 dez 2026 – 24 fev 2027");
+    expect(formatPlanPeriod("2026-03-01", "2026-05-24")).toBe("01 mar – 24 mai 2026");
   });
 });
 

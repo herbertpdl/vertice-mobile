@@ -1,14 +1,16 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
+import { useEffect, useState, type ReactNode } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { StyleSheet, View } from "react-native";
 
 import { FormTextField } from "@/components/form";
 import { NavBar, Screen } from "@/components/layout";
-import { Banner, Button, DateField, ErrorState, SelectField, Skeleton, TextArea, useToast } from "@/components/ui";
+import { Banner, Button, DateField, ErrorState, SelectField, Skeleton, StatusBanner, TextArea, useToast } from "@/components/ui";
+import { dashboardQueryKey } from "@/lib/api/dashboard";
 import { apiErrorMessage } from "@/lib/api/errorMessages";
-import { studentQueryKey } from "@/lib/api/students";
+import { studentQueryKey, studentsQueryKey } from "@/lib/api/students";
 import {
   createTrainingPlan,
   fetchTrainingPlan,
@@ -18,6 +20,9 @@ import {
 } from "@/lib/api/trainingPlans";
 import type { PlanLevel, TrainingPlanDetail } from "@/lib/api/types";
 import { PLAN_LEVELS } from "@/lib/labels";
+import { useIsOffline } from "@/lib/network";
+import { useRedirectOnError } from "@/lib/useRedirectOnError";
+import { useSingleFlight } from "@/lib/useSingleFlight";
 import { DESCRIPTION_MAX } from "@/lib/validation/bounds";
 import {
   minPlanEndDate,
@@ -25,7 +30,7 @@ import {
   trainingPlanSchema,
   type TrainingPlanFormInput,
 } from "@/lib/validation/trainingPlans";
-import { space } from "@/theme";
+import { sizes, space } from "@/theme";
 
 const LEVEL_OPTIONS = (Object.keys(PLAN_LEVELS) as PlanLevel[]).map((level) => ({ value: level, label: PLAN_LEVELS[level] }));
 
@@ -38,31 +43,47 @@ export function PlanFormScreen() {
   const params = useLocalSearchParams<{ id?: string; clientId?: string }>();
   const editing = params.id !== undefined;
   const id = Number(params.id);
+  const newFor = Number(params.clientId);
+  const offline = useIsOffline();
   const plan = useQuery({
     queryKey: trainingPlanQueryKey(id),
     queryFn: ({ signal }) => fetchTrainingPlan(id, { signal }),
     enabled: editing,
   });
+  useRedirectOnError(plan.error, "Plano não encontrado.", "/alunos");
+  const badCreate = !editing && !(Number.isInteger(newFor) && newFor > 0);
+  useEffect(() => {
+    // `/planos/novo` without a student can't create anything: back to the roster.
+    if (badCreate) router.replace("/alunos");
+  }, [badCreate]);
 
-  const header = <NavBar title={editing ? "Editar plano" : "Novo plano"} />;
+  const header = (
+    <>
+      <NavBar title={editing ? "Editar plano" : "Novo plano"} />
+      {offline ? <StatusBanner kind="offline" action={{ label: "Tentar", onPress: () => void plan.refetch() }} /> : null}
+    </>
+  );
+  if (badCreate) return null;
   if (editing && plan.data === undefined) {
     return (
       <Screen header={header}>
         {plan.isError ? (
           <ErrorState onRetry={() => void plan.refetch()} retrying={plan.isFetching} />
         ) : (
-          <Skeleton.Block width="100%" height={300} />
+          <Skeleton.Block width="100%" height={sizes.skeletonFormHeight} />
         )}
       </Screen>
     );
   }
-  return <PlanForm header={header} plan={plan.data} clientId={editing ? plan.data!.clientId : Number(params.clientId)} />;
+  return <PlanForm header={header} plan={plan.data} clientId={editing ? plan.data!.clientId : newFor} />;
 }
 
-function PlanForm({ header, plan, clientId }: { header: React.ReactNode; plan?: TrainingPlanDetail; clientId: number }) {
+function PlanForm({ header, plan, clientId }: { header: ReactNode; plan?: TrainingPlanDetail; clientId: number }) {
   const queryClient = useQueryClient();
   const toast = useToast();
-  const minStart = minPlanStartDate(plan?.startDate);
+  // Frozen when the form opens (as the web): a form left open across midnight must not start
+  // rejecting a start date the trainer already picked.
+  const [minStart] = useState(() => minPlanStartDate(plan?.startDate));
   const schema = trainingPlanSchema(minStart, plan === undefined ? undefined : { startDate: plan.startDate, endDate: plan.endDate });
   const {
     control,
@@ -85,7 +106,8 @@ function PlanForm({ header, plan, clientId }: { header: React.ReactNode; plan?: 
       void queryClient.invalidateQueries({ queryKey: trainingPlansQueryKey(clientId) });
       void queryClient.invalidateQueries({ queryKey: studentQueryKey(clientId) });
       void queryClient.invalidateQueries({ queryKey: trainingPlanQueryKey(saved.id) });
-      void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
+      void queryClient.invalidateQueries({ queryKey: studentsQueryKey });
+      void queryClient.invalidateQueries({ queryKey: dashboardQueryKey });
       if (plan === undefined) {
         // The new plan replaces the form in the stack: back from it returns to the student.
         router.replace(`/planos/${saved.id}`);
@@ -97,9 +119,9 @@ function PlanForm({ header, plan, clientId }: { header: React.ReactNode; plan?: 
     },
   });
   const busy = isSubmitting || save.isPending;
-  const submit = handleSubmit((values) => {
-    if (!save.isPending) save.mutate(values);
-  });
+  // One tap, one request: two taps in the same frame would both pass an `isPending` check and,
+  // on create, make two plans.
+  const submit = useSingleFlight(handleSubmit((values) => save.mutateAsync(values).catch(() => {})));
 
   return (
     <Screen

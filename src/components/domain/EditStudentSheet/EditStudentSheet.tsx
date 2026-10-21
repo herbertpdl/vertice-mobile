@@ -12,6 +12,7 @@ import { feedbackQueryKey } from "@/lib/api/feedback";
 import { studentQueryKey, studentsQueryKey, updateStudent } from "@/lib/api/students";
 import type { ClientDetail } from "@/lib/api/types";
 import { maskCpf } from "@/lib/masks/cpf";
+import { useSingleFlight } from "@/lib/useSingleFlight";
 import { editStudentBody, editStudentDefaults, editStudentSchema, type EditStudentInput } from "@/lib/validation/students";
 
 /**
@@ -55,9 +56,7 @@ export function EditStudentSheet({ student, visible, onClose }: { student: Clien
   const conflict = save.error instanceof ApiError && save.error.code === "CONFLICT";
 
   const busy = isSubmitting || save.isPending;
-  const submit = handleSubmit((values) => {
-    if (!save.isPending) save.mutate(values);
-  });
+  const submit = useSingleFlight(handleSubmit((values) => save.mutateAsync(values).catch(() => {})));
 
   return (
     <Sheet

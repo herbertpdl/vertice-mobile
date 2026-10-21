@@ -40,10 +40,12 @@ export function DayRow({ day, workouts, onOpenWorkout, onAddWorkout }: DayRowPro
             <Text variant="caption" color="textSecondary" style={styles.flex}>
               Descanso
             </Text>
-            <Plus size={14} color={colors.primary} />
-            <Text variant="caption" color="primary" weight="semibold">
-              Adicionar treino
-            </Text>
+            <View style={styles.add}>
+              <Plus size={14} color={colors.primary} />
+              <Text variant="caption" color="primary" weight="semibold">
+                Adicionar treino
+              </Text>
+            </View>
           </Pressable>
         ) : (
           workouts.map((workout) => (
@@ -88,7 +90,8 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   workoutCard: { backgroundColor: colors.surface, gap: sizes.dayRowGap },
-  restCard: { gap: space[1] },
+  restCard: { gap: sizes.dayRestGap },
+  add: { flexDirection: "row", alignItems: "center", gap: sizes.dayRestAddGap },
   pressed: { backgroundColor: colors.surfaceHover },
   flex: { flex: 1 },
 });

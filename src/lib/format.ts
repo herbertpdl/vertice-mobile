@@ -251,9 +251,22 @@ export function formatDayMonth(isoDate: string): string {
  * isn't the current one ("07 out – 20 dez 2025").
  */
 export function formatPlanRange(startDate: string, endDate: string, today: string = todayLocalIso()): string {
-  const year = endDate.slice(0, 4);
-  const suffix = year === today.slice(0, 4) ? "" : ` ${year}`;
+  const startYear = startDate.slice(0, 4);
+  const endYear = endDate.slice(0, 4);
+  if (startYear !== endYear) return formatPlanPeriod(startDate, endDate);
+  const suffix = endYear === today.slice(0, 4) ? "" : ` ${endYear}`;
   return `${formatDayMonth(startDate)} – ${formatDayMonth(endDate)}${suffix}`;
+}
+
+/**
+ * A plan's period with its year, as the plan detail's Info Card shows it: "01 mar – 24 mai 2026",
+ * or both years when it crosses one ("01 dez 2026 – 24 fev 2027").
+ */
+export function formatPlanPeriod(startDate: string, endDate: string): string {
+  const startYear = startDate.slice(0, 4);
+  const endYear = endDate.slice(0, 4);
+  const start = startYear === endYear ? formatDayMonth(startDate) : `${formatDayMonth(startDate)} ${startYear}`;
+  return `${start} – ${formatDayMonth(endDate)} ${endYear}`;
 }
 
 /** A decimal weight as pt-BR text without trailing zeros: 42.5 → "42,5", 40 → "40". */

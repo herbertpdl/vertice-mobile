@@ -127,7 +127,7 @@ from its report; implement from the pen.dev node, not from this list.**
 | `(app)/alunos/[id]/acesso` (sheet) | M - Link de Acesso (Sheet) | `POST /api/clients/{id}/setup-token` |
 | — (confirm) | M - Encerrar Vínculo (Confirm) | `DELETE /api/clients/{id}` |
 | `(app)/planos/novo?clientId=`, `(app)/planos/[id]/editar` | M - Novo Plano, M - Calendário (Sheet) | `POST /api/training-plans`, `PATCH /api/training-plans/{id}` |
-| `(app)/planos/[id]` | M - Detalhe do Plano (+ Loading), M - Excluir Plano | `GET/DELETE /api/training-plans/{id}` |
+| `(app)/planos/[id]` | M - Detalhe do Plano (+ Loading), M - Excluir Plano | `GET/DELETE /api/training-plans/{id}`, `GET /api/clients` (the student's name, usually from cache) |
 | `(app)/planos/[id]/treinos/novo?dayOfWeek=`, `(app)/treinos/[id]` | M - Editor de Treino (+ Novo, Salvando), M - Adicionar Exercício (Sheet), M - Descartar alterações, M - Excluir Treino | `GET /api/workouts/{id}/full`, `POST /api/training-plans/{planId}/workouts`, `PATCH /api/workouts/{id}` + `PUT /api/workouts/{workoutId}/exercises`, `DELETE /api/workouts/{id}` |
 | `(app)/(tabs)/exercicios` | M - Catálogo de Exercícios, M - Exercícios (Loading) | `GET /api/exercises?muscleGroupId=&q=`, `GET /api/muscle-groups` |
 | `(app)/exercicios/[id]` | M - Detalhe do Exercício (+ padrão), M - Excluir Exercício | `GET/DELETE /api/exercises/{id}` |
@@ -383,3 +383,5 @@ merged first. Rollback = revert the mobile PR; nothing server-side depends on it
 - 2026-10-21 — After a delete or an ended relationship, the queries the still-mounted screen observes are marked stale with `refetchType: "none"`, never removed or refetched: a refetch would 403/404 and bounce the user a second time (the web's same rule). Ending a relationship returns to the roster (`router.dismissTo("/alunos")`) from wherever the student was opened. Review of #22.
 - 2026-10-21 — The Progresso chart covers the last 8 *calendar* weeks (weeks without a record have no bar); the student's Feedbacks tab lists the newest 20. The student e-mail stays `textSecondary` (the design's tertiary fails AA for text).
 - 2026-10-21 — The plan ⋮ menu has Editar / Excluir only (the design's "Link de acesso" there was copied from the student's menu). Weekday chips use the web's "SAB" (design: "SÁB").
+- 2026-10-21 — Every form submit is single-flight (`useSingleFlight` around `handleSubmit`): an `isPending` check alone lets two taps in one frame through, which on create makes duplicates. Review of #23.
+- 2026-10-21 — Plan copy kept from the web, not the design: "Aluno:" in the description (neutral), the end-date error "O plano precisa terminar depois do dia em que começa". "Treinos da semana" has no "Ver todos" (the week is the whole list). Plan periods carry both years when a plan crosses one.

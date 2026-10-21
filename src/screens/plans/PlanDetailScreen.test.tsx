@@ -4,7 +4,7 @@ import { Platform } from "react-native";
 import { bffError, mockBff, type BffMock } from "@/test/bff";
 import { renderScreen } from "@/test/render";
 
-import { PlanDetailScreen, workoutsByDay } from "./PlanDetailScreen";
+import { deletePlanMessage, PlanDetailScreen, workoutsByDay } from "./PlanDetailScreen";
 
 const mockRouter = { push: jest.fn(), back: jest.fn(), replace: jest.fn(), canGoBack: jest.fn(() => true) };
 jest.mock("expo-router", () => ({
@@ -49,6 +49,14 @@ describe("workoutsByDay", () => {
   });
 });
 
+describe("deletePlanMessage", () => {
+  it("counts the workouts, including none and one", () => {
+    expect(deletePlanMessage("Base", 0)).toBe("O plano “Base” será excluído. Essa ação não pode ser desfeita.");
+    expect(deletePlanMessage("Base", 1)).toBe("O plano “Base” e seu treino serão excluídos. Essa ação não pode ser desfeita.");
+    expect(deletePlanMessage("Base", 4)).toBe("O plano “Base” e seus 4 treinos serão excluídos. Essa ação não pode ser desfeita.");
+  });
+});
+
 describe("PlanDetailScreen", () => {
   it("shows the plan, its info and the week", async () => {
     bff = mockBff(routes());
@@ -75,13 +83,25 @@ describe("PlanDetailScreen", () => {
     expect(mockRouter.back).not.toHaveBeenCalled();
   });
 
-  it("deletes and leaves", async () => {
+  it("deletes and leaves once, without refetching the deleted plan", async () => {
     jest.replaceProperty(Platform, "OS", "android");
-    bff = mockBff(routes({ "DELETE /api/training-plans/1": new Response(null, { status: 204 }) }));
+    let deleted = false;
+    bff = mockBff({
+      ...routes(),
+      "GET /api/training-plans/1": () => (deleted ? bffError(404, "NOT_FOUND") : Response.json(plan)),
+      "DELETE /api/training-plans/1": () => {
+        deleted = true;
+        return new Response(null, { status: 204 });
+      },
+    });
     await renderScreen(<PlanDetailScreen />);
     await fireEvent.press(await screen.findByRole("button", { name: "Ações do plano" }));
     await fireEvent.press(screen.getByRole("button", { name: "Excluir plano" }));
     await fireEvent.press(screen.getAllByRole("button", { name: "Excluir plano" }).at(-1)!);
     await waitFor(() => expect(mockRouter.back).toHaveBeenCalled());
+    await new Promise((r) => setTimeout(r, 50));
+    expect(mockRouter.back).toHaveBeenCalledTimes(1);
+    expect(bff.calls.filter((c) => c.route === "GET /api/training-plans/1")).toHaveLength(1);
+    expect(screen.queryByText("Plano não encontrado.")).toBeNull();
   });
 });

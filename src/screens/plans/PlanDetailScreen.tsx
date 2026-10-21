@@ -22,8 +22,9 @@ import {
 import { deleteErrorMessage } from "@/lib/api/errorMessages";
 import { fetchStudents, studentQueryKey, studentsQueryKey } from "@/lib/api/students";
 import { deleteTrainingPlan, fetchTrainingPlan, trainingPlanQueryKey, trainingPlansQueryKey } from "@/lib/api/trainingPlans";
-import type { TrainingPlanDetail, Workout } from "@/lib/api/types";
-import { formatDayMonth } from "@/lib/format";
+import type { Workout } from "@/lib/api/types";
+import { dashboardQueryKey } from "@/lib/api/dashboard";
+import { formatPlanPeriod } from "@/lib/format";
 import { DAY_ORDER, PLAN_LEVELS } from "@/lib/labels";
 import { useIsOffline } from "@/lib/network";
 import { planStatus, planStatusLabels, planStatusTone } from "@/lib/plans";
@@ -31,9 +32,11 @@ import { usePullToRefresh } from "@/lib/usePullToRefresh";
 import { useRedirectOnError } from "@/lib/useRedirectOnError";
 import { radius, sizes, space } from "@/theme";
 
-/** "01 mar – 24 mai 2026": the Info Card's period, always with the year. */
-function periodLabel(plan: Pick<TrainingPlanDetail, "startDate" | "endDate">): string {
-  return `${formatDayMonth(plan.startDate)} – ${formatDayMonth(plan.endDate)} ${plan.endDate.slice(0, 4)}`;
+/** The delete confirmation's copy for a plan with `count` workouts. */
+export function deletePlanMessage(name: string, count: number): string {
+  const what =
+    count === 0 ? `O plano “${name}” será excluído` : count === 1 ? `O plano “${name}” e seu treino serão excluídos` : `O plano “${name}” e seus ${count} treinos serão excluídos`;
+  return `${what}. Essa ação não pode ser desfeita.`;
 }
 
 /** A plan's workouts grouped by weekday, Monday first. */
@@ -64,8 +67,11 @@ export function PlanDetailScreen() {
         void queryClient.invalidateQueries({ queryKey: trainingPlansQueryKey(clientId) });
         void queryClient.invalidateQueries({ queryKey: studentQueryKey(clientId) });
       }
-      void queryClient.invalidateQueries({ queryKey: ["dashboard"] });
-      queryClient.removeQueries({ queryKey: trainingPlanQueryKey(id) });
+      void queryClient.invalidateQueries({ queryKey: studentsQueryKey });
+      void queryClient.invalidateQueries({ queryKey: dashboardQueryKey });
+      // This screen still observes the plan: stale, not refetched (a refetch would 404 and bounce
+      // a second time with a false "not found" — the web's same rule).
+      void queryClient.invalidateQueries({ queryKey: trainingPlanQueryKey(id), refetchType: "none" });
       if (router.canGoBack()) router.back();
       else router.replace("/alunos");
       toast.show("Plano excluído.");
@@ -130,7 +136,7 @@ export function PlanDetailScreen() {
         </View>
         <InfoCard
           rows={[
-            { icon: Calendar, label: "PERÍODO", value: periodLabel(data) },
+            { icon: Calendar, label: "PERÍODO", value: formatPlanPeriod(data.startDate, data.endDate) },
             { icon: Gauge, label: "NÍVEL", value: PLAN_LEVELS[data.level] },
             { icon: Dumbbell, label: "TREINOS", value: `${count} ${count === 1 ? "treino" : "treinos"}` },
           ]}
@@ -161,7 +167,7 @@ export function PlanDetailScreen() {
       <ConfirmDialog
         visible={sheet === "delete"}
         title="Excluir plano?"
-        message={`O plano “${data.name}” e ${count === 1 ? "seu treino serão excluídos" : `seus ${count} treinos serão excluídos`}. Essa ação não pode ser desfeita.`}
+        message={deletePlanMessage(data.name, count)}
         confirmLabel="Excluir plano"
         loading={remove.isPending}
         error={remove.isError ? deleteErrorMessage(remove.error, "trainingPlan", "Não foi possível excluir. Tente novamente.") : undefined}
@@ -181,9 +187,13 @@ function PlanSkeleton() {
     <View style={styles.content} accessible accessibilityLabel="Carregando plano">
       <Skeleton.Line width="80%" height={sizes.skeletonTitleHeight} />
       <Skeleton.Line width="60%" />
-      <Skeleton.Block width="100%" height={sizes.skeletonStatHeight * 1.5} style={styles.rounded} />
+      <Skeleton.Block width="100%" height={sizes.skeletonInfoCardHeight} style={styles.rounded} />
+      <Skeleton.Line width={sizes.skeletonSectionWidth} height={sizes.skeletonSectionHeight} />
       {DAY_ORDER.map((day) => (
-        <Skeleton.Block key={day} width="100%" height={sizes.dayRow} style={styles.rounded} />
+        <View key={day} style={styles.skeletonDay}>
+          <Skeleton.Block width={sizes.dayRow} height={sizes.dayRow} style={styles.rounded} />
+          <Skeleton.Block width="100%" height={sizes.dayRow} style={[styles.rounded, styles.flex]} />
+        </View>
       ))}
     </View>
   );
@@ -197,4 +207,5 @@ const styles = StyleSheet.create({
   footer: { flexDirection: "row", gap: space[3] },
   flex: { flex: 1 },
   rounded: { borderRadius: radius.md },
+  skeletonDay: { flexDirection: "row", gap: sizes.dayRowGap },
 });

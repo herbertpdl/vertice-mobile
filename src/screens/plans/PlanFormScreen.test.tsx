@@ -81,4 +81,56 @@ describe("PlanFormScreen", () => {
       level: "INTERMEDIATE",
     });
   });
+
+  it("refuses an end on or before the start", async () => {
+    mockParams = { clientId: "7" };
+    bff = mockBff({});
+    await renderScreen(<PlanFormScreen />);
+    await fireEvent.changeText(screen.getByLabelText("Nome do plano"), "Base");
+    await pickDate("Início", /, 26 de out de 2026$/);
+    await fireEvent.press(screen.getByRole("button", { name: /^Término:/ }));
+    expect(screen.getByRole("button", { name: /, 26 de out de 2026$/ })).toBeDisabled();
+    expect(screen.getByRole("button", { name: /, 27 de out de 2026$/ })).toBeEnabled();
+  });
+
+  it("lets an edited plan keep a start date in the past, but not move it earlier", async () => {
+    mockParams = { id: "1" };
+    bff = mockBff({
+      "GET /api/training-plans/1": {
+        id: 1, name: "Base", description: "", trainerId: 1, clientId: 7,
+        startDate: "2026-10-05", endDate: "2026-11-24", level: "BEGINNER", workouts: [],
+      },
+    });
+    await renderScreen(<PlanFormScreen />);
+    await fireEvent.press(await screen.findByRole("button", { name: /^Início:/ }));
+    expect(screen.getByRole("button", { name: /, 05 de out de 2026$/ })).toBeEnabled();
+    expect(screen.getByRole("button", { name: /, 04 de out de 2026$/ })).toBeDisabled();
+  });
+
+  it("creates once however fast the button is tapped", async () => {
+    mockParams = { clientId: "7" };
+    let answer!: (r: Response) => void;
+    bff = mockBff({ "POST /api/training-plans": () => new Promise<Response>((r) => (answer = r)) });
+    await renderScreen(<PlanFormScreen />);
+    await fireEvent.changeText(screen.getByLabelText("Nome do plano"), "Base");
+    await pickDate("Início", /, 26 de out de 2026$/);
+    await pickDate("Término", /, 30 de out de 2026$/);
+    await fireEvent.press(screen.getByRole("button", { name: "Nível: Selecione" }));
+    await fireEvent.press(screen.getByRole("radio", { name: "Iniciante" }));
+    const create = screen.getByRole("button", { name: "Criar plano" });
+    await fireEvent.press(create);
+    await fireEvent.press(create);
+    await waitFor(() => expect(bff.calls.filter((c) => c.route === "POST /api/training-plans")).toHaveLength(1));
+    answer(Response.json({ id: 9 }));
+    await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith("/planos/9"));
+    expect(bff.calls.filter((c) => c.route === "POST /api/training-plans")).toHaveLength(1);
+  });
+
+  it("goes back to the roster when opened without a student", async () => {
+    mockParams = {};
+    bff = mockBff({});
+    await renderScreen(<PlanFormScreen />);
+    await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith("/alunos"));
+  });
 });
+
