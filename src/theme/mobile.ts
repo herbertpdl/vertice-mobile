@@ -167,6 +167,19 @@ export const sizes = {
   dialogErrorPaddingVertical: 10,
   /** M Bottom Sheet top padding (above the grabber). */
   sheetPaddingTop: 10,
+  /** M Exercise Editor Card padding, gap between its header's parts, drag handle width. */
+  editorCardPadding: 14,
+  editorHeaderGap: 10,
+  dragHandleWidth: 24,
+  /** M Set Header / M Set Row: the "SÉRIE" column width. */
+  setNumberColumn: 36,
+  /** M Save Bar top padding. */
+  saveBarPaddingTop: 14,
+  /** M Exercise Card padding and the gap between its name and badges. */
+  exerciseCardPadding: 10,
+  exerciseCardLinesGap: 6,
+  /** M Exercise Card / M Exercise Editor Card glyphs: chevron, grip and trash. */
+  rowGlyph: 18,
 } as const;
 
 /** Horizontal padding of a screen's content (pen.dev mobile screens use 20 on a 390 frame). */

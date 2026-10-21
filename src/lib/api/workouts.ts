@@ -1,4 +1,4 @@
-import { apiClient } from "./client";
+import { apiClient, type ApiRequestInit } from "./client";
 import type { components } from "./schema";
 import type {
   Workout,
@@ -29,8 +29,13 @@ export function fetchWorkout(id: number) {
   return apiClient.get<Workout>(`/api/workouts/${id}`);
 }
 
-export function fetchFullWorkout(id: number) {
-  return apiClient.get<FullWorkout>(`/api/workouts/${id}/full`);
+/** The editor's tree: the workout with its exercises (catalog entry included) and their sets (the web's key). */
+export function fullWorkoutQueryKey(id: number) {
+  return ["workout", id, "full"] as const;
+}
+
+export function fetchFullWorkout(id: number, init?: Pick<ApiRequestInit, "signal">) {
+  return apiClient.get<FullWorkout>(`/api/workouts/${id}/full`, undefined, init);
 }
 
 export function updateWorkout(id: number, input: WorkoutInput) {

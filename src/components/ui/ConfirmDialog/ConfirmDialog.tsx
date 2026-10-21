@@ -1,4 +1,4 @@
-import { CircleAlert, TriangleAlert } from "lucide-react-native";
+import { CircleAlert, TriangleAlert, type LucideIcon } from "lucide-react-native";
 import { Modal, StyleSheet, View } from "react-native";
 import Animated, { ZoomIn } from "react-native-reanimated";
 
@@ -22,6 +22,12 @@ export type ConfirmDialogProps = {
   loading?: boolean;
   /** The failure, shown inside the dialog (the dialog stays open so the user can retry). */
   error?: string;
+  /** The glyph in the icon disc (M - Excluir Treino: trash). */
+  icon?: LucideIcon;
+  /** The disc's color: `warning` for a non-destructive loss (M - Descartar alterações). */
+  tone?: "danger" | "warning";
+  /** The dismiss button's label ("Continuar editando"). */
+  cancelLabel?: string;
 };
 
 /**
@@ -38,6 +44,9 @@ export function ConfirmDialog({
   onCancel,
   loading = false,
   error,
+  icon: Icon = TriangleAlert,
+  tone = "danger",
+  cancelLabel = "Cancelar",
 }: ConfirmDialogProps) {
   useAnnounceOnIos(error);
   const confirm = useSingleFlight(onConfirm);
@@ -62,8 +71,8 @@ export function ConfirmDialog({
           accessibilityViewIsModal
           accessibilityRole="alert"
         >
-          <View style={styles.icon}>
-            <TriangleAlert size={24} color={colors.danger} />
+          <View style={[styles.icon, { backgroundColor: withAlpha(colors[tone], TINT_ALPHA) }]}>
+            <Icon size={24} color={colors[tone]} />
           </View>
           <View style={styles.text}>
             <Text variant="titleSm" accessibilityRole="header">
@@ -83,7 +92,7 @@ export function ConfirmDialog({
           )}
           <View style={styles.buttons}>
             <Button variant="danger" label={confirmLabel} loading={loading} onPress={confirm} />
-            <Button variant="secondary" label="Cancelar" disabled={loading} onPress={cancel} />
+            <Button variant="secondary" label={cancelLabel} disabled={loading} onPress={cancel} />
           </View>
         </Animated.View>
       </View>
@@ -114,7 +123,6 @@ const styles = StyleSheet.create({
     width: sizes.dialogIcon,
     height: sizes.dialogIcon,
     borderRadius: radius.full,
-    backgroundColor: withAlpha(colors.danger, TINT_ALPHA),
     alignItems: "center",
     justifyContent: "center",
   },

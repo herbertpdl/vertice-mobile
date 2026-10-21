@@ -1,4 +1,4 @@
-import { apiClient } from "./client";
+import { apiClient, type ApiRequestInit } from "./client";
 import type { components } from "./schema";
 import type { Exercise, ExerciseProgressPoint } from "./types";
 
@@ -18,12 +18,12 @@ export function exercisesQueryKey(params: ExerciseListParams = {}) {
   ] as const;
 }
 
-export function fetchExercises(params: ExerciseListParams = {}) {
+export function fetchExercises(params: ExerciseListParams = {}, init?: Pick<ApiRequestInit, "signal">) {
   const q = (params.q ?? "").trim();
   const query = { muscleGroupId: params.muscleGroupId ?? undefined, q: q || undefined };
   // No query string at all for the unfiltered list.
   const hasQuery = query.muscleGroupId !== undefined || query.q !== undefined;
-  return apiClient.get<Exercise[]>("/api/exercises", hasQuery ? query : undefined);
+  return apiClient.get<Exercise[]>("/api/exercises", hasQuery ? query : undefined, init);
 }
 
 export function fetchExercise(id: number) {

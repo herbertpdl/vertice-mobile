@@ -365,16 +365,18 @@ Design: M - Editor de Treino `yFl2D`, (Novo) `rdmSJ`, (Salvando) `Zttzp`, Adicio
 `u7UuK`, M Set Header `P0pNp`, M Set Row `Y2DJbG`, M Add Row Button `Q7cS7J`, M Note Field `uRAng`,
 M Save Bar `Tnzr5`, M Add Exercise Button `xNs92`, M Exercise Pick Card `tuqxK`/`G9IlS`.
 Routes (placeholders exist, replace them): `(app)/planos/[id]/treinos/novo.tsx` (`?dayOfWeek=` preselects
-the day) and `(app)/treinos/[id].tsx`. Port the draft model/reducer from
-[`web:src/lib/workoutEditor/`](https://github.com/herbertpdl/vertice-web-react/tree/main/src/lib/workoutEditor)
-(`model.ts`, `reducer.ts` + tests; **not** the debounced `autosave.ts` — mobile saves explicitly) and read
-[the web spec](https://github.com/herbertpdl/vertice-web-react/blob/main/docs/specs/create-workout-with-exercises/spec.md).
-- [ ] Load `GET /api/workouts/{id}/full`; name (`TextField`), day (`SelectField`, 7 days), exercise cards with sets (reps, weight as a decimal string — never round-trip through a float, rest seconds), notes, reorder (up/down buttons are enough for v1; drag is optional), remove exercise/set
-- [ ] Adicionar exercício sheet: `GET /api/exercises` (+ `muscleGroupId`/`q`), multi-add ("Adicionar 3")
-- [ ] Save (M Save Bar "Alterações não salvas" + Descartar / Salvar treino): new → one `POST /api/training-plans/{planId}/workouts` (nested exercises + sets); existing → `PATCH /api/workouts/{id}` then `PUT /api/workouts/{workoutId}/exercises` (whole tree); **409 `PRECONDITION_FAILED` on the PUT** (a client recorded data) → per-item endpoints (`/api/workout-exercises/{id}`, `/api/workout-exercises/{workoutExerciseId}/sets`, `/api/exercise-sets/{id}`) exactly as the web's engine decides; limits (20 exercises, 10 sets) → `limitMessage` copy
-- [ ] Leaving with changes → Descartar confirm (`usePreventRemove` from `expo-router/react-navigation`); Excluir treino in ⋮ (409 copy `deleteErrorMessage(…, "workout")`)
-- [ ] The 401-mid-edit draft problem (§2 Auth) — decide, implement or log
-- [ ] Invalidate `trainingPlanQueryKey(planId)`, `["workout", id, "full"]` (the web's key); tests: reducer, save paths incl. 409 fallback, discard guard
+the day) and `(app)/treinos/[id].tsx`. The web's editor engine is ported as is
+([`web:src/lib/workoutEditor/`](https://github.com/herbertpdl/vertice-web-react/tree/main/src/lib/workoutEditor):
+`model.ts`, `reducer.ts`, `autosave.ts` + its 43 tests) with one addition, `delayMs: null` = saving left
+to the trainer; read [the web spec](https://github.com/herbertpdl/vertice-web-react/blob/main/docs/specs/create-workout-with-exercises/spec.md)
+before changing it.
+- [x] Load `GET /api/workouts/{id}/full` (`fullWorkoutQueryKey`); breadcrumb student › plan › workout; name (`TextField`), day (`SelectField`; a new workout without `?dayOfWeek=` must pick one), `ExerciseEditorCard`s with `SetRow`s (reps, load as a decimal string with a pt-BR comma, rest; the web's input rules), notes, reorder via the grip / set number action sheets (move up/down, duplicate, remove), remove exercise
+- [x] `AddExerciseSheet`: search (debounced, `useDebouncedValue`), muscle-group chips, `ExerciseCard` pick cards, "Adicionar N", capped at what the workout still takes
+- [x] `SaveBar`: new → one nested `POST`; existing → `PATCH` + whole-tree `PUT`, 409 → per-item endpoints (the web engine), refused removals restored with a banner; error → "Tentar novamente"; success → back + toast
+- [x] Leaving with changes → "Descartar alterações?" (`usePreventRemove`); Descartar in the bar reverts to the saved workout; Excluir treino in ⋮ (`ConfirmDialog` gained `icon`/`tone`/`cancelLabel`)
+- [x] 401 mid-edit: the draft goes to `src/lib/draftStash.ts` (memory only, per user, cleared by "Sair") when the editor unmounts without being left on purpose, and is restored — re-keyed by id onto the fresh tree (`rekeyFrom`) — with an info banner the next time that workout's editor opens
+- [x] Invalidates the workout, the plan and the student overview; tests: engine (web suite + manual mode + `rekeyFrom`), components, screen (save paths, 409 fallback, discard guard, delete, draft restore)
+- [ ] **device checklist**: number pads (`number-pad` / `decimal-pad`) and the keyboard over the Save Bar on iOS and Android; the leave guard on the iOS swipe-back and the Android back button
 
 ### PR 12 — `feat/exercises`
 Design: M - Catálogo de Exercícios `TCbcY`, Exercícios (Loading) `TH76k`, Detalhe do Exercício (Vídeo)
@@ -426,6 +428,7 @@ merged first. Rollback = revert the mobile PR; nothing server-side depends on it
 | 8 | `feat/students-list` | [#21](https://github.com/herbertpdl/vertice-mobile/pull/21) | open (base #20) | reviewed: 2 blocking + 21 non-blocking, fixed or logged |
 | 9 | `feat/student-detail` | [#22](https://github.com/herbertpdl/vertice-mobile/pull/22) | open (base #21) | reviewed: 1 blocking + 14 non-blocking, fixed or logged |
 | 10 | `feat/training-plans` | [#23](https://github.com/herbertpdl/vertice-mobile/pull/23) | open (base #22) | reviewed: 1 blocking + 11 non-blocking, fixed or logged |
+| 11 | `feat/workout-editor` | _pending_ | open (base `main`) | review pending |
 
 ## Decisions log
 - 2026-10-20 — v1 is the **trainer** app because that is what the pen.dev mobile designs cover; the client app needs its own PRD + designs (audit P2-13).
@@ -485,3 +488,6 @@ merged first. Rollback = revert the mobile PR; nothing server-side depends on it
 - 2026-10-21 — The plan ⋮ menu has Editar / Excluir only (the design's "Link de acesso" there was copied from the student's menu). Weekday chips use the web's "SAB" (design: "SÁB").
 - 2026-10-21 — Every form submit is single-flight (`useSingleFlight` around `handleSubmit`): an `isPending` check alone lets two taps in one frame through, which on create makes duplicates. Review of #23.
 - 2026-10-21 — Plan copy kept from the web, not the design: "Aluno:" in the description (neutral), the end-date error "O plano precisa terminar depois do dia em que começa". "Treinos da semana" has no "Ver todos" (the week is the whole list). Plan periods carry both years when a plan crosses one.
+- 2026-10-21 — PR 11: the mobile editor saves when the trainer taps "Salvar treino" (the design's M Save Bar), not on a debounce like the web. It runs the web's engine unchanged with `delayMs: null`, so the 409 per-item fallback and refusal rules are the same code; only the refusal copy drops "continua sendo salvo automaticamente". The editor's set row shows the design's three columns (reps, load, rest); strategy, duration and load % are kept as they are. Reordering is up/down from action sheets (grip, set number) rather than drag in v1. A note field is always shown (with a placeholder) so a note can be added; the exercise-level rest between sets keeps its value (not in the mobile design).
+- 2026-10-21 — PR 11: an expired session no longer loses an unsaved workout. A 401 still signs out at once (no deferred sign-out), but the editor stashes its draft in memory (`src/lib/draftStash.ts`, keyed by user + plan + workout, never on disk, cleared by a deliberate "Sair") and restores it, with an info banner, when the same workout's editor is opened after re-login. The trainer navigates back to it; the app doesn't reopen it automatically.
+- 2026-10-21 — PR 11: after "Salvar treino" succeeds the editor goes back to the plan with a toast; when the save restored a refused removal it stays, showing why.
