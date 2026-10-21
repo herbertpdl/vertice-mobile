@@ -8,12 +8,10 @@ import { FeedbackRow } from "@/components/domain";
 import { NavBar } from "@/components/layout/NavBar";
 import { Screen } from "@/components/layout/Screen";
 import { EmptyState, ErrorState, Skeleton, StatusBanner, Text } from "@/components/ui";
-import { fetchFeedback } from "@/lib/api/feedback";
+import { feedbackQueryKey, fetchFeedback } from "@/lib/api/feedback";
 import { useIsOffline } from "@/lib/network";
 import { usePullToRefresh } from "@/lib/usePullToRefresh";
 import { colors, screenPaddingHorizontal, sizes, space } from "@/theme";
-
-export const feedbackQueryKey = ["feedback"] as const;
 
 /** M - Feedbacks / M - Feedbacks (Vazio): every comment students left, newest first. */
 export function FeedbacksScreen() {

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { ChartNoAxesColumn, ClipboardList, EllipsisVertical, Link, MessageSquare, Pencil, UserX } from "lucide-react-native";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 
 import {
@@ -9,6 +9,7 @@ import {
   EditStudentSheet,
   FeedbackRow,
   PlanCard,
+  recentWeeks,
   WeightChart,
 } from "@/components/domain";
 import { NavBar, Screen } from "@/components/layout";
@@ -29,58 +30,79 @@ import {
   useToast,
 } from "@/components/ui";
 import { apiErrorMessage } from "@/lib/api/errorMessages";
-import { exercisesQueryKey, fetchExerciseProgress, fetchExercises } from "@/lib/api/exercises";
-import { fetchFeedback } from "@/lib/api/feedback";
+import { dashboardQueryKey } from "@/lib/api/dashboard";
+import { exerciseProgressQueryKey, exercisesQueryKey, fetchExerciseProgress, fetchExercises } from "@/lib/api/exercises";
+import { feedbackQueryKey, fetchFeedback } from "@/lib/api/feedback";
 import { endStudentRelationship, fetchStudentOverview, studentQueryKey, studentsQueryKey } from "@/lib/api/students";
-import { fetchTrainingPlans } from "@/lib/api/trainingPlans";
+import { fetchTrainingPlans, trainingPlansQueryKey } from "@/lib/api/trainingPlans";
 import type { StudentDetailOverview } from "@/lib/api/types";
 import { formatPlanRange, formatRecentInstant, formatTimeOfDay } from "@/lib/format";
 import { useIsOffline } from "@/lib/network";
 import { sortPlans } from "@/lib/plans";
 import { usePullToRefresh } from "@/lib/usePullToRefresh";
 import { useRedirectOnError } from "@/lib/useRedirectOnError";
-import { radius, sizes, space } from "@/theme";
+import { controls, radius, sizes, space } from "@/theme";
 
 type Tab = "plans" | "feedback" | "progress";
 
-/** "Hoje" / "às 07:40" for the Último treino card; "—" / "nenhum ainda" without one. */
-export function lastWorkoutStat(lastWorkoutAt: string | null): { value: string; helper: string } {
+/** How many of a student's feedback entries the tab lists (newest first). */
+const FEEDBACK_SHOWN = 20;
+
+/**
+ * "Hoje" / "às 07:40" for the Último treino card (the day part of `formatRecentInstant`'s
+ * "Hoje, 07:40" / "Ontem, 19:12" / "Seg, 18:40" / "24 mai, 08:02"); "—" / "nenhum ainda" without one.
+ */
+export function lastWorkoutStat(lastWorkoutAt: string | null, now: Date = new Date()): { value: string; helper: string } {
   if (lastWorkoutAt === null) return { value: "—", helper: "nenhum ainda" };
-  return { value: formatRecentInstant(lastWorkoutAt).replace(/^\d{2}:\d{2}$/, "Hoje"), helper: `às ${formatTimeOfDay(lastWorkoutAt)}` };
+  const day = formatRecentInstant(lastWorkoutAt, { withDay: true, now }).split(", ")[0];
+  return { value: day, helper: `às ${formatTimeOfDay(lastWorkoutAt)}` };
 }
 
 /** M - Detalhe do Aluno (+ Feedbacks, Progresso, Loading): one student, their plans, feedback and loads. */
 export function StudentDetailScreen() {
   const params = useLocalSearchParams<{ id: string }>();
   const id = Number(params.id);
+  const validId = Number.isInteger(id) && id > 0;
   const queryClient = useQueryClient();
   const toast = useToast();
   const offline = useIsOffline();
   const [tab, setTab] = useState<Tab>("plans");
   const [sheet, setSheetState] = useState<"actions" | "edit" | "link" | "end" | null>(null);
-  // Sheets are remounted per opening (fresh form, no old token).
+  // Sheets are remounted per opening (fresh form), and the link sheet again on close, so an
+  // issued token doesn't stay in memory once the sheet is gone.
   const [sheetKey, setSheetKey] = useState(0);
   const setSheet = (next: typeof sheet) => {
-    if (next === "edit" || next === "link") setSheetKey((key) => key + 1);
+    if (next === "edit" || next === "link" || sheet === "link") setSheetKey((key) => key + 1);
     setSheetState(next);
   };
+  // Lifted here so switching tabs keeps the chosen exercise.
+  const [exerciseId, setExerciseId] = useState<string | null>(null);
 
-  const overview = useQuery({ queryKey: studentQueryKey(id), queryFn: () => fetchStudentOverview(id) });
-  const dashboardKey = ["dashboard"] as const;
-  const plans = useQuery({ queryKey: ["trainingPlans", { clientId: id }], queryFn: () => fetchTrainingPlans(id) });
-  const feedback = useQuery({ queryKey: ["feedback"], queryFn: ({ signal }) => fetchFeedback({ signal }) });
+  const overview = useQuery({ queryKey: studentQueryKey(id), queryFn: () => fetchStudentOverview(id), enabled: validId });
+  const plans = useQuery({
+    queryKey: trainingPlansQueryKey(id),
+    queryFn: ({ signal }) => fetchTrainingPlans(id, { signal }),
+    enabled: validId,
+  });
+  const feedback = useQuery({ queryKey: feedbackQueryKey, queryFn: ({ signal }) => fetchFeedback({ signal }) });
   const mine = (feedback.data ?? []).filter((item) => item.clientId === id);
-  const pull = usePullToRefresh(() => Promise.all([overview.refetch(), plans.refetch(), feedback.refetch()]));
+  const refetchAll = () => Promise.all([overview.refetch(), plans.refetch(), feedback.refetch()]);
+  const pull = usePullToRefresh(refetchAll);
   useRedirectOnError(overview.error, "Aluno não encontrado.", "/alunos");
+  useInvalidIdRedirect(validId);
 
   const end = useMutation({
     mutationFn: () => endStudentRelationship(id),
     onSuccess: () => {
       setSheet(null);
       void queryClient.invalidateQueries({ queryKey: studentsQueryKey });
-      void queryClient.invalidateQueries({ queryKey: dashboardKey });
-      if (router.canGoBack()) router.back();
-      else router.replace("/alunos");
+      void queryClient.invalidateQueries({ queryKey: dashboardQueryKey });
+      // The ended student's data is stale now, but this screen still observes it: mark it stale
+      // without refetching (a refetch would 403 and bounce a second time — the web's same rule).
+      void queryClient.invalidateQueries({ queryKey: studentQueryKey(id), refetchType: "none" });
+      void queryClient.invalidateQueries({ queryKey: trainingPlansQueryKey(id), refetchType: "none" });
+      // Back to the roster, whichever screen led here (Início, Feedbacks, Alunos).
+      router.dismissTo("/alunos");
       toast.show("Vínculo encerrado.");
     },
   });
@@ -97,9 +119,9 @@ export function StudentDetailScreen() {
         }
       />
       {offline ? (
-        <StatusBanner kind="offline" action={{ label: "Tentar", onPress: () => void overview.refetch() }} />
-      ) : overview.isError && overview.data !== undefined ? (
-        <StatusBanner kind="error" action={{ label: "Tentar", onPress: () => void overview.refetch() }} />
+        <StatusBanner kind="offline" action={{ label: "Tentar", onPress: () => void refetchAll() }} />
+      ) : [overview, plans, feedback].some((q) => q.isError && q.data !== undefined) ? (
+        <StatusBanner kind="error" action={{ label: "Tentar", onPress: () => void refetchAll() }} />
       ) : null}
     </>
   );
@@ -164,13 +186,18 @@ export function StudentDetailScreen() {
             <EmptyState icon={MessageSquare} title="Nenhum feedback ainda" message="Os comentários que o aluno deixa ao concluir um treino aparecem aqui." />
           ) : (
             <View>
-              {mine.map((item, index) => (
-                <FeedbackRow key={item.id} feedback={item} perspective="student" withDay last={index === mine.length - 1} />
+              {mine.slice(0, FEEDBACK_SHOWN).map((item, index, shown) => (
+                <FeedbackRow key={item.id} feedback={item} perspective="student" withDay last={index === shown.length - 1} />
               ))}
+              {mine.length > FEEDBACK_SHOWN ? (
+                <Text variant="caption" color="textSecondary" style={styles.more}>
+                  {`Mostrando os ${FEEDBACK_SHOWN} mais recentes de ${mine.length}.`}
+                </Text>
+              ) : null}
             </View>
           )
         ) : (
-          <ProgressTab clientId={id} />
+          <ProgressTab clientId={id} exerciseId={exerciseId} onExerciseChange={setExerciseId} />
         )}
       </Screen>
 
@@ -252,11 +279,18 @@ function Stats({ data }: { data: StudentDetailOverview }) {
   );
 }
 
-function ProgressTab({ clientId }: { clientId: number }) {
+function ProgressTab({
+  clientId,
+  exerciseId,
+  onExerciseChange: setExerciseId,
+}: {
+  clientId: number;
+  exerciseId: string | null;
+  onExerciseChange: (id: string) => void;
+}) {
   const exercises = useQuery({ queryKey: exercisesQueryKey({}), queryFn: () => fetchExercises() });
-  const [exerciseId, setExerciseId] = useState<string | null>(null);
   const progress = useQuery({
-    queryKey: ["exerciseProgress", exerciseId, clientId],
+    queryKey: exerciseProgressQueryKey(Number(exerciseId), clientId),
     queryFn: () => fetchExerciseProgress(Number(exerciseId), clientId),
     enabled: exerciseId !== null,
   });
@@ -278,7 +312,7 @@ function ProgressTab({ clientId }: { clientId: number }) {
         ) : (
           <Skeleton.Block width="100%" height={sizes.chartAreaHeight} style={styles.chartSkeleton} />
         )
-      ) : progress.data.length === 0 ? (
+      ) : recentWeeks(progress.data).length === 0 ? (
         <EmptyState
           icon={ChartNoAxesColumn}
           title="Sem registros de carga"
@@ -294,7 +328,7 @@ function ProgressTab({ clientId }: { clientId: number }) {
 /** M - Detalhe do Aluno (Loading). */
 function DetailSkeleton() {
   return (
-    <View style={styles.content} accessible accessibilityLabel="Carregando aluno">
+    <View style={styles.skeleton} accessible accessibilityLabel="Carregando aluno">
       <View style={styles.identity}>
         <Skeleton.Circle size={64} />
         <View style={styles.identityCol}>
@@ -308,6 +342,7 @@ function DetailSkeleton() {
           <Skeleton.Block width="48%" height={sizes.skeletonStatHeight} style={styles.chartSkeleton} />
         </View>
       ))}
+      <Skeleton.Block width="100%" height={controls.height} style={styles.pill} />
       <ListSkeleton />
     </View>
   );
@@ -317,7 +352,7 @@ function ListSkeleton() {
   return (
     <View style={styles.list}>
       {[0, 1, 2].map((row) => (
-        <Skeleton.Block key={row} width="100%" height={sizes.skeletonCardHeight} style={styles.chartSkeleton} />
+        <Skeleton.Block key={row} width="100%" height={sizes.skeletonPlanCardHeight} style={styles.chartSkeleton} />
       ))}
     </View>
   );
@@ -332,4 +367,18 @@ const styles = StyleSheet.create({
   list: { gap: sizes.cardListGap },
   progress: { gap: space[4] },
   chartSkeleton: { borderRadius: radius.lg },
+  pill: { borderRadius: radius.full },
+  skeleton: { gap: space[6] },
+  more: { paddingTop: space[3] },
 });
+
+/** A route like `/alunos/abc` can't name a student: back to the roster. */
+function useInvalidIdRedirect(valid: boolean) {
+  const toast = useToast();
+  useEffect(() => {
+    if (valid) return;
+    router.replace("/alunos");
+    toast.show("Aluno não encontrado.", "error");
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- once
+  }, [valid]);
+}

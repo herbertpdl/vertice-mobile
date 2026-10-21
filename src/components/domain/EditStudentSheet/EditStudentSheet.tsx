@@ -5,7 +5,10 @@ import { StyleSheet } from "react-native";
 
 import { FormTextField } from "@/components/form";
 import { Banner, Button, Checkbox, Sheet, useToast } from "@/components/ui";
-import { apiErrorMessage } from "@/lib/api/errorMessages";
+import { ApiError } from "@/lib/api/client";
+import { dashboardQueryKey } from "@/lib/api/dashboard";
+import { apiErrorMessage, errorMessages } from "@/lib/api/errorMessages";
+import { feedbackQueryKey } from "@/lib/api/feedback";
 import { studentQueryKey, studentsQueryKey, updateStudent } from "@/lib/api/students";
 import type { ClientDetail } from "@/lib/api/types";
 import { maskCpf } from "@/lib/masks/cpf";
@@ -24,6 +27,9 @@ export function EditStudentSheet({ student, visible, onClose }: { student: Clien
     control,
     handleSubmit,
     setFocus,
+    setError,
+    setValue,
+    clearErrors,
     formState: { isSubmitting },
   } = useForm<EditStudentInput>({
     resolver: zodResolver(editStudentSchema),
@@ -35,10 +41,18 @@ export function EditStudentSheet({ student, visible, onClose }: { student: Clien
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: studentQueryKey(student.id) });
       void queryClient.invalidateQueries({ queryKey: studentsQueryKey });
+      // Both carry the student's name.
+      void queryClient.invalidateQueries({ queryKey: dashboardQueryKey });
+      void queryClient.invalidateQueries({ queryKey: feedbackQueryKey });
       onClose();
       toast.show("Aluno atualizado.");
     },
+    onError: (error) => {
+      // As the web: a taken e-mail or CPF (one 409 for both) goes on the e-mail field.
+      if (error instanceof ApiError && error.code === "CONFLICT") setError("email", { message: errorMessages.CONFLICT });
+    },
   });
+  const conflict = save.error instanceof ApiError && save.error.code === "CONFLICT";
 
   const busy = isSubmitting || save.isPending;
   const submit = handleSubmit((values) => {
@@ -58,7 +72,7 @@ export function EditStudentSheet({ student, visible, onClose }: { student: Clien
         </>
       }
     >
-      {save.isError ? <Banner message={apiErrorMessage(save.error, "Não foi possível salvar o aluno")} /> : null}
+      {save.isError && !conflict ? <Banner message={apiErrorMessage(save.error, "Não foi possível salvar o aluno")} /> : null}
       <FormTextField
         control={control}
         name="name"
@@ -94,7 +108,20 @@ export function EditStudentSheet({ student, visible, onClose }: { student: Clien
         <Controller
           control={control}
           name="removeCpf"
-          render={({ field: { value, onChange } }) => <Checkbox checked={value} onChange={onChange} label="Remover o CPF do aluno" />}
+          render={({ field: { value, onChange } }) => (
+            <Checkbox
+              checked={value}
+              onChange={(checked) => {
+                // A half-typed CPF must not keep failing validation on a field that's now disabled.
+                if (checked) {
+                  setValue("newCpf", "");
+                  clearErrors("newCpf");
+                }
+                onChange(checked);
+              }}
+              label="Remover o CPF do aluno"
+            />
+          )}
         />
       )}
     </Sheet>

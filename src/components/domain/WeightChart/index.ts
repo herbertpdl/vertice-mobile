@@ -1,1 +1,1 @@
-export { CHART_WEEKS, WeightChart } from "./WeightChart";
+export { CHART_WEEKS, recentWeeks, WeightChart } from "./WeightChart";

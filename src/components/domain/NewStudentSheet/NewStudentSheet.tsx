@@ -8,6 +8,7 @@ import { StyleSheet, View } from "react-native";
 import { FormTextField } from "@/components/form";
 import { Banner, Button, Sheet, Text } from "@/components/ui";
 import { ApiError } from "@/lib/api/client";
+import { dashboardQueryKey } from "@/lib/api/dashboard";
 import { apiErrorMessage, errorMessages } from "@/lib/api/errorMessages";
 import { createStudent, issueStudentSetupToken, studentsQueryKey } from "@/lib/api/students";
 import type { CreatedStudent, PasswordSetup } from "@/lib/api/types";
@@ -17,9 +18,6 @@ import { studentSchema, type StudentInput } from "@/lib/validation/students";
 import { colors, radius, sizes, space, TINT_ALPHA, withAlpha } from "@/theme";
 
 import { AccessLinkPanel } from "../AccessLinkPanel";
-
-/** The dashboard's query key (its "Alunos ativos" count changes with the roster). */
-const dashboardQueryKey = ["dashboard"] as const;
 
 /**
  * M - Novo Aluno (Sheet) → M - Novo Aluno (Sucesso): creates the client (no password) and shows

@@ -11,4 +11,4 @@ export { NewStudentSheet } from "./NewStudentSheet";
 export { PlanCard } from "./PlanCard";
 export { ENDING_SOON_DAYS, PlanEndingRow } from "./PlanEndingRow";
 export { StudentCard } from "./StudentCard";
-export { CHART_WEEKS, WeightChart } from "./WeightChart";
+export { CHART_WEEKS, recentWeeks, WeightChart } from "./WeightChart";

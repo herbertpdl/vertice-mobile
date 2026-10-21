@@ -30,6 +30,10 @@ export function fetchExercise(id: number) {
   return apiClient.get<Exercise>(`/api/exercises/${id}`);
 }
 
+export function exerciseProgressQueryKey(exerciseId: number, clientId: number) {
+  return ["exerciseProgress", exerciseId, clientId] as const;
+}
+
 export function fetchExerciseProgress(id: number, clientId?: number) {
   return apiClient.get<ExerciseProgressPoint[]>(`/api/exercises/${id}/progress`, {
     clientId,

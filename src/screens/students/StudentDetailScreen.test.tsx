@@ -6,13 +6,14 @@ import { renderScreen } from "@/test/render";
 
 import { lastWorkoutStat, StudentDetailScreen } from "./StudentDetailScreen";
 
-const mockRouter = { push: jest.fn(), back: jest.fn(), replace: jest.fn(), canGoBack: jest.fn(() => true) };
+const mockRouter = { push: jest.fn(), back: jest.fn(), replace: jest.fn(), dismissTo: jest.fn(), canGoBack: jest.fn(() => true) };
 jest.mock("expo-router", () => ({
   get router() {
     return mockRouter;
   },
   useLocalSearchParams: () => ({ id: "7" }),
 }));
+jest.mock("@/lib/format", () => ({ ...jest.requireActual("@/lib/format"), todayLocalIso: () => "2026-10-21" }));
 
 const overview = {
   student: { id: 7, name: "Marina Costa", email: "marina@x.com", cpf: "***.***.***-25", role: "CLIENT" },
@@ -44,8 +45,19 @@ afterEach(() => {
 });
 
 describe("lastWorkoutStat", () => {
+  const now = new Date("2026-10-21T15:00:00Z"); // Wed 21/10, 12:00 in São Paulo
+
   it("is a dash without a workout", () => {
-    expect(lastWorkoutStat(null)).toEqual({ value: "—", helper: "nenhum ainda" });
+    expect(lastWorkoutStat(null, now)).toEqual({ value: "—", helper: "nenhum ainda" });
+  });
+
+  it.each([
+    ["2026-10-21T10:40:00Z", "Hoje", "às 07:40"],
+    ["2026-10-21T02:30:00Z", "Ontem", "às 23:30"], // 23:30 on the 20th in São Paulo
+    ["2026-10-19T21:40:00Z", "Seg", "às 18:40"],
+    ["2026-10-10T11:02:00Z", "10 out", "às 08:02"],
+  ])("%s → %s %s", (instant, value, helper) => {
+    expect(lastWorkoutStat(instant, now)).toEqual({ value, helper });
   });
 });
 
@@ -83,7 +95,9 @@ describe("StudentDetailScreen", () => {
     );
     await renderScreen(<StudentDetailScreen />);
     await fireEvent.press(await screen.findByRole("tab", { name: "Progresso" }));
-    await fireEvent.press(await screen.findByRole("button", { name: "Exercício: Selecione um exercício" }));
+    const picker = await screen.findByRole("button", { name: "Exercício: Selecione um exercício" });
+    await waitFor(() => expect(picker).toBeEnabled()); // enabled once the exercise list has loaded
+    await fireEvent.press(picker);
     await fireEvent.press(screen.getByRole("radio", { name: "Supino Reto" }));
     expect(await screen.findByLabelText("semana de 07/09: 42,5 kg, semana de 14/09: 50 kg")).toBeOnTheScreen();
     expect(bff.calls.find((c) => c.route === "GET /api/exercises/5/progress")).toBeDefined();
@@ -115,15 +129,27 @@ describe("StudentDetailScreen", () => {
 
   it("ends the relationship after confirming, then leaves", async () => {
     jest.replaceProperty(Platform, "OS", "android");
-    bff = mockBff(routes({ "DELETE /api/clients/7": new Response(null, { status: 204 }) }));
+    let ended = false;
+    bff = mockBff({
+      ...routes(),
+      "GET /api/clients/7/overview": () => (ended ? bffError(403, "FORBIDDEN") : Response.json(overview)),
+      "DELETE /api/clients/7": () => {
+        ended = true;
+        return new Response(null, { status: 204 });
+      },
+    });
     await renderScreen(<StudentDetailScreen />);
     await fireEvent.press(await screen.findByRole("button", { name: "Ações do aluno" }));
     await fireEvent.press(screen.getByRole("button", { name: "Encerrar vínculo" }));
     expect(screen.getByText("Encerrar vínculo com Marina Costa?")).toBeOnTheScreen();
     // The dialog's confirm is the last "Encerrar vínculo" button (the action sheet row comes first).
     await fireEvent.press(screen.getAllByRole("button", { name: "Encerrar vínculo" }).at(-1)!);
-    await waitFor(() => expect(mockRouter.back).toHaveBeenCalled());
+    await waitFor(() => expect(mockRouter.dismissTo).toHaveBeenCalledWith("/alunos"));
     expect(bff.calls.some((c) => c.route === "DELETE /api/clients/7")).toBe(true);
+    // No refetch of the ended student, so no second bounce.
+    await new Promise((r) => setTimeout(r, 50));
+    expect(bff.calls.filter((c) => c.route === "GET /api/clients/7/overview")).toHaveLength(1);
+    expect(mockRouter.back).not.toHaveBeenCalled();
   });
 
   it("leaves when the student isn't the trainer's (404)", async () => {
@@ -131,4 +157,46 @@ describe("StudentDetailScreen", () => {
     await renderScreen(<StudentDetailScreen />);
     await waitFor(() => expect(mockRouter.back).toHaveBeenCalled());
   });
+
+  it("removes the CPF, or replaces it with the digits typed", async () => {
+    jest.replaceProperty(Platform, "OS", "android");
+    bff = mockBff(routes({ "PATCH /api/clients/7": overview.student }));
+    await renderScreen(<StudentDetailScreen />);
+    await fireEvent.press(await screen.findByRole("button", { name: "Ações do aluno" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Editar aluno" }));
+    await fireEvent.changeText(screen.getByLabelText("CPF"), "123");
+    await fireEvent.press(screen.getByRole("checkbox", { name: "Remover o CPF do aluno" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Salvar" }));
+    await waitFor(() =>
+      expect(bff.calls.find((c) => c.route === "PATCH /api/clients/7")?.body).toEqual({ name: "Marina Costa", email: "marina@x.com", cpf: null }),
+    );
+  });
+
+  it("puts a taken e-mail on the e-mail field", async () => {
+    jest.replaceProperty(Platform, "OS", "android");
+    bff = mockBff(routes({ "PATCH /api/clients/7": bffError(409, "CONFLICT") }));
+    await renderScreen(<StudentDetailScreen />);
+    await fireEvent.press(await screen.findByRole("button", { name: "Ações do aluno" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Editar aluno" }));
+    await fireEvent.changeText(screen.getByLabelText("CPF"), "52998224725");
+    await fireEvent.press(screen.getByRole("button", { name: "Salvar" }));
+    expect(await screen.findByText("E-mail ou CPF já cadastrado")).toBeOnTheScreen();
+    expect(bff.calls.find((c) => c.route === "PATCH /api/clients/7")?.body).toMatchObject({ cpf: "52998224725" });
+  });
+
+  it("shows a generated link, and forgets it once the sheet is closed", async () => {
+    jest.replaceProperty(Platform, "OS", "android");
+    bff = mockBff(routes({ "POST /api/clients/7/setup-token": { token: "tok-9", expiresAt: "2099-01-01T12:00:00Z" } }));
+    await renderScreen(<StudentDetailScreen />);
+    await fireEvent.press(await screen.findByRole("button", { name: "Ações do aluno" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Link de acesso" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Gerar link" }));
+    expect(await screen.findByText(/definir-senha\?token=tok-9/)).toBeOnTheScreen();
+    await fireEvent.press(screen.getAllByRole("button", { name: "Fechar" }).at(-1)!);
+    await fireEvent.press(screen.getByRole("button", { name: "Ações do aluno" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Link de acesso" }));
+    expect(screen.queryByText(/tok-9/)).toBeNull();
+    expect(screen.getByRole("button", { name: "Gerar link" })).toBeOnTheScreen();
+  });
 });
+

@@ -321,7 +321,7 @@ merged first. Rollback = revert the mobile PR; nothing server-side depends on it
 | 6 | `feat/auth-screens` | [#19](https://github.com/herbertpdl/vertice-mobile/pull/19) | open (base #18) | reviewed: 2 blocking + 18 non-blocking, fixed or logged |
 | 7 | `feat/home-dashboard` | [#20](https://github.com/herbertpdl/vertice-mobile/pull/20) | open (base #19) | reviewed: 2 blocking + 10 non-blocking, fixed or logged |
 | 8 | `feat/students-list` | [#21](https://github.com/herbertpdl/vertice-mobile/pull/21) | open (base #20) | reviewed: 2 blocking + 21 non-blocking, fixed or logged |
-| 9 | `feat/student-detail` | — | open (base #21) | — |
+| 9 | `feat/student-detail` | [#22](https://github.com/herbertpdl/vertice-mobile/pull/22) | open (base #21) | reviewed: 1 blocking + 14 non-blocking, fixed or logged |
 
 ## Decisions log
 - 2026-10-20 — v1 is the **trainer** app because that is what the pen.dev mobile designs cover; the client app needs its own PRD + designs (audit P2-13).
@@ -376,3 +376,5 @@ merged first. Rollback = revert the mobile PR; nothing server-side depends on it
 - 2026-10-21 — A 409 on Novo aluno goes on the e-mail field (as the web); a `setup: null` answer offers "Gerar link de acesso" inline. Mutations carrying the setup token use `gcTime: 0`.
 - 2026-10-21 — M - Alunos (Loading) keeps the real search field and chips (they work on an empty list) instead of the design's skeletons for them. The schema's "E-mail inválido" stays (design: "Informe um e-mail válido.").
 - 2026-10-21 — Access links are generated on demand from the student page (a token is shown once; the previous link stops working, which the sheet says before generating). The design's "Ela"/"ele" copy is neutralized with the first name.
+- 2026-10-21 — After a delete or an ended relationship, the queries the still-mounted screen observes are marked stale with `refetchType: "none"`, never removed or refetched: a refetch would 403/404 and bounce the user a second time (the web's same rule). Ending a relationship returns to the roster (`router.dismissTo("/alunos")`) from wherever the student was opened. Review of #22.
+- 2026-10-21 — The Progresso chart covers the last 8 *calendar* weeks (weeks without a record have no bar); the student's Feedbacks tab lists the newest 20. The student e-mail stays `textSecondary` (the design's tertiary fails AA for text).
