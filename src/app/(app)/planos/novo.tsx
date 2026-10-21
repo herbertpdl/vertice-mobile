@@ -1,7 +1,3 @@
-import { NavBar } from "@/components/layout/NavBar";
-import { ComingSoonScreen } from "@/screens/home/ComingSoonScreen";
+import { PlanFormScreen } from "@/screens/plans/PlanFormScreen";
 
-/** Placeholder until the training-plan screens land (spec PR 10). */
-export default function PlanPlaceholder() {
-  return <ComingSoonScreen title="Plano" header={<NavBar title="Plano de treino" />} />;
-}
+export default PlanFormScreen;

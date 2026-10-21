@@ -4,6 +4,8 @@ export type { AccessLinkPanelProps } from "./AccessLinkPanel";
 export { AccessLinkSheet } from "./AccessLinkSheet";
 export { AuthFooter } from "./AuthFooter";
 export { CompletedWorkoutRow } from "./CompletedWorkoutRow";
+export { DayRow } from "./DayRow";
+export type { DayRowProps } from "./DayRow";
 export { EditStudentSheet } from "./EditStudentSheet";
 export { FeedbackRow } from "./FeedbackRow";
 export type { FeedbackRowProps } from "./FeedbackRow";

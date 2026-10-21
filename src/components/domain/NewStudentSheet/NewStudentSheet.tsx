@@ -13,6 +13,7 @@ import { apiErrorMessage, errorMessages } from "@/lib/api/errorMessages";
 import { createStudent, issueStudentSetupToken, studentsQueryKey } from "@/lib/api/students";
 import type { CreatedStudent, PasswordSetup } from "@/lib/api/types";
 import { maskCpf } from "@/lib/masks/cpf";
+import { useSingleFlight } from "@/lib/useSingleFlight";
 import { onlyDigits } from "@/lib/validation/cpf";
 import { studentSchema, type StudentInput } from "@/lib/validation/students";
 import { colors, radius, sizes, space, TINT_ALPHA, withAlpha } from "@/theme";
@@ -67,9 +68,7 @@ export function NewStudentSheet({ visible, onClose }: { visible: boolean; onClos
   const close = () => {
     if (!busy) onClose();
   };
-  const submit = handleSubmit((values) => {
-    if (!create.isPending) create.mutate(values);
-  });
+  const submit = useSingleFlight(handleSubmit((values) => create.mutateAsync(values).catch(() => {})));
   const conflict = create.error instanceof ApiError && create.error.code === "CONFLICT";
 
   if (created !== null) {
