@@ -189,6 +189,9 @@ export const sizes = {
   videoChipInset: 12,
   videoChipGap: 6,
   videoChipGlyph: 14,
+  /** M - Excluir Conta's warning card: the icon disc and the bullet dots. */
+  deleteNoticeIcon: 36,
+  deleteNoticeBullet: 6,
 } as const;
 
 /** Horizontal padding of a screen's content (pen.dev mobile screens use 20 on a 390 frame). */

@@ -29,13 +29,14 @@ and Google Play both require in-app account deletion for apps that create accoun
 need a privacy-policy URL and accurate privacy labels. The backend pieces already exist; each
 item below is about wiring them into this app.
 
-- [ ] **In-app account deletion** — a "Excluir conta" screen that calls `DELETE /api/auth/me`
+- [x] **In-app account deletion** — a "Excluir conta" screen that calls `DELETE /api/auth/me`
   with `{ password }` (re-auth), handles `400 INVALID_CURRENT_PASSWORD`, `409 ACTIVE_CLIENTS`
   and `429`, and signs out on `204`. Backed by vertice-api `DeleteAccount` (anonymises the
   account and deletes health-adjacent data).
-- [ ] **Data export** — "Exportar meus dados" calling `GET /api/auth/me/export` (LGPD art. 18 II
-  and V); handle `413 TOO_LARGE` and the 3-per-hour `429 RATE_LIMITED`.
-- [ ] **Privacy policy and terms links** — on registration/first access and in settings, pointing
+- [x] **Data export** — "Exportar meus dados" calling `GET /api/auth/me/export` (LGPD art. 18 II
+  and V); handle `413 TOO_LARGE` and the 3-per-hour `429 RATE_LIMITED`. (Profile → Exportar meus
+  dados writes the file and opens the share sheet.)
+- [x] **Privacy policy and terms links** — on registration/first access and in settings, pointing
   at the web app's `/privacidade` and `/termos` (drafts pending legal review).
 - [ ] **Consent at first access** — gate the client app on TERMS and HEALTH_DATA consent before
   any workout is recorded: compare `GET /api/auth/me` `consent` with `GET /api/legal/versions`

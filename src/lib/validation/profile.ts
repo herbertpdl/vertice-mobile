@@ -1,6 +1,7 @@
 import { z } from "zod";
 import type { UpdateMeInput } from "@/lib/api/auth";
 import type { Me } from "@/lib/api/types";
+import { newPasswordSchema } from "./auth";
 import { isValidCpf, onlyDigits } from "./cpf";
 import { CREF_MAX, NAME_MAX, boundedText, emailField, requiredText } from "./bounds";
 
@@ -40,3 +41,17 @@ export function profileChanges(me: Me, values: ProfileInput): UpdateMeInput {
   }
   return changes;
 }
+
+/** "Alterar senha": the current password (any, accounts may predate the policy) and a new one under the policy. */
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, "Informe a senha atual"),
+    newPassword: newPasswordSchema,
+    confirmPassword: z.string().min(1, "Confirme a nova senha"),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: "As senhas não coincidem",
+    path: ["confirmPassword"],
+  });
+
+export type ChangePasswordInput = z.infer<typeof changePasswordSchema>;
