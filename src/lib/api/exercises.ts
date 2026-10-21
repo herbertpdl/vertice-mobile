@@ -11,9 +11,12 @@ export interface ExerciseListParams {
  * Normalized list key, so every screen produces the same key for the same
  * filter and `invalidateQueries({ queryKey: ["exercises"] })` covers them all.
  */
+/** Every list key starts with this: invalidate it after a create, edit or delete. */
+export const exercisesQueryPrefix = ["exercises"] as const;
+
 export function exercisesQueryKey(params: ExerciseListParams = {}) {
   return [
-    "exercises",
+    ...exercisesQueryPrefix,
     { muscleGroupId: params.muscleGroupId ?? null, q: (params.q ?? "").trim() },
   ] as const;
 }
@@ -26,8 +29,13 @@ export function fetchExercises(params: ExerciseListParams = {}, init?: Pick<ApiR
   return apiClient.get<Exercise[]>("/api/exercises", hasQuery ? query : undefined, init);
 }
 
-export function fetchExercise(id: number) {
-  return apiClient.get<Exercise>(`/api/exercises/${id}`);
+/** One exercise (the detail screen and its edit form). */
+export function exerciseQueryKey(id: number) {
+  return ["exercise", id] as const;
+}
+
+export function fetchExercise(id: number, init?: Pick<ApiRequestInit, "signal">) {
+  return apiClient.get<Exercise>(`/api/exercises/${id}`, undefined, init);
 }
 
 export function exerciseProgressQueryKey(exerciseId: number, clientId: number) {

@@ -1,4 +1,8 @@
-import { isOpenableVideoUrl, videoThumbnailUrl, youtubeVideoId } from "./video";
+import * as WebBrowser from "expo-web-browser";
+
+import { isOpenableVideoUrl, openVideo, videoThumbnailUrl, youtubeVideoId } from "./video";
+
+jest.mock("expo-web-browser", () => ({ openBrowserAsync: jest.fn() }));
 
 describe("youtubeVideoId", () => {
   it.each([
@@ -44,5 +48,19 @@ describe("isOpenableVideoUrl", () => {
     expect(isOpenableVideoUrl("javascript:alert(1)")).toBe(false);
     expect(isOpenableVideoUrl("intent://x")).toBe(false);
     expect(isOpenableVideoUrl("")).toBe(false);
+  });
+});
+
+describe("openVideo", () => {
+  it("opens http(s) links in the in-app browser and ignores anything else", async () => {
+    expect(await openVideo("javascript:alert(1)")).toBe(false);
+    expect(WebBrowser.openBrowserAsync).not.toHaveBeenCalled();
+    expect(await openVideo("https://youtu.be/dQw4w9WgXcQ")).toBe(true);
+    expect(WebBrowser.openBrowserAsync).toHaveBeenCalledWith("https://youtu.be/dQw4w9WgXcQ");
+  });
+
+  it("reports a browser that couldn't open instead of rejecting", async () => {
+    jest.mocked(WebBrowser.openBrowserAsync).mockRejectedValueOnce(new Error("Another WebBrowser is already being presented"));
+    expect(await openVideo("https://youtu.be/dQw4w9WgXcQ")).toBe(false);
   });
 });

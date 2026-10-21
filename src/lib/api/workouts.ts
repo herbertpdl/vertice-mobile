@@ -29,9 +29,12 @@ export function fetchWorkout(id: number) {
   return apiClient.get<Workout>(`/api/workouts/${id}`);
 }
 
+/** Every workout tree's key starts with this: invalidate it when a catalog entry they embed changes. */
+export const workoutsQueryPrefix = ["workout"] as const;
+
 /** The editor's tree: the workout with its exercises (catalog entry included) and their sets (the web's key). */
 export function fullWorkoutQueryKey(id: number) {
-  return ["workout", id, "full"] as const;
+  return [...workoutsQueryPrefix, id, "full"] as const;
 }
 
 export function fetchFullWorkout(id: number, init?: Pick<ApiRequestInit, "signal">) {

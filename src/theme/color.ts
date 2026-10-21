@@ -24,6 +24,8 @@ export const SOFT_TINT_ALPHA = 0x14 / 255;
 export const overlay = {
   mediaScrim: "#000000b3",
   mediaGlyph: "#ffffff",
+  /** The play disc's hairline on a photo (M Video Thumbnail, `#FFFFFF33`). */
+  mediaGlyphSoft: "#ffffff33",
   backdrop: "#000000a8",
   /** Drop shadows (M Tab Bar, M Toast, M Confirm Dialog): black, opacity set per shadow. */
   shadow: "#000000",

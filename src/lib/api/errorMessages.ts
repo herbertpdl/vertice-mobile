@@ -78,6 +78,8 @@ export function apiErrorMessage(error: unknown, fallback: string): string {
 export const deleteRefusedMessages = {
   trainingPlan: "Este plano já tem treinos registrados e não pode ser excluído.",
   workout: "Este treino já tem registros de um aluno e não pode ser excluído.",
+  /** For an exercise the 409 means a workout uses it (vertice-api's FK guard), the web's copy. */
+  exercise: "Um treino usa este exercício. Remova-o dos treinos antes de excluí-lo.",
 } as const;
 
 /** `apiErrorMessage` for a delete of `resource`, with the "already has recorded data" copy on 409. */
