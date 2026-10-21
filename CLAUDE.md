@@ -22,9 +22,9 @@ log and decisions log as you go.
 ## Commands
 
 ```bash
-npm start          # Metro dev server — press i/a/w or scan the QR code with Expo Go
-npm run ios        # start + open iOS simulator (needs Xcode + CocoaPods)
-npm run android    # start + open Android emulator (needs Android Studio)
+npm start          # Metro dev server for an installed development build — press i / a / w
+npm run ios        # expo run:ios — native build + install on the iOS simulator (see "Running")
+npm run android    # expo run:android — native build + install on the Android emulator (JDK 17)
 npm run web        # start + open in a browser (react-native-web)
 npm run routes:types # generate Expo Router's typed routes (.expo/types) so typecheck checks every href
 npm run typecheck  # tsc --noEmit
@@ -129,8 +129,22 @@ drift check stays green.
 
 ## Running
 
-Requires Node 22 (matching the other JS repos; pinned in `.nvmrc` and `engines`) and, for native builds, Xcode + CocoaPods (iOS) or
-Android Studio (Android) — none of which are installed on a fresh machine by default. `npm start`
-+ [Expo Go](https://expo.dev/go) sidesteps all of that for early development; switch to a
-[development build](https://docs.expo.dev/develop/development-builds/introduction/) once the app
-needs a native module Expo Go doesn't include.
+Requires Node 22 (pinned in `.nvmrc` and `engines`; if a Homebrew Node 25 is first on PATH and
+broken, use `PATH=/opt/homebrew/opt/node@22/bin:$PATH`). The app uses native modules Expo Go
+doesn't ship (`expo-dev-client`, Sentry), so it runs as a **development build**: `npm run ios` /
+`npm run android` once (native build + install), then `npm start` and press `i` / `a`. Rebuild only
+when native dependencies or `app.json` change. `android/` and `ios/` are generated (git-ignored).
+
+- **Backend**: `vertice-api` and `vertice-bff` on `localhost:8080` / `:3000` (see `vertice-local`);
+  the web on `:5173` only serves the legal pages the app links to. `.env` points at `localhost`.
+- **iOS**: Xcode as the active developer directory (`sudo xcode-select -s
+  /Applications/Xcode.app/Contents/Developer`, `sudo xcodebuild -license accept`), an iOS
+  simulator runtime (Xcode → Settings → Components) and CocoaPods (`brew install cocoapods`). The
+  simulator's `localhost` is the Mac.
+- **Android**: **JDK 17** (`brew install openjdk@17`;
+  `JAVA_HOME=/opt/homebrew/opt/openjdk@17/libexec/openjdk.jdk/Contents/Home`). JDK 25 — Android
+  Studio's bundled one included — fails `react-native-worklets:configureCMakeDebug` on its
+  "restricted method" warning. Also `ANDROID_HOME=~/Library/Android/sdk` with `platform-tools`
+  and `emulator` on PATH, and `adb reverse tcp:3000 tcp:3000` (+ `5173`, `8081`) after every
+  emulator start, so the emulator's `localhost` reaches the Mac.
+- On a physical device, put the Mac's LAN IP in `.env` instead of `localhost`.
