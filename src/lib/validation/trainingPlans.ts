@@ -5,12 +5,6 @@ import { DESCRIPTION_MAX, NAME_MAX, boundedText, requiredText } from "./bounds";
 
 export const planLevelSchema = z.enum(["BEGINNER", "INTERMEDIATE", "ADVANCED"]);
 
-export const planLevelLabels: Record<z.infer<typeof planLevelSchema>, string> = {
-  BEGINNER: "Iniciante",
-  INTERMEDIATE: "Intermediário",
-  ADVANCED: "Avançado",
-};
-
 const isoDate = (requiredMessage: string) =>
   z.string().min(1, requiredMessage).regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida");
 

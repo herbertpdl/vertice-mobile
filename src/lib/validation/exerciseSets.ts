@@ -27,18 +27,6 @@ export const setStrategySchema = z.enum([
 
 export type SetStrategyFormInput = z.infer<typeof setStrategySchema>;
 
-export const setStrategyLabels: Record<SetStrategyFormInput, string> = {
-  STRAIGHT: "Direta",
-  WARM_UP: "Aquecimento",
-  BACKOFF: "Backoff",
-  DROPSET: "Dropset",
-  REST_PAUSE: "Rest-Pause",
-  CLUSTER: "Cluster",
-  AMRAP: "AMRAP",
-  ISOMETRIC_HOLD: "Isometria",
-  FAILURE: "Falha",
-};
-
 export const exerciseSetSchema = z.object({
   setNumber: orderNumber,
   reps: repsCount.optional(),
