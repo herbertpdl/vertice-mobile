@@ -53,9 +53,14 @@ describe("isOpenableVideoUrl", () => {
 
 describe("openVideo", () => {
   it("opens http(s) links in the in-app browser and ignores anything else", async () => {
-    await openVideo("javascript:alert(1)");
+    expect(await openVideo("javascript:alert(1)")).toBe(false);
     expect(WebBrowser.openBrowserAsync).not.toHaveBeenCalled();
-    await openVideo("https://youtu.be/dQw4w9WgXcQ");
+    expect(await openVideo("https://youtu.be/dQw4w9WgXcQ")).toBe(true);
     expect(WebBrowser.openBrowserAsync).toHaveBeenCalledWith("https://youtu.be/dQw4w9WgXcQ");
+  });
+
+  it("reports a browser that couldn't open instead of rejecting", async () => {
+    jest.mocked(WebBrowser.openBrowserAsync).mockRejectedValueOnce(new Error("Another WebBrowser is already being presented"));
+    expect(await openVideo("https://youtu.be/dQw4w9WgXcQ")).toBe(false);
   });
 });

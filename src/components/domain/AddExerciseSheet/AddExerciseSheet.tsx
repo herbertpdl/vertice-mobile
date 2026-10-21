@@ -10,8 +10,8 @@ import { Sheet } from "@/components/ui/Sheet";
 import { Spinner } from "@/components/ui/Spinner";
 import { Text } from "@/components/ui/Text";
 import { exercisesQueryKey, fetchExercises } from "@/lib/api/exercises";
-import { fetchMuscleGroups, muscleGroupsQueryKey } from "@/lib/api/muscleGroups";
 import type { Exercise } from "@/lib/api/types";
+import { useMuscleGroups } from "@/lib/useCatalog";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
 import { MAX_EXERCISES } from "@/lib/workoutEditor/model";
 import { space } from "@/theme";
@@ -44,12 +44,7 @@ export function AddExerciseSheet({ visible, onClose, onAdd, remaining }: AddExer
     placeholderData: keepPreviousData,
     enabled: visible,
   });
-  const groups = useQuery({
-    queryKey: muscleGroupsQueryKey,
-    queryFn: ({ signal }) => fetchMuscleGroups({ signal }),
-    staleTime: Infinity,
-    enabled: visible,
-  });
+  const groups = useMuscleGroups({ enabled: visible });
 
   const full = picked.length >= remaining;
   const toggle = (exercise: Exercise) =>

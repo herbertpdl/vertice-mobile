@@ -9,9 +9,9 @@ import { ExerciseCard } from "@/components/domain";
 import { Screen, tabScreenBottomPadding } from "@/components/layout";
 import { Chip, EmptyState, ErrorState, IconButton, SearchField, Skeleton, StatusBanner, Text } from "@/components/ui";
 import { exercisesQueryKey, fetchExercises } from "@/lib/api/exercises";
-import { fetchMuscleGroups, muscleGroupsQueryKey } from "@/lib/api/muscleGroups";
 import type { Exercise } from "@/lib/api/types";
 import { useIsOffline } from "@/lib/network";
+import { useMuscleGroups } from "@/lib/useCatalog";
 import { useDebouncedValue } from "@/lib/useDebouncedValue";
 import { usePullToRefresh } from "@/lib/usePullToRefresh";
 import { colors, radius, screenPaddingHorizontal, sizes, space } from "@/theme";
@@ -36,11 +36,7 @@ export function ExercisesScreen() {
     queryFn: ({ signal }) => fetchExercises({ muscleGroupId, q }, { signal }),
     placeholderData: keepPreviousData,
   });
-  const groups = useQuery({
-    queryKey: muscleGroupsQueryKey,
-    queryFn: ({ signal }) => fetchMuscleGroups({ signal }),
-    staleTime: Infinity,
-  });
+  const groups = useMuscleGroups();
   const pull = usePullToRefresh(() => Promise.all([list.refetch(), groups.refetch()]));
   const retry = {
     label: "Tentar",
@@ -62,8 +58,8 @@ export function ExercisesScreen() {
           <Text variant="title" accessibilityRole="header">
             Exercícios
           </Text>
-          {list.data === undefined ? (
-            <Skeleton.Line width={150} />
+          {list.isError && list.data === undefined ? null : list.data === undefined ? (
+            <Skeleton.Line width={sizes.skeletonSectionWidth} />
           ) : (
             <Text variant="body" color="textSecondary">
               {catalogSubtitle(list.data, narrowed)}
@@ -73,7 +69,11 @@ export function ExercisesScreen() {
         <IconButton icon={Plus} accessibilityLabel="Novo exercício" onPress={() => router.push("/exercicios/novo")} />
       </View>
       <SearchField value={search} onChangeText={setSearch} placeholder="Buscar exercício" />
-      {groups.data === undefined || groups.data.length === 0 ? null : (
+      {groups.isError && groups.data === undefined ? (
+        <Text variant="caption" color="textSecondary">
+          Grupos indisponíveis.
+        </Text>
+      ) : groups.data === undefined || groups.data.length === 0 ? null : (
         <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.chips} keyboardShouldPersistTaps="handled">
           <Chip label="Todos" selected={muscleGroupId === null} onPress={() => setMuscleGroupId(null)} />
           {groups.data.map((group) => (
@@ -98,7 +98,7 @@ export function ExercisesScreen() {
       {list.isError && list.data === undefined ? (
         <View style={styles.padded}>
           {header}
-          <ErrorState onRetry={() => void list.refetch()} retrying={list.isFetching} />
+          <ErrorState onRetry={retry.onPress} retrying={list.isFetching} />
         </View>
       ) : (
         <FlatList<Exercise>

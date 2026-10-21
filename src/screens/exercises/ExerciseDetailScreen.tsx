@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { EllipsisVertical, Lock, Pencil, Trash2 } from "lucide-react-native";
 import { useEffect, useState } from "react";
@@ -20,11 +20,13 @@ import {
 } from "@/components/ui";
 import { ApiError } from "@/lib/api/client";
 import { deleteErrorMessage } from "@/lib/api/errorMessages";
-import { deleteExercise, exerciseQueryKey, fetchExercise } from "@/lib/api/exercises";
+import { deleteExercise, exerciseQueryKey, exercisesQueryPrefix } from "@/lib/api/exercises";
 import { useIsOffline } from "@/lib/network";
+import { useExercise } from "@/lib/useCatalog";
 import { usePullToRefresh } from "@/lib/usePullToRefresh";
 import { useRedirectOnError } from "@/lib/useRedirectOnError";
-import { videoThumbnailUrl, openVideo } from "@/lib/video";
+import { useOpenVideo } from "@/lib/useOpenVideo";
+import { videoThumbnailUrl } from "@/lib/video";
 import { sizes, space } from "@/theme";
 
 /** Copy for a failed delete: a workout using it (409), not the trainer's (403), anything else. */
@@ -46,11 +48,8 @@ export function ExerciseDetailScreen() {
   const toast = useToast();
   const offline = useIsOffline();
   const [sheet, setSheet] = useState<"actions" | "delete" | null>(null);
-  const exercise = useQuery({
-    queryKey: exerciseQueryKey(id),
-    queryFn: ({ signal }) => fetchExercise(id, { signal }),
-    enabled: valid,
-  });
+  const open = useOpenVideo();
+  const exercise = useExercise(id, { enabled: valid });
   const pull = usePullToRefresh(() => exercise.refetch());
   useRedirectOnError(exercise.error, "Exercício não encontrado.", "/exercicios");
   useEffect(() => {
@@ -61,12 +60,16 @@ export function ExerciseDetailScreen() {
     mutationFn: () => deleteExercise(id),
     onSuccess: () => {
       setSheet(null);
-      void queryClient.invalidateQueries({ queryKey: ["exercises"] });
+      void queryClient.invalidateQueries({ queryKey: exercisesQueryPrefix });
       // Still observed here: stale, not refetched (it would 404 and bounce a second time).
       void queryClient.invalidateQueries({ queryKey: exerciseQueryKey(id), refetchType: "none" });
       if (router.canGoBack()) router.back();
       else router.replace("/exercicios");
       toast.show("Exercício excluído.");
+    },
+    onError: (error) => {
+      // Gone or not the trainer's any more (another device): the catalog row is stale.
+      if (error instanceof ApiError && error.code === "FORBIDDEN") void queryClient.invalidateQueries({ queryKey: exercisesQueryPrefix });
     },
   });
 
@@ -108,7 +111,7 @@ export function ExerciseDetailScreen() {
   return (
     <>
       <Screen header={header} contentStyle={styles.content} refreshing={pull.refreshing} onRefresh={pull.onRefresh}>
-        {data.videoUrl === "" ? null : <VideoThumbnail imageUri={videoThumbnailUrl(data.videoUrl)} onPress={() => void openVideo(data.videoUrl)} />}
+        {data.videoUrl === "" ? null : <VideoThumbnail imageUri={videoThumbnailUrl(data.videoUrl)} onPress={() => void open(data.videoUrl)} />}
         <View style={styles.identity}>
           <Text variant="headline" accessibilityRole="header">
             {data.name}

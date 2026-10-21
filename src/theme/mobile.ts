@@ -188,6 +188,7 @@ export const sizes = {
   videoChipHeight: 32,
   videoChipInset: 12,
   videoChipGap: 6,
+  videoChipGlyph: 14,
 } as const;
 
 /** Horizontal padding of a screen's content (pen.dev mobile screens use 20 on a 390 frame). */

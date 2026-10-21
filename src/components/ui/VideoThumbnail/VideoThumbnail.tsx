@@ -42,7 +42,7 @@ export function VideoThumbnail({ imageUri, onPress, style }: VideoThumbnailProps
         <Play size={sizes.videoPlayGlyph} color={overlay.mediaGlyph} fill={overlay.mediaGlyph} />
       </View>
       <View style={styles.chip}>
-        <ExternalLink size={14} color={overlay.mediaGlyph} />
+        <ExternalLink size={sizes.videoChipGlyph} color={overlay.mediaGlyph} />
         <Text variant="label" style={styles.chipLabel}>
           Abrir vídeo
         </Text>

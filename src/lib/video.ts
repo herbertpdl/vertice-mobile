@@ -37,9 +37,18 @@ export function videoThumbnailUrl(videoUrl: string): string | null {
   return id === null ? null : `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
 }
 
-/** Opens an exercise video in the in-app browser; anything but http(s) is ignored (a shared catalog). */
-export async function openVideo(videoUrl: string): Promise<void> {
-  if (isOpenableVideoUrl(videoUrl)) await WebBrowser.openBrowserAsync(videoUrl);
+/**
+ * Opens an exercise video in the in-app browser; anything but http(s) is ignored (a shared
+ * catalog). False when it couldn't open (a browser already presented, no browser on Android).
+ */
+export async function openVideo(videoUrl: string): Promise<boolean> {
+  if (!isOpenableVideoUrl(videoUrl)) return false;
+  try {
+    await WebBrowser.openBrowserAsync(videoUrl);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 /** Whether a stored `videoUrl` is something the app may open (http/https only). */

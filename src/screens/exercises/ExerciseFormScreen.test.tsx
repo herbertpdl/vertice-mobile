@@ -30,7 +30,7 @@ describe("ExerciseFormScreen", () => {
       "POST /api/exercises": ({ body }) => Response.json({ ...own, id: 12, ...(body as object) }),
     });
     await renderScreen(<ExerciseFormScreen />);
-    await fireEvent.press(await screen.findByRole("button", { name: "Salvar exercício" }));
+    await fireEvent.press(await screen.findByRole("button", { name: "Criar exercício" }));
     expect(await screen.findByText("Informe o nome do exercício")).toBeOnTheScreen();
     expect(screen.getByText("Selecione pelo menos um grupo muscular")).toBeOnTheScreen();
 
@@ -38,12 +38,12 @@ describe("ExerciseFormScreen", () => {
     await fireEvent.press(screen.getByRole("button", { name: /^Grupos musculares/ }));
     await fireEvent.press(screen.getByRole("checkbox", { name: "Costas" }));
     await fireEvent.press(screen.getByRole("button", { name: "Aplicar (1)" }));
-    await fireEvent.changeText(screen.getByLabelText("URL do vídeo"), "javascript:alert(1)");
-    await fireEvent.press(screen.getByRole("button", { name: "Salvar exercício" }));
+    await fireEvent.changeText(screen.getByLabelText("URL do vídeo (opcional)"), "javascript:alert(1)");
+    await fireEvent.press(screen.getByRole("button", { name: "Criar exercício" }));
     expect(await screen.findByText("Use um link começando com http:// ou https://")).toBeOnTheScreen();
-    await fireEvent.changeText(screen.getByLabelText("URL do vídeo"), "https://youtu.be/dQw4w9WgXcQ");
+    await fireEvent.changeText(screen.getByLabelText("URL do vídeo (opcional)"), "https://youtu.be/dQw4w9WgXcQ");
     expect(screen.getByRole("link", { name: "Abrir vídeo" })).toBeOnTheScreen();
-    await fireEvent.press(screen.getByRole("button", { name: "Salvar exercício" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Criar exercício" }));
     await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith("/exercicios/12"));
     expect(bff.calls.find((c) => c.route === "POST /api/exercises")?.body).toEqual({
       name: "Remada Curvada",
@@ -58,7 +58,7 @@ describe("ExerciseFormScreen", () => {
     bff = mockBff({ "GET /api/muscle-groups": groups, "GET /api/exercises/4": own, "PATCH /api/exercises/4": own });
     await renderScreen(<ExerciseFormScreen />);
     await fireEvent.changeText(await screen.findByLabelText("Descrição"), "Coluna neutra.");
-    await fireEvent.press(screen.getByRole("button", { name: "Salvar exercício" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Salvar alterações" }));
     await waitFor(() => expect(mockRouter.back).toHaveBeenCalled());
     expect(bff.calls.find((c) => c.route === "PATCH /api/exercises/4")?.body).toMatchObject({ description: "Coluna neutra.", muscleGroupIds: [2] });
   });
@@ -67,7 +67,7 @@ describe("ExerciseFormScreen", () => {
     mockParams = { id: "4" };
     bff = mockBff({ "GET /api/muscle-groups": groups, "GET /api/exercises/4": own, "PATCH /api/exercises/4": bffError(403, "FORBIDDEN") });
     await renderScreen(<ExerciseFormScreen />);
-    await fireEvent.press(await screen.findByRole("button", { name: "Salvar exercício" }));
+    await fireEvent.press(await screen.findByRole("button", { name: "Salvar alterações" }));
     expect(await screen.findByText("Você não tem permissão para alterar este exercício.")).toBeOnTheScreen();
   });
 
@@ -76,5 +76,13 @@ describe("ExerciseFormScreen", () => {
     bff = mockBff({ "GET /api/muscle-groups": groups, "GET /api/exercises/1": { ...own, id: 1, isStarter: true } });
     await renderScreen(<ExerciseFormScreen />);
     await waitFor(() => expect(mockRouter.back).toHaveBeenCalled());
+  });
+
+  it("leaves an edit route whose id can't exist, without fetching it", async () => {
+    mockParams = { id: "abc" };
+    bff = mockBff({ "GET /api/muscle-groups": groups });
+    await renderScreen(<ExerciseFormScreen />);
+    await waitFor(() => expect(mockRouter.back).toHaveBeenCalled());
+    expect(bff.calls.some((c) => c.route.startsWith("GET /api/exercises/"))).toBe(false);
   });
 });
