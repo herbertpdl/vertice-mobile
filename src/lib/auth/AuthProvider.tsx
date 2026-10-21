@@ -1,6 +1,7 @@
 import { createContext, use, useEffect, useRef, useState, type ReactNode } from "react";
 
 import { configureApiSession } from "@/lib/api/client";
+import { clearDrafts } from "@/lib/draftStash";
 import type { AuthSession } from "@/lib/api/types";
 import { queryClient } from "@/lib/query-client";
 
@@ -50,12 +51,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signingOut.current = true;
     token.current = null;
     setSessionExpired(reason === "expired");
+    // An expired session keeps the unsaved drafts for the re-login; "Sair" means done.
+    if (reason === "user") clearDrafts();
     setStatus("signedOut");
     try {
       // Stop in-flight requests before dropping the cache, so the previous user's data can't land
       // in a query a still-mounted screen observes.
       await queryClient.cancelQueries();
       queryClient.clear();
+      // Again once the signed-in screens have unmounted: one with unsaved changes stashes them then.
+      if (reason === "user") clearDrafts();
       await clearStoredToken();
     } finally {
       signingOut.current = false;

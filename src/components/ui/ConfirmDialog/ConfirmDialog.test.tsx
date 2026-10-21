@@ -27,4 +27,11 @@ describe("ConfirmDialog", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Cancelar" }));
     expect(onCancel).not.toHaveBeenCalled();
   });
+
+  it("takes its own dismiss label (M - Descartar alterações)", async () => {
+    const onCancel = jest.fn();
+    await render(<ConfirmDialog {...base} tone="warning" cancelLabel="Continuar editando" onCancel={onCancel} onConfirm={() => {}} />);
+    await fireEvent.press(screen.getByRole("button", { name: "Continuar editando" }));
+    expect(onCancel).toHaveBeenCalled();
+  });
 });

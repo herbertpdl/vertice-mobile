@@ -1,0 +1,783 @@
+import { ApiError } from "@/lib/api/client";
+import { errorMessages } from "@/lib/api/errorMessages";
+import type { Exercise, FullWorkout, FullWorkoutExercise } from "@/lib/api/types";
+import { createAutosaveEngine, type AutosaveTransport } from "./autosave";
+import { emptyWorkout, fromFullWorkout } from "./model";
+
+const supino: Exercise = { id: 1, name: "Supino Reto", description: "", videoUrl: "", muscleGroups: [{ id: 1, name: "Peito" }], isStarter: true };
+const puxada: Exercise = { id: 2, name: "Puxada Alta", description: "", videoUrl: "", muscleGroups: [{ id: 2, name: "Costas" }], isStarter: true };
+
+let nextId = 100;
+
+/** Builds the FullWorkout the BFF would return for a nested create/replace payload: fresh ids, positions from list order. */
+function fullFromEntries(
+  id: number,
+  name: string,
+  entries: { exerciseId: number; restSecondsBetweenSets?: number; notes?: string; sets?: { strategy?: string; reps?: number; weight?: string }[] }[],
+): FullWorkout {
+  const catalog = { 1: supino, 2: puxada } as Record<number, Exercise>;
+  return {
+    id,
+    name,
+    trainingPlanId: 7,
+    dayOfWeek: "MONDAY",
+    exercises: entries.map((entry, i): FullWorkoutExercise => {
+      const weId = ++nextId;
+      return {
+        id: weId,
+        workoutId: id,
+        exerciseId: entry.exerciseId,
+        order: i + 1,
+        restSecondsBetweenSets: entry.restSecondsBetweenSets ?? 0,
+        notes: entry.notes ?? "",
+        exercise: catalog[entry.exerciseId],
+        sets: (entry.sets ?? []).map((set, j) => ({
+          id: ++nextId,
+          workoutExerciseId: weId,
+          setNumber: j + 1,
+          reps: set.reps ?? 0,
+          durationSeconds: 0,
+          weight: set.weight ?? "",
+          loadPercentage: "",
+          strategy: (set.strategy ?? "STRAIGHT") as FullWorkoutExercise["sets"][number]["strategy"],
+          restSeconds: 0,
+          notes: "",
+        })),
+      };
+    }),
+  };
+}
+
+function apiError(code: string, status: number, message = code) {
+  return new ApiError({ code, message }, status);
+}
+
+function makeTransport(): AutosaveTransport & { calls: string[] } {
+  const calls: string[] = [];
+  return {
+    calls,
+    create: jest.fn(async (planId, input) => {
+      calls.push("create");
+      return fullFromEntries(42, input.name, input.exercises ?? []);
+    }),
+    getFull: jest.fn(async (workoutId) => fullFromEntries(workoutId, "Treino A", [])),
+    replace: jest.fn(async (workoutId, exercises) => {
+      calls.push("replace");
+      return fullFromEntries(workoutId, "Treino A", exercises);
+    }),
+    patchWorkout: jest.fn(async () => {
+      calls.push("patch");
+      return {};
+    }),
+    addExercise: jest.fn(async (workoutId, input) => {
+      calls.push("addExercise");
+      return { id: ++nextId, workoutId, exerciseId: input.exerciseId, order: input.order, restSecondsBetweenSets: input.restSecondsBetweenSets, notes: input.notes ?? "" };
+    }),
+    updateExercise: jest.fn(async () => {
+      calls.push("updateExercise");
+      return {};
+    }),
+    deleteExercise: jest.fn(async () => {
+      calls.push("deleteExercise");
+    }),
+    addSet: jest.fn(async (workoutExerciseId, input) => {
+      calls.push("addSet");
+      return { id: ++nextId, workoutExerciseId, setNumber: input.setNumber, strategy: input.strategy };
+    }),
+    updateSet: jest.fn(async () => {
+      calls.push("updateSet");
+      return {};
+    }),
+    deleteSet: jest.fn(async () => {
+      calls.push("deleteSet");
+    }),
+  };
+}
+
+/** Lets queued microtasks (resolved transport promises) settle. */
+async function settle() {
+  for (let i = 0; i < 20; i += 1) await Promise.resolve();
+}
+
+beforeEach(() => {
+  jest.useFakeTimers();
+});
+afterEach(() => {
+  jest.useRealTimers();
+});
+
+describe("new workout", () => {
+  it("never creates a workout that was not changed (R5)", async () => {
+    const transport = makeTransport();
+    const engine = createAutosaveEngine({ planId: 7, workoutId: null, initial: emptyWorkout("MONDAY"), transport, delayMs: 100 });
+    expect(await engine.finish()).toBe(true);
+    expect(transport.create).not.toHaveBeenCalled();
+    expect(engine.getState().status).toBe("idle");
+  });
+
+  it("debounces a burst of edits into one nested create, auto-naming it 'Novo treino' (R3, R4, E2, E15)", async () => {
+    const transport = makeTransport();
+    const onSaved = jest.fn();
+    const engine = createAutosaveEngine({ planId: 7, workoutId: null, initial: emptyWorkout("MONDAY"), transport, delayMs: 100, onSaved });
+
+    engine.dispatch({ type: "addExercise", exercise: supino });
+    const exerciseKey = engine.getState().draft.exercises[0].key;
+    engine.dispatch({ type: "addSet", exerciseKey });
+    const setKey = engine.getState().draft.exercises[0].sets[0].key;
+    engine.dispatch({ type: "updateSet", exerciseKey, setKey, patch: { reps: 12 } });
+    engine.dispatch({ type: "updateSet", exerciseKey, setKey, patch: { weight: "60" } });
+    expect(engine.getState().status).toBe("saving");
+    expect(transport.create).not.toHaveBeenCalled();
+
+    await jest.advanceTimersByTimeAsync(100);
+    await settle();
+
+    expect(transport.create).toHaveBeenCalledTimes(1);
+    expect(transport.create).toHaveBeenCalledWith(7, {
+      name: "Novo treino",
+      dayOfWeek: "MONDAY",
+      exercises: [{ exerciseId: 1, restSecondsBetweenSets: 60, notes: "", sets: [{ reps: 12, weight: "60", strategy: "STRAIGHT" }] }],
+    });
+    const state = engine.getState();
+    expect(state.status).toBe("saved");
+    expect(state.workoutId).toBe(42);
+    expect(state.draft.name).toBe("Novo treino");
+    expect(state.draft.exercises[0].id).not.toBeNull();
+    expect(state.draft.exercises[0].sets[0].id).not.toBeNull();
+    expect(onSaved).toHaveBeenCalledWith({ workoutId: 42, created: true });
+  });
+
+  it("uses the typed name and creates an empty workout (E1)", async () => {
+    const transport = makeTransport();
+    const engine = createAutosaveEngine({ planId: 7, workoutId: null, initial: emptyWorkout("TUESDAY"), transport, delayMs: 100 });
+    engine.dispatch({ type: "setName", name: "Treino B" });
+    expect(await engine.finish()).toBe(true);
+    expect(transport.create).toHaveBeenCalledWith(7, { name: "Treino B", dayOfWeek: "TUESDAY", exercises: [] });
+  });
+
+  it("folds edits made during an in-flight save into exactly one follow-up save (R8)", async () => {
+    const transport = makeTransport();
+    let resolveCreate: (value: FullWorkout) => void = () => {};
+    transport.create = jest.fn(
+      () => new Promise<FullWorkout>((resolve) => { resolveCreate = resolve; }),
+    );
+    const engine = createAutosaveEngine({ planId: 7, workoutId: null, initial: emptyWorkout("MONDAY"), transport, delayMs: 100 });
+
+    engine.dispatch({ type: "addExercise", exercise: supino });
+    await jest.advanceTimersByTimeAsync(100);
+    expect(transport.create).toHaveBeenCalledTimes(1);
+
+    // Two more edits while the create is in flight.
+    engine.dispatch({ type: "addExercise", exercise: puxada });
+    await jest.advanceTimersByTimeAsync(100);
+    engine.dispatch({ type: "setName", name: "Treino A" });
+    await jest.advanceTimersByTimeAsync(100);
+    expect(transport.replace).not.toHaveBeenCalled();
+
+    resolveCreate(fullFromEntries(42, "Novo treino", [{ exerciseId: 1, restSecondsBetweenSets: 60 }]));
+    await settle();
+    await jest.advanceTimersByTimeAsync(0);
+    await settle();
+
+    expect(transport.patchWorkout).toHaveBeenCalledTimes(1);
+    expect(transport.replace).toHaveBeenCalledTimes(1);
+    expect(transport.replace).toHaveBeenCalledWith(42, [
+      { exerciseId: 1, restSecondsBetweenSets: 60, notes: "", sets: [] },
+      { exerciseId: 2, restSecondsBetweenSets: 60, notes: "", sets: [] },
+    ]);
+    expect(engine.getState().status).toBe("saved");
+    expect(engine.getState().draft.exercises.map((we) => we.id)).not.toContain(null);
+  });
+
+  it("offers 'usar como base' only until the first exercise, for good (R24, E7, E20)", async () => {
+    const transport = makeTransport();
+    const engine = createAutosaveEngine({ planId: 7, workoutId: null, initial: emptyWorkout("MONDAY"), transport, delayMs: 100 });
+    expect(engine.getState().offersClone).toBe(true);
+    // Naming (which creates the workout) keeps the offer.
+    engine.dispatch({ type: "setName", name: "Treino A" });
+    await jest.advanceTimersByTimeAsync(100);
+    await settle();
+    expect(engine.getState().workoutId).toBe(42);
+    expect(engine.getState().offersClone).toBe(true);
+    // The first exercise removes it, and removing that exercise again does not bring it back.
+    engine.dispatch({ type: "addExercise", exercise: supino });
+    expect(engine.getState().offersClone).toBe(false);
+    engine.dispatch({ type: "removeExercise", exerciseKey: engine.getState().draft.exercises[0].key });
+    expect(engine.getState().draft.exercises).toHaveLength(0);
+    expect(engine.getState().offersClone).toBe(false);
+  });
+
+  it("never offers 'usar como base' on an existing workout, even an empty one (R24, E20)", async () => {
+    const transport = makeTransport();
+    const engine = createAutosaveEngine({ planId: 7, workoutId: 42, initial: fromFullWorkout(fullFromEntries(42, "Treino A", [])), transport, delayMs: 100 });
+    expect(engine.getState().offersClone).toBe(false);
+  });
+
+  it("reverts the rejected batch on a 400 with fixed pt-BR copy, not upstream's text (E9)", async () => {
+    const transport = makeTransport();
+    transport.create = jest.fn(async () => { throw apiError("VALIDATION_ERROR", 400, "exercise_id: one or more referenced exercises do not exist"); });
+    const engine = createAutosaveEngine({ planId: 7, workoutId: null, initial: emptyWorkout("MONDAY"), transport, delayMs: 100 });
+    engine.dispatch({ type: "addExercise", exercise: supino });
+    await jest.advanceTimersByTimeAsync(100);
+    await settle();
+    const state = engine.getState();
+    expect(state.draft.exercises).toHaveLength(0);
+    expect(state.refusal?.kind).toBe("generic");
+    expect(state.refusal?.body).toBe(
+      "A plataforma não aceitou esta alteração, então ela foi desfeita; o restante do treino continua sendo salvo automaticamente.",
+    );
+    expect(state.status).toBe("idle");
+  });
+
+  it("re-arms the save for the name/weekday kept after a rejected create (E9)", async () => {
+    const transport = makeTransport();
+    let rejectTree = true;
+    transport.create = jest.fn(async (planId, input) => {
+      if (rejectTree && (input.exercises?.length ?? 0) > 0) throw apiError("VALIDATION_ERROR", 400, "exercise_id: one or more referenced exercises do not exist");
+      return fullFromEntries(42, input.name, input.exercises ?? []);
+    });
+    const engine = createAutosaveEngine({ planId: 7, workoutId: null, initial: emptyWorkout("MONDAY"), transport, delayMs: 100 });
+    engine.dispatch({ type: "setName", name: "Treino A" });
+    engine.dispatch({ type: "addExercise", exercise: supino });
+    await jest.advanceTimersByTimeAsync(100);
+    await settle();
+
+    // The tree is undone, the name kept, and a save is pending again.
+    expect(transport.create).toHaveBeenCalledTimes(1);
+    expect(engine.getState().draft).toMatchObject({ name: "Treino A", exercises: [] });
+    expect(engine.getState().refusal?.kind).toBe("generic");
+    expect(engine.getState().status).toBe("saving");
+
+    rejectTree = false;
+    await jest.advanceTimersByTimeAsync(100);
+    await settle();
+    expect(transport.create).toHaveBeenCalledTimes(2);
+    expect(transport.create).toHaveBeenLastCalledWith(7, { name: "Treino A", dayOfWeek: "MONDAY", exercises: [] });
+    expect(engine.getState().status).toBe("saved");
+    expect(engine.getState().workoutId).toBe(42);
+  });
+
+  it("reports a rejected header-only create as an error instead of retrying it forever", async () => {
+    const transport = makeTransport();
+    transport.create = jest.fn(async () => { throw apiError("VALIDATION_ERROR", 400, "day_of_week: invalid"); });
+    const engine = createAutosaveEngine({ planId: 7, workoutId: null, initial: emptyWorkout("MONDAY"), transport, delayMs: 100 });
+    engine.dispatch({ type: "setName", name: "Treino A" });
+    await jest.advanceTimersByTimeAsync(100);
+    await settle();
+    expect(engine.getState().status).toBe("error");
+    expect(engine.getState().errorMessage).toBe(errorMessages.VALIDATION_ERROR);
+    expect(engine.getState().refusal).toBeNull();
+    await jest.advanceTimersByTimeAsync(1000);
+    await settle();
+    expect(transport.create).toHaveBeenCalledTimes(1);
+  });
+});
+
+/**
+ * A stateful plan behind the transport, so a test can count the workouts that
+ * really exist. `create` writes first and then hands its result to
+ * `afterWrite`, which can throw or mangle it to simulate a failure after the
+ * server committed.
+ */
+function makePlanServer() {
+  const workouts = new Map<number, FullWorkout>();
+  let nextWorkoutId = 500;
+  const hooks = { afterWrite: (full: FullWorkout): FullWorkout => full };
+  const transport = makeTransport();
+  transport.create = jest.fn(async (planId, input) => {
+    transport.calls.push("create");
+    const full = { ...fullFromEntries(++nextWorkoutId, input.name, input.exercises ?? []), dayOfWeek: input.dayOfWeek };
+    workouts.set(full.id, full);
+    return hooks.afterWrite(full);
+  });
+  transport.getFull = jest.fn(async (workoutId) => workouts.get(workoutId)!);
+  transport.replace = jest.fn(async (workoutId, exercises) => {
+    transport.calls.push("replace");
+    const current = workouts.get(workoutId)!;
+    const full = { ...fullFromEntries(workoutId, current.name, exercises), dayOfWeek: current.dayOfWeek };
+    workouts.set(workoutId, full);
+    return full;
+  });
+  transport.patchWorkout = jest.fn(async (workoutId, input) => {
+    transport.calls.push("patch");
+    workouts.set(workoutId, { ...workouts.get(workoutId)!, ...input });
+    return {};
+  });
+  return { transport, workouts, hooks };
+}
+
+/** The XREPO-001 failure: a 2xx body the editor cannot map (no `exercises`), thrown after the insert. */
+const unreadableBody = (full: FullWorkout) => ({ ...full, exercises: undefined }) as unknown as FullWorkout;
+
+describe("create retried after its response failed (XREPO-001)", () => {
+  function newEngine(transport: AutosaveTransport, onSaved = jest.fn()) {
+    return createAutosaveEngine({ planId: 7, workoutId: null, initial: emptyWorkout("MONDAY"), transport, delayMs: 100, onSaved });
+  }
+
+  it("adopts the workout the first create returned instead of creating a second one", async () => {
+    const { transport, workouts, hooks } = makePlanServer();
+    hooks.afterWrite = unreadableBody;
+    const onSaved = jest.fn();
+    const engine = newEngine(transport, onSaved);
+    engine.dispatch({ type: "addExercise", exercise: supino });
+    engine.dispatch({ type: "addSet", exerciseKey: engine.getState().draft.exercises[0].key });
+    await jest.advanceTimersByTimeAsync(100);
+    await settle();
+    expect(engine.getState().status).toBe("error");
+    expect(workouts.size).toBe(1);
+
+    hooks.afterWrite = (full) => full;
+    await engine.retry();
+    // A second retry (or "Concluir") must not create either.
+    expect(await engine.finish()).toBe(true);
+
+    expect(transport.create).toHaveBeenCalledTimes(1);
+    expect(workouts.size).toBe(1);
+    const [only] = workouts.values();
+    const state = engine.getState();
+    expect(state.status).toBe("saved");
+    expect(state.workoutId).toBe(only.id);
+    // Same tree as the draft: server ids adopted, nothing re-sent.
+    expect(transport.replace).not.toHaveBeenCalled();
+    expect(state.draft.exercises[0].id).toBe(only.exercises[0].id);
+    expect(state.draft.exercises[0].sets[0].id).toBe(only.exercises[0].sets[0].id);
+    expect(onSaved).toHaveBeenCalledWith({ workoutId: only.id, created: true });
+  });
+
+  it("saves edits made while in error onto that same workout", async () => {
+    const { transport, workouts, hooks } = makePlanServer();
+    hooks.afterWrite = unreadableBody;
+    const engine = newEngine(transport);
+    engine.dispatch({ type: "addExercise", exercise: supino });
+    await jest.advanceTimersByTimeAsync(100);
+    await settle();
+    expect(engine.getState().status).toBe("error");
+
+    hooks.afterWrite = (full) => full;
+    engine.dispatch({ type: "setName", name: "Treino A" });
+    engine.dispatch({ type: "addExercise", exercise: puxada });
+    await engine.retry();
+
+    expect(transport.create).toHaveBeenCalledTimes(1);
+    expect(workouts.size).toBe(1);
+    const [only] = workouts.values();
+    expect(only.name).toBe("Treino A");
+    expect(only.exercises.map((we) => we.exerciseId)).toEqual([1, 2]);
+    expect(engine.getState().status).toBe("saved");
+    expect(engine.getState().draft.exercises.map((we) => we.id)).not.toContain(null);
+  });
+
+  it("stays in error, without creating, while the adopted workout cannot be read", async () => {
+    const { transport, workouts, hooks } = makePlanServer();
+    hooks.afterWrite = unreadableBody;
+    const engine = newEngine(transport);
+    engine.dispatch({ type: "setName", name: "Treino A" });
+    await jest.advanceTimersByTimeAsync(100);
+    await settle();
+
+    const getFull = transport.getFull;
+    transport.getFull = jest.fn(async () => { throw new TypeError("Failed to fetch"); });
+    await engine.retry();
+    expect(engine.getState().status).toBe("error");
+
+    transport.getFull = getFull;
+    await engine.retry();
+    expect(engine.getState().status).toBe("saved");
+    expect(transport.create).toHaveBeenCalledTimes(1);
+    expect(workouts.size).toBe(1);
+  });
+
+  it("re-sends the create when no response arrived at all (accepted risk, spec §0)", async () => {
+    const transport = makeTransport();
+    let fail = true;
+    transport.create = jest.fn(async (planId, input) => {
+      if (fail) throw new TypeError("Failed to fetch");
+      return fullFromEntries(42, input.name, input.exercises ?? []);
+    });
+    const engine = createAutosaveEngine({ planId: 7, workoutId: null, initial: emptyWorkout("MONDAY"), transport, delayMs: 100 });
+    engine.dispatch({ type: "setName", name: "Treino A" });
+    await jest.advanceTimersByTimeAsync(100);
+    await settle();
+    expect(engine.getState().status).toBe("error");
+
+    fail = false;
+    await engine.retry();
+    expect(transport.create).toHaveBeenCalledTimes(2);
+    expect(transport.getFull).not.toHaveBeenCalled();
+    expect(engine.getState().workoutId).toBe(42);
+  });
+});
+
+describe("existing workout", () => {
+  const existing = fullFromEntries(42, "Treino A", [
+    { exerciseId: 1, restSecondsBetweenSets: 90, sets: [{ reps: 12 }, { reps: 8 }] },
+    { exerciseId: 2, restSecondsBetweenSets: 60, sets: [{ reps: 10 }] },
+  ]);
+
+  function setup(overrides: Partial<AutosaveTransport> = {}) {
+    const transport = Object.assign(makeTransport(), overrides);
+    const engine = createAutosaveEngine({ planId: 7, workoutId: 42, initial: fromFullWorkout(existing), transport, delayMs: 100 });
+    return { transport, engine };
+  }
+
+  it("patches name/weekday and replaces the tree in one flush (R7)", async () => {
+    const { transport, engine } = setup();
+    engine.dispatch({ type: "setName", name: "Treino A — Superior" });
+    engine.dispatch({ type: "setDayOfWeek", dayOfWeek: "FRIDAY" });
+    const [first] = engine.getState().draft.exercises;
+    engine.dispatch({ type: "updateExercise", exerciseKey: first.key, patch: { notes: "Escápulas retraídas" } });
+    await jest.advanceTimersByTimeAsync(100);
+    await settle();
+    expect(transport.calls).toEqual(["patch", "replace"]);
+    expect(transport.patchWorkout).toHaveBeenCalledWith(42, { name: "Treino A — Superior", dayOfWeek: "FRIDAY" });
+    expect(engine.getState().status).toBe("saved");
+  });
+
+  it("reorders through the replace payload (R15, R17, E10)", async () => {
+    const { transport, engine } = setup();
+    const [, second] = engine.getState().draft.exercises;
+    engine.dispatch({ type: "moveExercise", exerciseKey: second.key, toIndex: 0 });
+    await jest.advanceTimersByTimeAsync(100);
+    await settle();
+    expect(transport.replace).toHaveBeenCalledTimes(1);
+    const sent = (transport.replace as ReturnType<typeof jest.fn>).mock.calls[0][1];
+    expect(sent.map((e: { exerciseId: number }) => e.exerciseId)).toEqual([2, 1]);
+  });
+
+  it("stays 'saved' when the server echoes normalised values (decimal 60.5 → 60.50)", async () => {
+    const { transport, engine } = setup({
+      replace: jest.fn(async (workoutId, exercises) => {
+        const full = fullFromEntries(workoutId, "Treino A", exercises);
+        full.exercises[0].sets[0].weight = "60.50";
+        return full;
+      }),
+    });
+    const [first] = engine.getState().draft.exercises;
+    engine.dispatch({ type: "updateSet", exerciseKey: first.key, setKey: first.sets[0].key, patch: { weight: "60.5" } });
+    await jest.advanceTimersByTimeAsync(100);
+    await settle();
+    expect(transport.replace).toHaveBeenCalledTimes(1);
+    expect(engine.getState().status).toBe("saved");
+    expect(engine.getState().draft.exercises[0].sets[0].weight).toBe("60.5");
+    // Nothing left to send.
+    expect(await engine.finish()).toBe(true);
+    expect(transport.replace).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not send a blank name (BFF requires min 1)", async () => {
+    const { transport, engine } = setup();
+    engine.dispatch({ type: "setName", name: "" });
+    expect(await engine.finish()).toBe(true);
+    expect(transport.patchWorkout).not.toHaveBeenCalled();
+  });
+
+  it("switches to per-item mode on 409 and saves the non-removal change (E14)", async () => {
+    const { transport, engine } = setup({
+      replace: jest.fn(async () => { throw apiError("PRECONDITION_FAILED", 409, "Cannot replace exercises: exercise 'Supino Reto' (id 1) set 1 has recorded workout data"); }),
+    });
+    const [, second] = engine.getState().draft.exercises;
+    engine.dispatch({ type: "updateExercise", exerciseKey: second.key, patch: { restSecondsBetweenSets: 75 } });
+    engine.dispatch({ type: "addSet", exerciseKey: second.key });
+    await jest.advanceTimersByTimeAsync(100);
+    await settle();
+
+    expect(transport.replace).toHaveBeenCalledTimes(1);
+    expect(transport.calls).toEqual(["updateExercise", "addSet"]);
+    expect(transport.updateExercise).toHaveBeenCalledWith(second.id, { order: 2, restSecondsBetweenSets: 75, notes: "" });
+    expect(transport.addSet).toHaveBeenCalledWith(second.id, expect.objectContaining({ setNumber: 2, strategy: "STRAIGHT" }));
+    const state = engine.getState();
+    expect(state.mode).toBe("per-item");
+    expect(state.refusal).toBeNull();
+    expect(state.status).toBe("saved");
+    expect(state.draft.exercises[1].sets[1].id).not.toBeNull();
+
+    // Later edits go straight to the per-item endpoints.
+    engine.dispatch({ type: "setName", name: "Treino A2" });
+    engine.dispatch({ type: "addExercise", exercise: supino });
+    await jest.advanceTimersByTimeAsync(100);
+    await settle();
+    expect(transport.replace).toHaveBeenCalledTimes(1);
+    expect(transport.addExercise).toHaveBeenCalledWith(42, { exerciseId: 1, order: 3, restSecondsBetweenSets: 60, notes: "" });
+  });
+
+  it("restores a removal a client's recorded data protects, names it, and keeps saving the rest (R27, E13)", async () => {
+    const { transport, engine } = setup({
+      replace: jest.fn(async () => { throw apiError("PRECONDITION_FAILED", 409); }),
+      deleteSet: jest.fn(async () => { throw apiError("UPSTREAM_ERROR", 502); }),
+    });
+    const [first, second] = engine.getState().draft.exercises;
+    const protectedSet = first.sets[1];
+    engine.dispatch({ type: "removeSet", exerciseKey: first.key, setKey: protectedSet.key });
+    engine.dispatch({ type: "updateExercise", exerciseKey: second.key, patch: { notes: "Pegada aberta" } });
+    await jest.advanceTimersByTimeAsync(100);
+    await settle();
+
+    const state = engine.getState();
+    expect(transport.deleteSet).toHaveBeenCalledWith(protectedSet.id);
+    expect(transport.updateExercise).toHaveBeenCalledWith(second.id, expect.objectContaining({ notes: "Pegada aberta" }));
+    expect(state.draft.exercises[0].sets.map((s) => s.key)).toEqual(first.sets.map((s) => s.key));
+    expect(state.refusal).toMatchObject({
+      kind: "removal",
+      title: "Remoção não aplicada",
+      setKeys: [protectedSet.key],
+      exerciseKeys: [first.key],
+    });
+    expect(state.refusal?.body).toBe(
+      "Um aluno já registrou desempenho em Supino Reto · Série 2, então essa série não pode mais ser removida. A remoção foi desfeita e a série voltou para a tela. O restante do treino continua sendo salvo automaticamente.",
+    );
+    expect(state.status).toBe("saved");
+
+    engine.dismissRefusal();
+    expect(engine.getState().refusal).toBeNull();
+    // The restored set is in sync with the server again: nothing left to send.
+    expect(await engine.finish()).toBe(true);
+    expect(transport.deleteSet).toHaveBeenCalledTimes(1);
+  });
+
+  it("names a refused exercise removal (R27)", async () => {
+    const { transport, engine } = setup({
+      replace: jest.fn(async () => { throw apiError("PRECONDITION_FAILED", 409); }),
+      deleteExercise: jest.fn(async () => { throw apiError("UPSTREAM_ERROR", 502); }),
+    });
+    const [first] = engine.getState().draft.exercises;
+    engine.dispatch({ type: "removeExercise", exerciseKey: first.key });
+    await jest.advanceTimersByTimeAsync(100);
+    await settle();
+    const state = engine.getState();
+    expect(transport.deleteExercise).toHaveBeenCalledWith(first.id);
+    expect(state.draft.exercises[0].key).toBe(first.key);
+    expect(state.refusal?.body).toContain("em Supino Reto, então esse exercício não pode mais ser removido");
+    // The other exercise kept its position: no spurious order patch.
+    expect(transport.updateExercise).not.toHaveBeenCalled();
+  });
+
+  it("counts a per-item DELETE answered 403 as done: the item is already gone (spec §3, vertice-api#60)", async () => {
+    const { transport, engine } = setup({
+      replace: jest.fn(async () => { throw apiError("PRECONDITION_FAILED", 409); }),
+      deleteSet: jest.fn(async () => { throw apiError("FORBIDDEN", 403); }),
+      deleteExercise: jest.fn(async () => { throw apiError("FORBIDDEN", 403); }),
+    });
+    const [first, second] = engine.getState().draft.exercises;
+    const goneSet = first.sets[1];
+    engine.dispatch({ type: "removeSet", exerciseKey: first.key, setKey: goneSet.key });
+    engine.dispatch({ type: "removeExercise", exerciseKey: second.key });
+    await jest.advanceTimersByTimeAsync(100);
+    await settle();
+
+    const state = engine.getState();
+    expect(transport.deleteSet).toHaveBeenCalledWith(goneSet.id);
+    expect(transport.deleteExercise).toHaveBeenCalledWith(second.id);
+    expect(state.refusal).toBeNull();
+    expect(state.status).toBe("saved");
+    expect(state.draft.exercises.map((we) => we.key)).toEqual([first.key]);
+    expect(state.draft.exercises[0].sets.map((s) => s.key)).toEqual([first.sets[0].key]);
+    // Nothing restored, so nothing left to send: the deletes are not retried.
+    expect(await engine.finish()).toBe(true);
+    expect(transport.deleteSet).toHaveBeenCalledTimes(1);
+    expect(transport.deleteExercise).toHaveBeenCalledTimes(1);
+  });
+
+  // Spec, "Which delete failures count as a refusal": every error class, for both kinds of
+  // per-item DELETE. The whole-list replace is refused first, so the change goes per item.
+  describe.each([
+    { kind: "set", method: "deleteSet" },
+    { kind: "exercise", method: "deleteExercise" },
+  ] as const)("a per-item $kind DELETE", ({ kind, method }) => {
+    function removeOne(engine: ReturnType<typeof setup>["engine"]) {
+      const [first] = engine.getState().draft.exercises;
+      if (kind === "set") {
+        const set = first.sets[1];
+        engine.dispatch({ type: "removeSet", exerciseKey: first.key, setKey: set.key });
+        return { id: set.id, present: () => engine.getState().draft.exercises[0].sets.some((s) => s.key === set.key) };
+      }
+      engine.dispatch({ type: "removeExercise", exerciseKey: first.key });
+      return { id: first.id, present: () => engine.getState().draft.exercises.some((we) => we.key === first.key) };
+    }
+
+    function failingOnce(error: unknown) {
+      let fail = true;
+      return jest.fn(async () => {
+        if (fail) {
+          fail = false;
+          throw error;
+        }
+      });
+    }
+
+    it.each([
+      ["404 NOT_FOUND", apiError("NOT_FOUND", 404)],
+      ["403 FORBIDDEN", apiError("FORBIDDEN", 403)],
+    ])("answered %s counts as done: the item is already gone", async (_label, error) => {
+      const remove = failingOnce(error);
+      const { engine } = setup({
+        replace: jest.fn(async () => { throw apiError("PRECONDITION_FAILED", 409); }),
+        [method]: remove,
+      });
+      const item = removeOne(engine);
+      await jest.advanceTimersByTimeAsync(100);
+      await settle();
+
+      expect(remove).toHaveBeenCalledWith(item.id);
+      expect(item.present()).toBe(false);
+      expect(engine.getState().refusal).toBeNull();
+      expect(engine.getState().status).toBe("saved");
+      expect(await engine.finish()).toBe(true);
+      expect(remove).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      ["409 PRECONDITION_FAILED", apiError("PRECONDITION_FAILED", 409)],
+      ["502 UPSTREAM_ERROR", apiError("UPSTREAM_ERROR", 502)],
+    ])("answered %s is a refusal: the item comes back with the banner", async (_label, error) => {
+      const remove = failingOnce(error);
+      const { engine } = setup({
+        replace: jest.fn(async () => { throw apiError("PRECONDITION_FAILED", 409); }),
+        [method]: remove,
+      });
+      const item = removeOne(engine);
+      await jest.advanceTimersByTimeAsync(100);
+      await settle();
+
+      expect(remove).toHaveBeenCalledWith(item.id);
+      expect(item.present()).toBe(true);
+      expect(engine.getState().refusal).toMatchObject({ kind: "removal", title: "Remoção não aplicada" });
+      expect(engine.getState().status).toBe("saved");
+      // The restored item is in sync again: the DELETE is not re-sent.
+      expect(await engine.finish()).toBe(true);
+      expect(remove).toHaveBeenCalledTimes(1);
+    });
+
+    it.each([
+      ["503 UPSTREAM_UNAVAILABLE", apiError("UPSTREAM_UNAVAILABLE", 503), errorMessages.UPSTREAM_UNAVAILABLE],
+      ["400 VALIDATION_ERROR", apiError("VALIDATION_ERROR", 400), errorMessages.VALIDATION_ERROR],
+      ["an unknown code", apiError("SOMETHING_NEW", 500), "Não foi possível salvar"],
+      ["a network TypeError", new TypeError("Failed to fetch"), "Não foi possível salvar"],
+    ])("failing with %s is a failed save: no refusal, and the retry re-sends it", async (_label, error, message) => {
+      const remove = failingOnce(error);
+      const { engine } = setup({
+        replace: jest.fn(async () => { throw apiError("PRECONDITION_FAILED", 409); }),
+        [method]: remove,
+      });
+      const item = removeOne(engine);
+      await jest.advanceTimersByTimeAsync(100);
+      await settle();
+
+      expect(engine.getState().status).toBe("error");
+      expect(engine.getState().errorMessage).toBe(message);
+      expect(engine.getState().refusal).toBeNull();
+      // The removal is still the trainer's intent.
+      expect(item.present()).toBe(false);
+
+      await engine.retry();
+      expect(remove).toHaveBeenCalledTimes(2);
+      expect(remove).toHaveBeenLastCalledWith(item.id);
+      expect(engine.getState().status).toBe("saved");
+      expect(item.present()).toBe(false);
+    });
+  });
+
+  it("still surfaces a 403 on a per-item non-DELETE op as an error", async () => {
+    const { transport, engine } = setup({
+      replace: jest.fn(async () => { throw apiError("PRECONDITION_FAILED", 409); }),
+      updateExercise: jest.fn(async () => { throw apiError("FORBIDDEN", 403, "Acesso negado"); }),
+    });
+    const [, second] = engine.getState().draft.exercises;
+    engine.dispatch({ type: "updateExercise", exerciseKey: second.key, patch: { notes: "Pegada aberta" } });
+    await jest.advanceTimersByTimeAsync(100);
+    await settle();
+
+    const state = engine.getState();
+    expect(transport.updateExercise).toHaveBeenCalledTimes(1);
+    expect(state.status).toBe("error");
+    expect(state.errorMessage).toBe(errorMessages.FORBIDDEN);
+    expect(state.refusal).toBeNull();
+    expect(state.draft.exercises[1].notes).toBe("Pegada aberta");
+  });
+
+  it("shows the error state on a network failure and retries with the current draft (R10, E16)", async () => {
+    let fail = true;
+    const { transport, engine } = setup({
+      replace: jest.fn(async (workoutId, exercises) => {
+        if (fail) throw new TypeError("Failed to fetch");
+        return fullFromEntries(workoutId, "Treino A", exercises);
+      }),
+    });
+    const [first] = engine.getState().draft.exercises;
+    engine.dispatch({ type: "addSet", exerciseKey: first.key });
+    await jest.advanceTimersByTimeAsync(100);
+    await settle();
+    expect(engine.getState().status).toBe("error");
+    expect(engine.getState().errorMessage).toBe("Não foi possível salvar");
+    expect(engine.getState().draft.exercises[0].sets).toHaveLength(3);
+
+    // A further edit while in error just waits for the retry.
+    engine.dispatch({ type: "updateExercise", exerciseKey: first.key, patch: { notes: "x" } });
+    fail = false;
+    await engine.retry();
+    expect(engine.getState().status).toBe("saved");
+    const sent = (transport.replace as ReturnType<typeof jest.fn>).mock.calls.at(-1)![1];
+    expect(sent[0].notes).toBe("x");
+    expect(sent[0].sets).toHaveLength(3);
+  });
+
+  it("dispose() (the workout was deleted) drops the armed debounce and ignores later edits", async () => {
+    const { transport, engine } = setup();
+    engine.dispatch({ type: "setName", name: "Treino A — v2" });
+    engine.dispose();
+    engine.dispatch({ type: "setName", name: "Treino A — v3" });
+    await jest.advanceTimersByTimeAsync(1000);
+    await engine.retry();
+    expect(await engine.finish()).toBe(true);
+    expect(transport.calls).toEqual([]);
+    expect(engine.getState().draft.name).toBe("Treino A — v2");
+  });
+
+  it("finish() completes the pending save first and reports failure (R11, E17)", async () => {
+    const { transport, engine } = setup({
+      replace: jest.fn(async () => { throw new TypeError("Failed to fetch"); }),
+    });
+    const [first] = engine.getState().draft.exercises;
+    engine.dispatch({ type: "removeExercise", exerciseKey: first.key });
+    expect(await engine.finish()).toBe(false);
+    expect(transport.replace).toHaveBeenCalledTimes(1);
+    expect(engine.getState().status).toBe("error");
+  });
+
+  it("finish() also completes an edit made while its own save was in flight (R11, E17)", async () => {
+    let resolveReplace: (value: FullWorkout) => void = () => {};
+    let inFlight = true;
+    const { transport, engine } = setup({
+      replace: jest.fn(async (workoutId, exercises) => {
+        if (inFlight) {
+          inFlight = false;
+          return new Promise<FullWorkout>((resolve) => { resolveReplace = resolve; });
+        }
+        return fullFromEntries(workoutId, "Treino A", exercises);
+      }),
+    });
+    const [first] = engine.getState().draft.exercises;
+    engine.dispatch({ type: "addSet", exerciseKey: first.key });
+    let finished: boolean | null = null;
+    const finishing = engine.finish().then((ok) => { finished = ok; });
+    await settle();
+    expect(transport.replace).toHaveBeenCalledTimes(1);
+
+    // Typed while the flush was on the wire: this must land before leaving
+    // (sent at once — finish() does not wait out the debounce).
+    engine.dispatch({ type: "updateExercise", exerciseKey: first.key, patch: { notes: "x" } });
+    resolveReplace(fullFromEntries(42, "Treino A", (transport.replace as ReturnType<typeof jest.fn>).mock.calls[0][1]));
+    await settle();
+    await finishing;
+    expect(finished).toBe(true);
+    expect(transport.replace).toHaveBeenCalledTimes(2);
+    const sent = (transport.replace as ReturnType<typeof jest.fn>).mock.calls[1][1];
+    expect(sent[0].notes).toBe("x");
+    expect(engine.getState().status).toBe("saved");
+  });
+
+  it("finish() with nothing pending resolves immediately", async () => {
+    const { transport, engine } = setup();
+    expect(await engine.finish()).toBe(true);
+    expect(transport.calls).toEqual([]);
+  });
+});

@@ -21,6 +21,8 @@ export type ScreenProps = {
   header?: ReactNode;
   /** Pinned below the content, above the home indicator (bottom actions, M Save Bar). */
   footer?: ReactNode;
+  /** The footer's frame (M Save Bar draws a `surface` band with a top border). */
+  footerStyle?: StyleProp<ViewStyle>;
   /** `false` for screens that manage their own list (`FlatList`); they get no padding either. */
   scroll?: boolean;
   /** Pull to refresh. */
@@ -40,6 +42,7 @@ export function Screen({
   children,
   header,
   footer,
+  footerStyle,
   scroll = true,
   refreshing = false,
   onRefresh,
@@ -81,7 +84,7 @@ export function Screen({
         <View style={[styles.flex, contentStyle]}>{children}</View>
       )}
       {footer === undefined ? null : (
-        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, space[4]) }]}>{footer}</View>
+        <View style={[styles.footer, { paddingBottom: Math.max(insets.bottom, space[4]) }, footerStyle]}>{footer}</View>
       )}
     </KeyboardAvoidingView>
   );

@@ -1,0 +1,665 @@
+import { ApiError } from "@/lib/api/client";
+import { apiErrorMessage, limitMessage } from "@/lib/api/errorMessages";
+import type {
+  ExerciseSet,
+  FullWorkout,
+  WorkoutExercise,
+  WorkoutExerciseEntry,
+} from "@/lib/api/types";
+import type { WorkoutCreateInput, WorkoutInput } from "@/lib/api/workouts";
+import type {
+  WorkoutExerciseCreateInput,
+  WorkoutExerciseUpdateInput,
+} from "@/lib/api/workoutExercises";
+import type { ExerciseSetInput } from "@/lib/api/exerciseSets";
+import {
+  DEFAULT_WORKOUT_NAME,
+  fromFullWorkout,
+  mergeIds,
+  sameExerciseFields,
+  sameSetFields,
+  sameTree,
+  toEntries,
+  toSetEntry,
+  adoptIds,
+  type EditorExercise,
+  type EditorSet,
+  type EditorWorkout,
+} from "./model";
+import { reduce, type EditorAction } from "./reducer";
+
+/** Everything the engine needs from the BFF, injectable so the engine is unit-testable without HTTP. */
+export interface AutosaveTransport {
+  create(planId: number, input: WorkoutCreateInput): Promise<FullWorkout>;
+  getFull(workoutId: number): Promise<FullWorkout>;
+  replace(workoutId: number, exercises: WorkoutExerciseEntry[]): Promise<FullWorkout>;
+  patchWorkout(workoutId: number, input: WorkoutInput): Promise<unknown>;
+  /**
+   * The per-item creates: only the new id is adopted. The BFF answers with the whole row, but
+   * its echoed field values are deliberately ignored (see `adoptIds` in `model.ts`), so the
+   * engine asks for no more than it reads.
+   */
+  addExercise(workoutId: number, input: WorkoutExerciseCreateInput): Promise<Pick<WorkoutExercise, "id">>;
+  updateExercise(id: number, input: WorkoutExerciseUpdateInput): Promise<unknown>;
+  deleteExercise(id: number): Promise<unknown>;
+  addSet(workoutExerciseId: number, input: ExerciseSetInput): Promise<Pick<ExerciseSet, "id">>;
+  updateSet(id: number, input: ExerciseSetInput): Promise<unknown>;
+  deleteSet(id: number): Promise<unknown>;
+}
+
+export type SaveStatus = "idle" | "saving" | "saved" | "error";
+export type SyncMode = "replace" | "per-item";
+
+/** A change the platform refused; shown in the banner and used to highlight what was undone. */
+export interface Refusal {
+  kind: "removal" | "generic";
+  title: string;
+  body: string;
+  exerciseKeys: string[];
+  setKeys: string[];
+}
+
+export interface AutosaveState {
+  workoutId: number | null;
+  /** The draft differs from what the server last confirmed (or, for a new workout, from the start). */
+  dirty: boolean;
+  /**
+   * True while "Usar treino existente como base" is offered (R24): a workout
+   * opened as new, until its first exercise. One-way — removing every
+   * exercise again does not bring it back (E20).
+   */
+  offersClone: boolean;
+  draft: EditorWorkout;
+  status: SaveStatus;
+  mode: SyncMode;
+  refusal: Refusal | null;
+  /** Message behind the footer's "Erro ao salvar" state, when one is known. */
+  errorMessage: string | null;
+}
+
+export interface AutosaveOptions {
+  planId: number;
+  workoutId: number | null;
+  initial: EditorWorkout;
+  transport: AutosaveTransport;
+  /**
+   * Debounce before an edit is sent. `null` turns autosave off (the mobile editor): edits only
+   * mark the draft dirty, and nothing is sent until `flush`/`finish` ("Salvar treino").
+   */
+  delayMs?: number | null;
+  onSaved?: (info: { workoutId: number; created: boolean }) => void;
+}
+
+export interface AutosaveEngine {
+  getState(): AutosaveState;
+  subscribe(listener: () => void): () => void;
+  dispatch(action: EditorAction): void;
+  /** Sends the draft now (cancels the debounce). Resolves when this save and any chained one finished. */
+  flush(): Promise<void>;
+  /** "Tentar novamente": same as flush. */
+  retry(): Promise<void>;
+  /** "Concluir": flushes whatever is pending; resolves `true` when nothing failed. */
+  finish(): Promise<boolean>;
+  dismissRefusal(): void;
+  /** Refuses a change with a footer error (e.g. an over-cap "usar como base" source, E8). */
+  fail(message: string): void;
+  /** "Descartar": puts the draft back to what the server last confirmed (the start, for a new workout). */
+  discard(): void;
+  /** Replaces the `onSaved` callback (React re-renders hand in a fresh closure). */
+  setOnSaved(callback: AutosaveOptions["onSaved"]): void;
+  /**
+   * The workout was deleted: drop the armed debounce and ignore every later edit, flush and retry,
+   * so nothing PATCHes (or re-creates under) a workout that is gone. A run already in flight
+   * finishes; one-way.
+   */
+  dispose(): void;
+}
+
+export const DEFAULT_DELAY_MS = 800;
+
+/**
+ * A per-item DELETE answered this way means the item is already gone (spec §3). 404 is the
+ * classic answer; 403 is what vertice-api answers a non-admin since vertice-api#60 for a
+ * plan-tree id that does not exist (so ids cannot be probed). The trainer held this id, so a 403
+ * here is "removed by another session / by a DELETE whose response was lost", not a refusal.
+ */
+function isGoneOnDelete(error: unknown) {
+  return error instanceof ApiError && (error.code === "NOT_FOUND" || error.code === "FORBIDDEN");
+}
+function isPreconditionFailed(error: unknown) {
+  return error instanceof ApiError && error.code === "PRECONDITION_FAILED";
+}
+/**
+ * A per-item DELETE the platform refused because a client recorded data under the item (spec,
+ * "Which delete failures count as a refusal"): 409 `PRECONDITION_FAILED` (vertice-api's
+ * `HasRecordedDataException` since P1-05) or 502 `UPSTREAM_ERROR` (the FK violation it answered
+ * before). Keyed on the code: anything else (503, 400, an unknown code) is a failed save, shown with
+ * that code's copy and retried, never "desempenho registrado".
+ */
+function isRemovalRefusal(error: unknown) {
+  return (
+    error instanceof ApiError &&
+    (error.code === "PRECONDITION_FAILED" || error.code === "UPSTREAM_ERROR")
+  );
+}
+function isValidationError(error: unknown) {
+  return error instanceof ApiError && error.code === "VALIDATION_ERROR";
+}
+// pt-BR copy per code: the BFF's message (and a network TypeError's) is English.
+function errorMessage(error: unknown) {
+  return apiErrorMessage(error, "Não foi possível salvar");
+}
+
+function headerDirty(draft: EditorWorkout, base: EditorWorkout) {
+  const name = draft.name.trim();
+  return (name !== "" && name !== base.name) || draft.dayOfWeek !== base.dayOfWeek;
+}
+
+function setInput(set: EditorSet, setNumber: number): ExerciseSetInput {
+  return { setNumber, ...toSetEntry(set), strategy: set.strategy };
+}
+
+interface RestoredExercise {
+  exercise: EditorExercise;
+  index: number;
+}
+interface RestoredSet {
+  exerciseKey: string;
+  exerciseName: string;
+  set: EditorSet;
+  index: number;
+}
+
+function insertAt<T>(list: T[], item: T, index: number): T[] {
+  const next = list.slice();
+  next.splice(Math.min(index, next.length), 0, item);
+  return next;
+}
+
+/** Puts refused removals back into `draft` (skipping any that are already there). */
+function reinsertRestored(
+  draft: EditorWorkout,
+  exercises: RestoredExercise[],
+  sets: RestoredSet[],
+): EditorWorkout {
+  let result = draft;
+  for (const { exercise, index } of exercises) {
+    if (result.exercises.some((we) => we.key === exercise.key)) continue;
+    result = { ...result, exercises: insertAt(result.exercises, exercise, index) };
+  }
+  for (const { exerciseKey, set, index } of sets) {
+    const i = result.exercises.findIndex((we) => we.key === exerciseKey);
+    if (i < 0 || result.exercises[i].sets.some((s) => s.key === set.key)) continue;
+    const list = result.exercises.slice();
+    list[i] = { ...list[i], sets: insertAt(list[i].sets, set, index) };
+    result = { ...result, exercises: list };
+  }
+  return result;
+}
+
+function removalRefusal(exercises: RestoredExercise[], sets: RestoredSet[], manual: boolean): Refusal {
+  const setNames = sets.map((r) => `${r.exerciseName} · Série ${r.index + 1}`);
+  const exerciseNames = exercises.map((r) => r.exercise.exercise.name);
+  const names = [...setNames, ...exerciseNames].join(", ");
+  const onlySets = exercises.length === 0;
+  const onlyExercises = sets.length === 0;
+  const single = exercises.length + sets.length === 1;
+  const subject = onlySets
+    ? single
+      ? "essa série não pode mais ser removida"
+      : "essas séries não podem mais ser removidas"
+    : onlyExercises
+      ? single
+        ? "esse exercício não pode mais ser removido"
+        : "esses exercícios não podem mais ser removidos"
+      : "esses itens não podem mais ser removidos";
+  const back = onlySets
+    ? single
+      ? "a série voltou para a tela"
+      : "as séries voltaram para a tela"
+    : onlyExercises
+      ? single
+        ? "o exercício voltou para a tela"
+        : "os exercícios voltaram para a tela"
+      : "os itens voltaram para a tela";
+  return {
+    kind: "removal",
+    title: "Remoção não aplicada",
+    body: `Um aluno já registrou desempenho em ${names}, então ${subject}. A remoção foi desfeita e ${back}. ${manual ? "O restante do treino foi salvo." : "O restante do treino continua sendo salvo automaticamente."}`,
+    exerciseKeys: [...exercises.map((r) => r.exercise.key), ...sets.map((r) => r.exerciseKey)],
+    setKeys: sets.map((r) => r.set.key),
+  };
+}
+
+export function createAutosaveEngine(options: AutosaveOptions): AutosaveEngine {
+  const { planId, transport } = options;
+  let onSaved = options.onSaved;
+  const delayMs = options.delayMs === undefined ? DEFAULT_DELAY_MS : options.delayMs;
+  const manual = delayMs === null;
+  const initial = options.initial;
+
+  let state: AutosaveState = {
+    workoutId: options.workoutId,
+    dirty: false,
+    offersClone: options.workoutId === null && initial.exercises.length === 0,
+    draft: initial,
+    status: "idle",
+    mode: "replace",
+    refusal: null,
+    errorMessage: null,
+  };
+  // Last server-confirmed state (null until a new workout is created).
+  let snapshot: EditorWorkout | null = options.workoutId === null ? null : initial;
+  let hasSaved = false;
+  // Id of a workout the create returned but whose response could not be
+  // processed (XREPO-001: a body the editor can't map threw after the insert,
+  // and every retry created another workout). A retry adopts it instead of
+  // creating again. Only an id the server returned counts — no guessing by
+  // name/weekday after a lost response (spec §0).
+  let createdButUnconfirmed: number | null = null;
+  let timer: ReturnType<typeof setTimeout> | null = null;
+  // One run at a time; a flush requested during a run waits behind it, and a
+  // second request while one is already waiting coalesces into it (R8).
+  let queue: Promise<void> = Promise.resolve();
+  let queuedFlush = false;
+  let running = false;
+  let disposed = false;
+  const listeners = new Set<() => void>();
+
+  function setState(patch: Partial<AutosaveState>) {
+    state = { ...state, ...patch };
+    state.dirty = isDirty(state.draft);
+    for (const listener of listeners) listener();
+  }
+
+  function baseline(): EditorWorkout {
+    return snapshot ?? initial;
+  }
+
+  function isDirty(draft: EditorWorkout): boolean {
+    const base = baseline();
+    return headerDirty(draft, base) || !sameTree(draft.exercises, base.exercises);
+  }
+
+  function restStatus(): SaveStatus {
+    return hasSaved ? "saved" : "idle";
+  }
+
+  function clearTimer() {
+    if (timer !== null) {
+      clearTimeout(timer);
+      timer = null;
+    }
+  }
+
+  function schedule() {
+    clearTimer();
+    if (delayMs === null) {
+      // Manual saving: an edit only changes `dirty` (setState). A failed save keeps its error
+      // until the next attempt; anything else rests.
+      if (!running && state.status !== "error") setState({ status: restStatus() });
+      return;
+    }
+    if (!isDirty(state.draft)) {
+      // Edited back to what the server has: nothing to send. A run in progress
+      // settles the status itself when it ends.
+      if (!running) setState({ status: restStatus() });
+      return;
+    }
+    if (state.status !== "saving") setState({ status: "saving" });
+    timer = setTimeout(() => {
+      timer = null;
+      void flush();
+    }, delayMs);
+  }
+
+  function flush(): Promise<void> {
+    clearTimer();
+    if (disposed) return queue;
+    if (queuedFlush) return queue;
+    queuedFlush = true;
+    queue = queue.then(async () => {
+      queuedFlush = false;
+      if (disposed) return;
+      await run();
+    });
+    return queue;
+  }
+
+  async function run() {
+    const sent = state.draft;
+    if (!isDirty(sent)) {
+      setState({ status: restStatus() });
+      return;
+    }
+    running = true;
+    setState({ status: "saving", errorMessage: null });
+    try {
+      if (state.workoutId === null) await runCreate(sent);
+      else await runUpdate(sent, state.workoutId);
+      // Manual saving: whatever is still dirty (edited during the save, or a rejected tree) waits
+      // for the next "Salvar" — rest now (`schedule()` would no-op while `running`).
+      if (!isDirty(state.draft) || manual) setState({ status: restStatus() });
+      else if (timer === null && !queuedFlush) {
+        // Still dirty with nothing scheduled: the engine itself changed the
+        // draft (a rejected tree reverted under a kept name/weekday, E9), so
+        // no dispatch armed a timer. Re-arm, or "Salvando…" would stick.
+        schedule();
+      } else setState({ status: "saving" });
+    } catch (error) {
+      setState({ status: "error", errorMessage: errorMessage(error) });
+    } finally {
+      running = false;
+    }
+  }
+
+  async function runCreate(sent: EditorWorkout) {
+    if (createdButUnconfirmed !== null) {
+      await adoptWorkout(sent, createdButUnconfirmed);
+      return;
+    }
+    let full: FullWorkout;
+    try {
+      full = await transport.create(planId, {
+        name: sent.name.trim() || DEFAULT_WORKOUT_NAME,
+        dayOfWeek: sent.dayOfWeek,
+        exercises: toEntries(sent.exercises),
+      });
+    } catch (error) {
+      // A rejected tree is undone and the header retried on its own (E9);
+      // a rejected header-only payload has nothing to undo — surface it as
+      // the error state instead of reverting and re-arming forever.
+      if (isValidationError(error) && sent.exercises.length > 0) {
+        revertTree(error);
+        return;
+      }
+      throw error;
+    }
+    // From here on the workout exists: never create it again, even if
+    // reading the response fails.
+    if (typeof full?.id === "number") createdButUnconfirmed = full.id;
+    const confirmed = adoptIds(sent, fromFullWorkout(full));
+    snapshot = { ...confirmed, name: full.name };
+    hasSaved = true;
+    const draft = mergeIds(state.draft, confirmed);
+    setState({
+      workoutId: full.id,
+      draft: { ...draft, name: draft.name.trim() === "" ? full.name : draft.name },
+    });
+    createdButUnconfirmed = null;
+    onSaved?.({ workoutId: full.id, created: true });
+  }
+
+  /** Takes over the workout an earlier create returned, then saves `sent` onto it as a regular update. */
+  async function adoptWorkout(sent: EditorWorkout, workoutId: number) {
+    const server = fromFullWorkout(await transport.getFull(workoutId));
+    // Same tree as the draft (the usual case): keep the draft's keys with the
+    // server ids, so nothing is re-sent. Otherwise the update replaces it.
+    snapshot = sameTree(sent.exercises, server.exercises)
+      ? { ...adoptIds(sent, server), name: server.name, dayOfWeek: server.dayOfWeek }
+      : server;
+    createdButUnconfirmed = null;
+    hasSaved = true;
+    const draft = mergeIds(state.draft, snapshot);
+    setState({
+      workoutId,
+      draft: { ...draft, name: draft.name.trim() === "" ? server.name : draft.name },
+    });
+    // Reported now, so the URL switches even if the update below fails.
+    onSaved?.({ workoutId, created: true });
+    await runUpdate(sent, workoutId);
+  }
+
+  async function runUpdate(sent: EditorWorkout, workoutId: number) {
+    const base = snapshot!;
+    if (headerDirty(sent, base)) {
+      const input: WorkoutInput = {
+        name: sent.name.trim() || base.name,
+        dayOfWeek: sent.dayOfWeek,
+      };
+      await transport.patchWorkout(workoutId, input);
+      snapshot = { ...snapshot!, ...input };
+      hasSaved = true;
+    }
+    if (!sameTree(sent.exercises, base.exercises)) {
+      if (state.mode === "replace") {
+        try {
+          const full = await transport.replace(workoutId, toEntries(sent.exercises));
+          const confirmed = adoptIds(sent, fromFullWorkout(full));
+          snapshot = { ...snapshot!, exercises: confirmed.exercises };
+          hasSaved = true;
+          setState({ draft: mergeIds(state.draft, confirmed) });
+        } catch (error) {
+          if (isPreconditionFailed(error)) {
+            // A client recorded data under this workout: every whole-list
+            // replace is refused from now on, so sync one item at a time.
+            setState({ mode: "per-item" });
+            await runPerItem(sent, workoutId);
+          } else if (isValidationError(error)) {
+            revertTree(error);
+            return;
+          } else {
+            throw error;
+          }
+        }
+      } else {
+        await runPerItem(sent, workoutId);
+      }
+    }
+    onSaved?.({ workoutId, created: false });
+  }
+
+  /**
+   * E9: the whole rejected batch is undone (upstream changed nothing) and a generic message shown.
+   * Fixed pt-BR copy: upstream's validation text is English and does not name the entry anyway.
+   */
+  function revertTree(error?: unknown) {
+    const base = baseline();
+    const draft = { ...state.draft, exercises: base.exercises };
+    const limit = limitMessage(error);
+    setState({
+      draft,
+      refusal: {
+        kind: "generic",
+        title: "Alteração não aplicada",
+        body:
+          (limit ? `${limit} ` : "") +
+          (manual
+            ? "A plataforma não aceitou as alterações nos exercícios, então elas foram desfeitas. Revise e salve de novo."
+            : "A plataforma não aceitou esta alteração, então ela foi desfeita; o restante do treino continua sendo salvo automaticamente."),
+        exerciseKeys: [],
+        setKeys: [],
+      },
+    });
+  }
+
+  /**
+   * Diff-syncs `sent` against the snapshot through the one-at-a-time endpoints.
+   * Deletes first (a refused delete = the change a client's recorded data
+   * protects: it is restored and named), then creates/updates in list order.
+   * The snapshot is advanced op by op so a failure mid-way does not repeat
+   * work on retry.
+   */
+  async function runPerItem(sent: EditorWorkout, workoutId: number) {
+    const base = snapshot!;
+    const restoredExercises: RestoredExercise[] = [];
+    const restoredSets: RestoredSet[] = [];
+    const sentByKey = new Map(sent.exercises.map((we) => [we.key, we]));
+    // Server-side tree as we know it, mutated as each op succeeds.
+    let working: EditorExercise[] = base.exercises.map((we) => ({ ...we, sets: we.sets.slice() }));
+    const commit = () => {
+      snapshot = { ...snapshot!, exercises: working };
+    };
+
+    try {
+      // 1. Deletes.
+      for (const [i, we] of base.exercises.entries()) {
+        const sentWe = sentByKey.get(we.key);
+        if (!sentWe) {
+          if (we.id === null) continue;
+          try {
+            await transport.deleteExercise(we.id);
+            working = working.filter((w) => w.key !== we.key);
+          } catch (error) {
+            if (isGoneOnDelete(error)) {
+              working = working.filter((w) => w.key !== we.key);
+            } else if (isRemovalRefusal(error)) {
+              restoredExercises.push({ exercise: we, index: i });
+            } else {
+              throw error;
+            }
+          }
+          continue;
+        }
+        const sentSetKeys = new Set(sentWe.sets.map((set) => set.key));
+        for (const [j, set] of we.sets.entries()) {
+          if (sentSetKeys.has(set.key) || set.id === null) continue;
+          try {
+            await transport.deleteSet(set.id);
+            working = working.map((w) =>
+              w.key === we.key ? { ...w, sets: w.sets.filter((s) => s.key !== set.key) } : w,
+            );
+          } catch (error) {
+            if (isGoneOnDelete(error)) {
+              working = working.map((w) =>
+                w.key === we.key ? { ...w, sets: w.sets.filter((s) => s.key !== set.key) } : w,
+              );
+            } else if (isRemovalRefusal(error)) {
+              restoredSets.push({ exerciseKey: we.key, exerciseName: we.exercise.name, set, index: j });
+            } else {
+              throw error;
+            }
+          }
+        }
+      }
+
+      // 2. The list the server must end up with: `sent` plus whatever could not be removed.
+      const effective = reinsertRestored(sent, restoredExercises, restoredSets);
+      const workingByKey = new Map(working.map((we) => [we.key, we]));
+      const confirmed: EditorExercise[] = [];
+      const remaining = new Map(workingByKey);
+      const snapshotPartial = (partial?: EditorExercise) => {
+        working = [...confirmed, ...(partial ? [partial] : []), ...remaining.values()];
+      };
+
+      for (const [i, we] of effective.exercises.entries()) {
+        const order = i + 1;
+        const known = workingByKey.get(we.key);
+        remaining.delete(we.key);
+        const confirmedSets: EditorSet[] = [];
+        if (!known || known.id === null) {
+          const created = await transport.addExercise(workoutId, {
+            exerciseId: we.exercise.id,
+            order,
+            restSecondsBetweenSets: we.restSecondsBetweenSets,
+            notes: we.notes,
+          });
+          const withId: EditorExercise = { ...we, id: created.id, order, sets: [] };
+          try {
+            for (const [j, set] of we.sets.entries()) {
+              const createdSet = await transport.addSet(created.id, setInput(set, j + 1));
+              confirmedSets.push({ ...set, id: createdSet.id, setNumber: j + 1 });
+            }
+          } finally {
+            snapshotPartial({ ...withId, sets: confirmedSets });
+          }
+          confirmed.push({ ...withId, sets: confirmedSets });
+          continue;
+        }
+        if (!sameExerciseFields(we, known) || known.order !== order) {
+          await transport.updateExercise(known.id, {
+            order,
+            restSecondsBetweenSets: we.restSecondsBetweenSets,
+            notes: we.notes,
+          });
+        }
+        const knownSetsByKey = new Map(known.sets.map((set) => [set.key, set]));
+        const pendingSets = new Map(knownSetsByKey);
+        try {
+          for (const [j, set] of we.sets.entries()) {
+            const knownSet = knownSetsByKey.get(set.key);
+            pendingSets.delete(set.key);
+            if (!knownSet || knownSet.id === null) {
+              const createdSet = await transport.addSet(known.id, setInput(set, j + 1));
+              confirmedSets.push({ ...set, id: createdSet.id, setNumber: j + 1 });
+            } else {
+              if (!sameSetFields(set, knownSet) || knownSet.setNumber !== j + 1) {
+                await transport.updateSet(knownSet.id, setInput(set, j + 1));
+              }
+              confirmedSets.push({ ...set, id: knownSet.id, setNumber: j + 1 });
+            }
+          }
+        } finally {
+          snapshotPartial({
+            ...we,
+            id: known.id,
+            order,
+            sets: [...confirmedSets, ...pendingSets.values()],
+          });
+        }
+        confirmed.push({ ...we, id: known.id, order, sets: confirmedSets });
+      }
+      working = [...confirmed, ...remaining.values()];
+    } finally {
+      commit();
+    }
+
+    hasSaved = true;
+    let draft = mergeIds(state.draft, snapshot!);
+    if (restoredExercises.length > 0 || restoredSets.length > 0) {
+      draft = reinsertRestored(draft, restoredExercises, restoredSets);
+      setState({ draft, refusal: removalRefusal(restoredExercises, restoredSets, manual) });
+    } else {
+      setState({ draft });
+    }
+  }
+
+  return {
+    getState: () => state,
+    subscribe(listener) {
+      listeners.add(listener);
+      return () => {
+        listeners.delete(listener);
+      };
+    },
+    dispatch(action) {
+      if (disposed) return;
+      const next = reduce(state.draft, action);
+      if (next === state.draft) return;
+      setState({
+        draft: next,
+        offersClone: state.offersClone && next.exercises.length === 0,
+      });
+      schedule();
+    },
+    flush,
+    retry: flush,
+    async finish() {
+      // Drain: a flush chained behind this one *and* a debounce armed by an
+      // edit made while it ran are both "the pending save" Concluir must
+      // complete before leaving (R11, E17).
+      do {
+        await flush();
+      } while (queuedFlush || timer !== null);
+      return state.status !== "error";
+    },
+    discard() {
+      if (disposed || running) return;
+      clearTimer();
+      setState({ draft: { ...baseline() }, refusal: null, status: restStatus(), errorMessage: null });
+    },
+    dismissRefusal() {
+      if (state.refusal) setState({ refusal: null });
+    },
+    fail(message) {
+      setState({ status: "error", errorMessage: message });
+    },
+    setOnSaved(callback) {
+      onSaved = callback;
+    },
+    dispose() {
+      disposed = true;
+      clearTimer();
+    },
+  };
+}
