@@ -44,5 +44,5 @@ const styles = StyleSheet.create({
     paddingVertical: sizes.completedRowPaddingVertical,
   },
   rule: { borderBottomWidth: 1, borderBottomColor: colors.border },
-  col: { flex: 1, gap: 2 },
+  col: { flex: 1, gap: sizes.rowLinesGapTight },
 });

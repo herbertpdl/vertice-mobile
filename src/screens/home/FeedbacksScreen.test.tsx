@@ -1,6 +1,6 @@
 import { screen } from "@testing-library/react-native";
 
-import { mockBff, type BffMock } from "@/test/bff";
+import { bffError, mockBff, type BffMock } from "@/test/bff";
 import { renderScreen } from "@/test/render";
 
 import { FeedbacksScreen } from "./FeedbacksScreen";
@@ -37,4 +37,17 @@ describe("FeedbacksScreen", () => {
     await renderScreen(<FeedbacksScreen />);
     expect(await screen.findByText("Nenhum feedback ainda")).toBeOnTheScreen();
   });
+
+  it("shows the full timestamp with the day", async () => {
+    bff = mockBff({ "GET /api/feedback": [item(1, "Marina Costa")] });
+    await renderScreen(<FeedbacksScreen />);
+    expect(await screen.findByText("01 out, 07:00")).toBeOnTheScreen();
+  });
+
+  it("shows the error state when nothing could load", async () => {
+    bff = mockBff({ "GET /api/feedback": bffError(503, "UPSTREAM_UNAVAILABLE") });
+    await renderScreen(<FeedbacksScreen />);
+    expect(await screen.findByText("Algo deu errado")).toBeOnTheScreen();
+  });
 });
+

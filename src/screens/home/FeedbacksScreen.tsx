@@ -6,8 +6,10 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { FeedbackRow } from "@/components/domain";
 import { NavBar } from "@/components/layout/NavBar";
 import { Screen } from "@/components/layout/Screen";
-import { EmptyState, ErrorState, Skeleton, Text } from "@/components/ui";
+import { EmptyState, ErrorState, Skeleton, StatusBanner, Text } from "@/components/ui";
 import { fetchFeedback } from "@/lib/api/feedback";
+import { useIsOffline } from "@/lib/network";
+import { usePullToRefresh } from "@/lib/usePullToRefresh";
 import { colors, screenPaddingHorizontal, sizes, space } from "@/theme";
 
 export const feedbackQueryKey = ["feedback"] as const;
@@ -15,13 +17,28 @@ export const feedbackQueryKey = ["feedback"] as const;
 /** M - Feedbacks / M - Feedbacks (Vazio): every comment students left, newest first. */
 export function FeedbacksScreen() {
   const insets = useSafeAreaInsets();
+  const offline = useIsOffline();
   const feedback = useQuery({ queryKey: feedbackQueryKey, queryFn: ({ signal }) => fetchFeedback({ signal }) });
+  const pull = usePullToRefresh(() => feedback.refetch());
+  const retry = { label: "Tentar", onPress: () => void feedback.refetch() };
 
   return (
-    <Screen header={<NavBar title="Feedbacks" />} scroll={false}>
-      {feedback.isPending ? (
+    <Screen
+      header={
+        <>
+          <NavBar title="Feedbacks" />
+          {offline ? (
+            <StatusBanner kind="offline" action={retry} />
+          ) : feedback.isError && feedback.data !== undefined ? (
+            <StatusBanner kind="error" action={retry} />
+          ) : null}
+        </>
+      }
+      scroll={false}
+    >
+      {feedback.data === undefined && !feedback.isError ? (
         <FeedbackSkeleton />
-      ) : feedback.isError ? (
+      ) : feedback.data === undefined ? (
         <ErrorState onRetry={() => void feedback.refetch()} retrying={feedback.isFetching} />
       ) : (
         <FlatList
@@ -48,8 +65,8 @@ export function FeedbacksScreen() {
           )}
           refreshControl={
             <RefreshControl
-              refreshing={feedback.isRefetching}
-              onRefresh={() => void feedback.refetch()}
+              refreshing={pull.refreshing}
+              onRefresh={pull.onRefresh}
               tintColor={colors.primary}
               colors={[colors.primary]}
               progressBackgroundColor={colors.surface}
