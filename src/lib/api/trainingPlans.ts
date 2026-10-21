@@ -1,13 +1,25 @@
-import { apiClient } from "./client";
+import { apiClient, type ApiRequestInit } from "./client";
 import type { components } from "./schema";
 import type { TrainingPlan, TrainingPlanDetail } from "./types";
 
-export function fetchTrainingPlans(clientId?: number) {
-  return apiClient.get<TrainingPlan[]>("/api/training-plans", { clientId });
+type Signal = Pick<ApiRequestInit, "signal">;
+
+/** One student's plans (the student page's Planos tab). */
+export function trainingPlansQueryKey(clientId: number) {
+  return ["trainingPlans", { clientId }] as const;
 }
 
-export function fetchTrainingPlan(id: number) {
-  return apiClient.get<TrainingPlanDetail>(`/api/training-plans/${id}`);
+/** One plan with its workouts (the web's key too). */
+export function trainingPlanQueryKey(id: number) {
+  return ["trainingPlan", id] as const;
+}
+
+export function fetchTrainingPlans(clientId?: number, init?: Signal) {
+  return apiClient.get<TrainingPlan[]>("/api/training-plans", { clientId }, init);
+}
+
+export function fetchTrainingPlan(id: number, init?: Signal) {
+  return apiClient.get<TrainingPlanDetail>(`/api/training-plans/${id}`, undefined, init);
 }
 
 export type TrainingPlanInput = components["schemas"]["TrainingPlanRequest"];

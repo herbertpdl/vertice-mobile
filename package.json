@@ -79,6 +79,9 @@
     "moduleNameMapper": {
       "^lucide-react-native$": "<rootDir>/node_modules/lucide-react-native/dist/cjs/lucide-react-native.js"
     },
-    "clearMocks": true
+    "clearMocks": true,
+    "setupFilesAfterEnv": [
+      "<rootDir>/jest.setup-after-env.ts"
+    ]
   }
 }

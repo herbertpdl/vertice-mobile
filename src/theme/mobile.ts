@@ -108,6 +108,22 @@ export const sizes = {
   /** M Student Card padding; M Link Box padding (4 around, 14 before the glyph). */
   studentCardPadding: 14,
   linkBoxPaddingLeft: 14,
+  /** Gap between a detail header's name and e-mail (M - Detalhe do Aluno). */
+  identityLinesGap: 5,
+  /** A card-row placeholder's height in list skeletons; a plan card's (M - Detalhe do Aluno (Loading)). */
+  skeletonCardHeight: 72,
+  skeletonPlanCardHeight: 64,
+  /** M Plan Card padding (16 vertical, 14 horizontal) and gap between its lines. */
+  planCardPaddingVertical: 16,
+  planCardPaddingHorizontal: 14,
+  planCardLinesGap: 5,
+  /** M Chart Bar: bar width, tallest bar, the card's bars area height. */
+  chartBarWidth: 24,
+  chartBarMaxHeight: 120,
+  chartAreaHeight: 170,
+  /** M Chart Bar: gap between value, bar and label; the bar's bottom corner radius. */
+  chartBarGap: 6,
+  chartBarBaseRadius: 2,
   /** M Feedback Row / M Plan Ending Row / M Completed Workout Row vertical padding and gaps. */
   feedbackRowPaddingVertical: 16,
   planEndingRowPaddingVertical: 14,

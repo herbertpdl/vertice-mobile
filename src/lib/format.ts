@@ -246,3 +246,18 @@ export function formatDayMonth(isoDate: string): string {
   return formatDateShort(isoDate).replace(" de ", " ");
 }
 
+/**
+ * A plan's period as the mobile cards show it: "01 mar – 24 mai", with the end's year only when it
+ * isn't the current one ("07 out – 20 dez 2025").
+ */
+export function formatPlanRange(startDate: string, endDate: string, today: string = todayLocalIso()): string {
+  const year = endDate.slice(0, 4);
+  const suffix = year === today.slice(0, 4) ? "" : ` ${year}`;
+  return `${formatDayMonth(startDate)} – ${formatDayMonth(endDate)}${suffix}`;
+}
+
+/** A decimal weight as pt-BR text without trailing zeros: 42.5 → "42,5", 40 → "40". */
+export function formatWeight(weight: number): string {
+  return new Intl.NumberFormat("pt-BR", { maximumFractionDigits: 2 }).format(weight);
+}
+

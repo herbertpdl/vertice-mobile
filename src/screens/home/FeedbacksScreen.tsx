@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { router } from "expo-router";
 import { MessageSquare } from "lucide-react-native";
 import { FlatList, RefreshControl, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -7,12 +8,10 @@ import { FeedbackRow } from "@/components/domain";
 import { NavBar } from "@/components/layout/NavBar";
 import { Screen } from "@/components/layout/Screen";
 import { EmptyState, ErrorState, Skeleton, StatusBanner, Text } from "@/components/ui";
-import { fetchFeedback } from "@/lib/api/feedback";
+import { feedbackQueryKey, fetchFeedback } from "@/lib/api/feedback";
 import { useIsOffline } from "@/lib/network";
 import { usePullToRefresh } from "@/lib/usePullToRefresh";
 import { colors, screenPaddingHorizontal, sizes, space } from "@/theme";
-
-export const feedbackQueryKey = ["feedback"] as const;
 
 /** M - Feedbacks / M - Feedbacks (Vazio): every comment students left, newest first. */
 export function FeedbacksScreen() {
@@ -61,7 +60,12 @@ export function FeedbacksScreen() {
             />
           }
           renderItem={({ item, index }) => (
-            <FeedbackRow feedback={item} withDay last={index === feedback.data.length - 1} />
+            <FeedbackRow
+              feedback={item}
+              withDay
+              last={index === feedback.data.length - 1}
+              onPress={() => router.push(`/alunos/${item.clientId}`)}
+            />
           )}
           refreshControl={
             <RefreshControl

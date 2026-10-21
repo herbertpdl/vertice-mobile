@@ -6,15 +6,13 @@ import { StyleSheet, View } from "react-native";
 import { CompletedWorkoutRow, FeedbackRow, PlanEndingRow } from "@/components/domain";
 import { Screen } from "@/components/layout/Screen";
 import { ErrorState, SectionHeader, Skeleton, StatCard, StatusBanner, Text } from "@/components/ui";
-import { fetchDashboard } from "@/lib/api/dashboard";
+import { dashboardQueryKey, fetchDashboard } from "@/lib/api/dashboard";
 import type { DashboardData } from "@/lib/api/types";
 import { useMe } from "@/lib/auth";
 import { greetingFor } from "@/lib/format";
 import { useIsOffline } from "@/lib/network";
 import { usePullToRefresh } from "@/lib/usePullToRefresh";
 import { radius, screenPaddingHorizontal, sizes, space } from "@/theme";
-
-export const dashboardQueryKey = ["dashboard"] as const;
 
 /** How many rows each dashboard section shows (the design's three). */
 const SECTION_ROWS = 3;
@@ -106,7 +104,12 @@ function DashboardContent({ data, firstName }: { data: DashboardData; firstName:
           <EmptyLine text="Nenhum feedback recente." />
         ) : (
           feedback.map((item, index) => (
-            <FeedbackRow key={item.id} feedback={item} last={index === feedback.length - 1} />
+            <FeedbackRow
+              key={item.id}
+              feedback={item}
+              last={index === feedback.length - 1}
+              onPress={() => router.push(`/alunos/${item.clientId}`)}
+            />
           ))
         )}
       </View>

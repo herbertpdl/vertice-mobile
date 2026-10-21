@@ -11,11 +11,13 @@ export type StatCardProps = {
   helper?: string;
   /** The helper's color: `success` for good news, `warning` for attention, `info`, or neutral. */
   helperColor?: Extract<ColorToken, "success" | "warning" | "danger" | "info" | "textSecondary">;
+  /** The 20 pt value of the student detail's cards (a plan name, "3 de 5"), vs the dashboard's 26. */
+  compact?: boolean;
   style?: StyleProp<ViewStyle>;
 };
 
 /** M Stat Card: label, big value in the heading face, helper line. One accessible element. */
-export function StatCard({ label, value, helper, helperColor = "textSecondary", style }: StatCardProps) {
+export function StatCard({ label, value, helper, helperColor = "textSecondary", compact = false, style }: StatCardProps) {
   return (
     <View
       style={[styles.card, style]}
@@ -25,7 +27,7 @@ export function StatCard({ label, value, helper, helperColor = "textSecondary", 
       <Text variant="smallStrong" color="textSecondary" numberOfLines={1}>
         {label}
       </Text>
-      <Text variant="title" numberOfLines={1} adjustsFontSizeToFit>
+      <Text variant={compact ? "titleSm" : "title"} numberOfLines={1} adjustsFontSizeToFit>
         {value}
       </Text>
       {helper === undefined ? null : (
