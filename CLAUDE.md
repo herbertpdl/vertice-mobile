@@ -26,6 +26,7 @@ npm start          # Metro dev server — press i/a/w or scan the QR code with E
 npm run ios        # start + open iOS simulator (needs Xcode + CocoaPods)
 npm run android    # start + open Android emulator (needs Android Studio)
 npm run web        # start + open in a browser (react-native-web)
+npm run routes:types # generate Expo Router's typed routes (.expo/types) so typecheck checks every href
 npm run typecheck  # tsc --noEmit
 npm run lint       # ESLint (eslint-config-expo)
 npm run api:types  # regenerate src/lib/api/schema.ts from vertice-bff's OpenAPI document
@@ -34,12 +35,11 @@ npm test           # jest-expo + @testing-library/react-native (tests next to th
 ```
 
 CI (`.github/workflows/ci.yml`, job `build-and-test`) runs `npm ci`, `api:types -- --check`,
-`tokens:check`, `typecheck`, `lint -- --max-warnings 0`, `npm test` and `npx expo install --check` on every PR and push to
-`main`; keep all of them clean (warnings fail lint). `npx expo-doctor` and `npm audit --omit=dev
---audit-level=high` also run but are non-blocking — expo-doctor because `npx` always resolves the
-latest release and >= 1.21 flags `ios.icon` (a valid Icon Composer `.icon` directory) as a config
-schema error, `npm audit` until the transitive Expo/Metro advisories are dealt with (audit plan
-P2-05). When bumping Expo packages, use `npx expo install <pkg>` / `npx expo install --fix` so the
+`tokens:check`, `routes:types`, `typecheck`, `lint -- --max-warnings 0`, `npm test`,
+`test:hostile-tz`, `npx expo install --check` and `npx expo-doctor` on every PR and push to
+`main`; keep all of them clean (warnings fail lint). `npm audit --omit=dev --audit-level=high`
+also runs but is non-blocking until the transitive Expo/Metro advisories are dealt with (audit
+plan P2-05). When bumping Expo packages, use `npx expo install <pkg>` / `npx expo install --fix` so the
 drift check stays green.
 
 ## Architecture
@@ -118,6 +118,12 @@ drift check stays green.
   `useAppFonts`, which holds the splash until they're ready. Kit components are generated from the
   pen.dev mobile library ("DS - Mobile Components", `M *` components) — one folder per component
   (`<Name>/<Name>.tsx`, `index.ts`, `<Name>.test.tsx`), imported through the folder index.
+- **Builds and monitoring**: `eas.json` has `development` / `preview` / `production` profiles;
+  each build runs `npm run env:check` (`eas-build-post-install`), which applies `env.ts`'s release
+  rules (https, no local hosts) before building. Crash reporting is Sentry (`src/lib/monitoring.ts`),
+  on only in release builds with `EXPO_PUBLIC_SENTRY_DSN`; reports never carry the app's data
+  (no user, no payloads, no touch breadcrumbs, e-mails/CPFs/tokens scrubbed) — keep it that way.
+  Source-map upload needs `SENTRY_ORG`, `SENTRY_PROJECT` and `SENTRY_AUTH_TOKEN` as EAS secrets.
 - **Icons**: `lucide-react-native` (+ `react-native-svg` peer dep) mirrors `vertice-web-react`'s
   use of `lucide-react`, for icon parity between web and mobile.
 

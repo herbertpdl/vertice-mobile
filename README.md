@@ -43,9 +43,12 @@ item below is about wiring them into this app.
   and record with `POST /api/auth/me/consent`.
 - [ ] **App Store privacy nutrition label and Play Data safety form** — fill them in from the
   data the BFF actually returns, using `vertice-api/docs/data-inventory.md` (account data, CPF,
-  training loads, feedback, session logs; no tracking, no third-party sharing today).
-- [ ] **iOS privacy manifest** (`ios.privacyManifests` in `app.json`) for any native module that
+  training loads, feedback, session logs; no tracking). Crash diagnostics go to Sentry (a third
+  party): declare "crash data, not linked to the user, not used for tracking" in both forms.
+- [x] **iOS privacy manifest** (`ios.privacyManifests` in `app.json`) for any native module that
   needs one, plus `ios.infoPlist` usage strings for any permission the app starts requesting.
+  (React Native's required-reason APIs are declared; the app requests no permissions, and Android
+  blocks the ones Expo would add by default.)
 - [ ] **Deep links carrying tokens** (e.g. password setup) use Universal Links / App Links rather
   than the custom URL scheme (see the audit's SEC-MOB-003).
 
