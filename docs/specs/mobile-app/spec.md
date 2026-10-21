@@ -21,20 +21,20 @@
 
 ## 0. Handoff — start here (agents picking this up)
 
-**Where the work is.** PRs are *stacked* and none is merged yet (merging is the owner's call), so
-**this file's current version lives on the top branch of the stack, not on `main`** — the last row
-of the [PR log](#pr-log). Start there:
+**Where the work is.** PRs 1–10 are merged into `main` (2026-10-21), so start from `main`:
 
 ```bash
-git fetch origin
-git checkout <last branch in the PR log>     # e.g. feat/training-plans
-git checkout -b feat/<next-pr-branch>          # branch the next PR from it
-gh pr create --base <last branch> ...          # the PR targets the previous PR's branch
+git fetch origin && git checkout main && git pull
+git checkout -b feat/<next-pr-branch>
+gh pr create --base main ...
 ```
 
-If earlier PRs have merged meanwhile, rebase onto `main` and retarget instead (`gh pr edit --base`).
-When a lower PR changes (review fixes), rebase every PR above it, top last; conflicts are almost
-always the PR log, the decisions log, `src/theme/mobile.ts` `sizes` (keep both sides) and the
+The owner lets agents **merge their own PRs** once the review loop below is done and CI is green
+(`gh pr merge <n> --merge`). If you open several PRs at once, stack them (each based on the
+previous PR's branch) and merge bottom-up: merge the lowest, `gh pr edit <next> --base main`,
+merge the next — merge commits keep the stack valid without rebasing. When a lower PR changes
+(review fixes), rebase every PR above it, top last; conflicts are almost always the PR log, the
+decisions log, `src/theme/mobile.ts` `sizes` (keep both sides) and the
 `src/components/{ui,domain}/index.ts` barrels (regenerate them from the folders).
 
 **Environment notes.** `node` on PATH may be a broken Homebrew Node 25: use
@@ -47,7 +47,7 @@ dev server and git-ignored: delete it if `typecheck` complains about a route tha
 PR section) with the `pencil` MCP tools — values from `Get(id, {depth: 5})`, never from
 screenshots. 2) Implement + tests; `npm run typecheck`, `npm run lint -- --max-warnings 0`,
 `npm test`, `npm run test:hostile-tz`, `npm run tokens:check`, `npm run api:types -- --check`,
-`npx expo install --check` all green. 3) Squash to one commit, push, open the stacked PR (body ends
+`npx expo install --check` all green. 3) Push and open the PR (body ends
 with the Claude Code line). 4) **Spawn a fresh agent that runs the `code-review` skill** on
 `<previous branch>...<this branch>` (spec = this file). 5) Fix every BLOCKING finding and the
 worthwhile non-blocking ones; log the rest in the decisions log; update this file's checklist and
