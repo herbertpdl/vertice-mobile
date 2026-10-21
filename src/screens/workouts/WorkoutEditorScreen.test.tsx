@@ -172,6 +172,18 @@ describe("WorkoutEditorScreen — editing", () => {
     expect(screen.getByText("Treino excluído.")).toBeOnTheScreen();
   });
 
+  it("deleting with unsaved edits leaves without asking to discard them", async () => {
+    await openExisting({ "DELETE /api/workouts/5": new Response(null, { status: 204 }) });
+    await fireEvent.changeText(screen.getByLabelText("Repetições da série 1"), "8");
+    mockRouter.back.mockImplementation(() => mockPreventRemove?.callback({ data: { action: { type: "GO_BACK" } } }));
+    await fireEvent.press(screen.getByRole("button", { name: "Ações do treino" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Excluir treino" }));
+    await fireEvent.press(screen.getAllByRole("button", { name: "Excluir treino" }).at(-1)!);
+    await waitFor(() => expect(mockNavigation.dispatch).toHaveBeenCalledWith({ type: "GO_BACK" }));
+    expect(screen.queryByText("Descartar alterações?")).toBeNull();
+    mockRouter.back.mockReset();
+  });
+
   it("keeps an unsaved draft across an unmount it wasn't told about (an expired session), and restores it once", async () => {
     const first = await openExisting();
     await fireEvent.changeText(screen.getByLabelText("Repetições da série 1"), "6");

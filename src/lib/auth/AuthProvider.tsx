@@ -59,6 +59,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // in a query a still-mounted screen observes.
       await queryClient.cancelQueries();
       queryClient.clear();
+      // Again once the signed-in screens have unmounted: one with unsaved changes stashes them then.
+      if (reason === "user") clearDrafts();
       await clearStoredToken();
     } finally {
       signingOut.current = false;

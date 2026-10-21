@@ -337,7 +337,9 @@ export function createAutosaveEngine(options: AutosaveOptions): AutosaveEngine {
     try {
       if (state.workoutId === null) await runCreate(sent);
       else await runUpdate(sent, state.workoutId);
-      if (!isDirty(state.draft)) setState({ status: restStatus() });
+      // Manual saving: whatever is still dirty (edited during the save, or a rejected tree) waits
+      // for the next "Salvar" — rest now (`schedule()` would no-op while `running`).
+      if (!isDirty(state.draft) || manual) setState({ status: restStatus() });
       else if (timer === null && !queuedFlush) {
         // Still dirty with nothing scheduled: the engine itself changed the
         // draft (a rejected tree reverted under a kept name/weekday, E9), so

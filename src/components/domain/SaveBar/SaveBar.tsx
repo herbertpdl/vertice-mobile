@@ -2,7 +2,7 @@ import { StyleSheet, View } from "react-native";
 
 import { Button } from "@/components/ui/Button";
 import { Text } from "@/components/ui/Text";
-import { colors, sizes, space } from "@/theme";
+import { colors, radius, sizes, space } from "@/theme";
 
 export type SaveBarProps = {
   /** The status line ("Alterações não salvas", "Salvando alterações…"); none hides the row. */
@@ -52,7 +52,7 @@ export const saveBarFrame = {
 const styles = StyleSheet.create({
   root: { gap: space[3] },
   status: { flexDirection: "row", alignItems: "center", gap: space[2] },
-  dot: { width: space[2], height: space[2], borderRadius: space[1] },
+  dot: { width: sizes.statusDot, height: sizes.statusDot, borderRadius: radius.full },
   buttons: { flexDirection: "row", gap: space[3] },
   flex: { flex: 1 },
 });

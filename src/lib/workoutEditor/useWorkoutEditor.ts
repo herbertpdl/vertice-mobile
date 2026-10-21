@@ -42,8 +42,10 @@ export type WorkoutEditor = {
   engine: AutosaveEngine;
   /** The draft was restored from the stash (an expired session unmounted the editor). */
   restored: boolean;
-  /** The trainer is leaving on purpose (saved, discarded, deleted): don't stash on unmount. */
+  /** The trainer is leaving on purpose (saved, discarded, deleted): no stash, no leave guard. */
   markLeft: () => void;
+  /** `markLeft` was called: the leave guard lets the navigation through, whatever the draft. */
+  isLeaving: () => boolean;
 };
 
 /**
@@ -79,8 +81,19 @@ export function useWorkoutEditor({ planId, workoutId, initial, userId, onSaved, 
     // This session owns the draft now; whatever the stash held for it was restored above.
     takeDraft(editorStashKey(userId, planId, workoutId));
     return () => {
-      const { dirty, draft, workoutId: savedId } = engine.getState();
-      if (!left.current && dirty) stashDraft(editorStashKey(userId, planId, savedId), draft);
+      if (left.current) return;
+      const stash = () => {
+        const { dirty, draft, workoutId: savedId } = engine.getState();
+        if (dirty) stashDraft(editorStashKey(userId, planId, savedId), draft);
+      };
+      // A save in flight still lands (the engine outlives the screen): stash what it leaves behind,
+      // with the ids it got — stashing now would keep a created workout as "new" and create it twice.
+      if (engine.getState().status !== "saving") return stash();
+      const unsubscribe = engine.subscribe(() => {
+        if (engine.getState().status === "saving") return;
+        unsubscribe();
+        stash();
+      });
     };
   }, [engine, userId, planId, workoutId]);
 
@@ -92,5 +105,6 @@ export function useWorkoutEditor({ planId, workoutId, initial, userId, onSaved, 
     markLeft: () => {
       left.current = true;
     },
+    isLeaving: () => left.current,
   };
 }

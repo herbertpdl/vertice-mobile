@@ -178,8 +178,10 @@ export const sizes = {
   /** M Exercise Card padding and the gap between its name and badges. */
   exerciseCardPadding: 10,
   exerciseCardLinesGap: 6,
-  /** M Exercise Card / M Exercise Editor Card glyphs: chevron, grip and trash. */
+  /** M Exercise Editor Card glyphs: grip and trash. */
   rowGlyph: 18,
+  /** M Save Bar status dot. */
+  statusDot: 8,
 } as const;
 
 /** Horizontal padding of a screen's content (pen.dev mobile screens use 20 on a 390 frame). */

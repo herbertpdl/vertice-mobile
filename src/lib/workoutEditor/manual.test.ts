@@ -107,6 +107,15 @@ describe("the engine with saving left to the trainer (delayMs: null)", () => {
     expect(t.patchWorkout).toHaveBeenLastCalledWith(5, { name: "Treino C", dayOfWeek: "MONDAY" });
   });
 
+  it("rests after a save that an edit made during it left dirty (no stuck \"saving\")", async () => {
+    const { engine } = manual();
+    engine.dispatch({ type: "setName", name: "Treino B" });
+    const saving = engine.finish();
+    engine.dispatch({ type: "setName", name: "Treino C" });
+    await saving;
+    expect(engine.getState()).toMatchObject({ status: "saved", dirty: true });
+  });
+
   it("discard() puts back what the server last confirmed", async () => {
     const { engine } = manual();
     engine.dispatch({ type: "setName", name: "Treino B" });

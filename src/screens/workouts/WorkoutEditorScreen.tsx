@@ -95,6 +95,7 @@ function WorkoutEditorLoader({ planId: newPlanId, workoutId, day, invalid = fals
     void full.refetch();
     void plan.refetch();
   };
+  const offlineBanner = offline ? <StatusBanner kind="offline" action={{ label: "Tentar", onPress: retry }} /> : null;
   if (badRoute) return null;
   const ready = initial !== null && planId !== null && me.data !== undefined;
   if (!ready) {
@@ -104,7 +105,7 @@ function WorkoutEditorLoader({ planId: newPlanId, workoutId, day, invalid = fals
         header={
           <>
             <NavBar title={creating ? "Novo treino" : "Editar treino"} />
-            {offline ? <StatusBanner kind="offline" action={{ label: "Tentar", onPress: retry }} /> : null}
+            {offlineBanner}
           </>
         }
         contentStyle={styles.content}
@@ -134,7 +135,7 @@ function WorkoutEditorLoader({ planId: newPlanId, workoutId, day, invalid = fals
       clientId={plan.data?.clientId}
       planName={plan.data?.name}
       studentName={studentName}
-      offlineBanner={offline ? <StatusBanner kind="offline" action={{ label: "Tentar", onPress: retry }} /> : null}
+      offlineBanner={offlineBanner}
     />
   );
 }
@@ -194,7 +195,7 @@ function WorkoutEditorSession({ planId, workoutId, initial, dayPreset, userId, c
       if (clientId !== undefined) void queryClient.invalidateQueries({ queryKey: studentQueryKey(clientId) });
     },
   });
-  const { state, engine, restored, markLeft } = editor;
+  const { state, engine, restored, markLeft, isLeaving } = editor;
   const { draft, refusal } = state;
   const [dayChosen, setDayChosen] = useState(dayPreset || restored);
   const isNew = state.workoutId === null;
@@ -203,14 +204,19 @@ function WorkoutEditorSession({ planId, workoutId, initial, dayPreset, userId, c
   // Leaving with unsaved changes asks first (M - Descartar alterações). The check reads the engine,
   // not this render: right after a save the draft is clean before React has re-rendered.
   usePreventRemove(state.dirty, ({ data }) => {
-    if (engine.getState().dirty) setSheet({ kind: "leave", action: data.action });
+    if (engine.getState().dirty && !isLeaving()) setSheet({ kind: "leave", action: data.action });
     else navigation.dispatch(data.action);
   });
 
-  const leave = () => {
-    markLeft();
+  const back = () => {
     if (router.canGoBack()) router.back();
     else router.replace(`/planos/${planId}`);
+  };
+
+  /** Leaving on purpose (saved, deleted): past the guard, nothing stashed. */
+  const leave = () => {
+    markLeft();
+    back();
   };
 
   const save = useSingleFlight(async () => {
@@ -264,18 +270,19 @@ function WorkoutEditorSession({ planId, workoutId, initial, dayPreset, userId, c
       : []),
   ];
 
+  const saveError = { message: state.errorMessage ?? "Não foi possível salvar.", tone: "danger" as const };
   const footer =
     isNew ? (
       <SaveBar
-        status={state.status === "error" ? { message: state.errorMessage ?? "Não foi possível salvar.", tone: "danger" } : undefined}
-        secondary={{ label: "Cancelar", disabled: busy, onPress: () => router.back() }}
+        status={state.status === "error" ? saveError : undefined}
+        secondary={{ label: "Cancelar", disabled: busy, onPress: back }}
         primary={{ label: busy ? "Salvando…" : "Salvar treino", disabled: !canSave && !busy, loading: busy, onPress: () => void save() }}
       />
     ) : state.dirty || busy || state.status === "error" ? (
       <SaveBar
         status={
           state.status === "error"
-            ? { message: state.errorMessage ?? "Não foi possível salvar.", tone: "danger" }
+            ? saveError
             : busy
               ? { message: "Salvando alterações…", tone: "warning" }
               : { message: "Alterações não salvas", tone: "warning" }
@@ -297,7 +304,7 @@ function WorkoutEditorSession({ planId, workoutId, initial, dayPreset, userId, c
           <>
             <NavBar
               title={isNew ? "Novo treino" : "Editar treino"}
-              action={isNew ? undefined : { icon: EllipsisVertical, accessibilityLabel: "Ações do treino", onPress: () => setSheet({ kind: "actions" }) }}
+              action={isNew || busy ? undefined : { icon: EllipsisVertical, accessibilityLabel: "Ações do treino", onPress: () => setSheet({ kind: "actions" }) }}
             />
             {offlineBanner}
           </>

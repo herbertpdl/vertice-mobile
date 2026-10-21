@@ -52,7 +52,7 @@ export function ExerciseEditorCard({
           accessibilityLabel={`Mover ${name}`}
           disabled={disabled}
           onPress={onMove}
-          hitSlop={{ left: space[3], right: space[1] }}
+          hitSlop={{ left: space[3], right: space[2] }}
           style={styles.grip}
         >
           <GripVertical size={sizes.rowGlyph} color={colors.textTertiary} />
@@ -156,7 +156,7 @@ const styles = StyleSheet.create({
   refused: { borderColor: colors.warning },
   header: { flexDirection: "row", alignItems: "center", gap: sizes.editorHeaderGap },
   grip: { width: sizes.dragHandleWidth, height: controls.hitTarget, alignItems: "center", justifyContent: "center" },
-  title: { flex: 1, gap: 2 },
+  title: { flex: 1, gap: sizes.rowLinesGapTight },
   iconTap: { width: controls.hitTarget, height: controls.hitTarget, alignItems: "center", justifyContent: "center" },
   sets: { gap: space[2] },
   empty: {
