@@ -1,45 +1,82 @@
 import { QueryClientProvider } from "@tanstack/react-query";
-import { Stack } from "expo-router";
+import { Stack, type ErrorBoundaryProps } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
+import { StyleSheet, View } from "react-native";
 
+import { ErrorState } from "@/components/ui/EmptyState";
 import { ToastProvider } from "@/components/ui/Toast";
+import { AuthProvider, useAuth } from "@/lib/auth";
 import { queryClient } from "@/lib/query-client";
 import { colors } from "@/theme";
 import { useAppFonts } from "@/theme/fonts";
 
-// Keep the native splash up until the fonts are ready, so no frame renders in a fallback face.
-// Called at module scope, as expo-splash-screen asks.
+// Keep the native splash up until the fonts are loaded and the stored session is restored, so no
+// frame renders in a fallback face or flashes the login screen at a signed-in user. Called at
+// module scope, as expo-splash-screen asks.
 void SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useAppFonts();
-  const ready = fontsLoaded || fontError !== null;
+  const fontsReady = fontsLoaded || fontError !== null;
 
   useEffect(() => {
     if (fontError !== null) console.warn("Fonts failed to load; using the system face.", fontError);
   }, [fontError]);
 
+  // A font that failed to load falls back to the system face rather than blocking the app.
+  if (!fontsReady) return null;
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <AuthProvider>
+        <ToastProvider>
+          {/* The app is dark-only (`userInterfaceStyle: "dark"` in app.json). */}
+          <StatusBar style="light" />
+          <RootStack />
+        </ToastProvider>
+      </AuthProvider>
+    </QueryClientProvider>
+  );
+}
+
+function RootStack() {
+  const { status } = useAuth();
+  const ready = status !== "restoring";
+
   useEffect(() => {
     if (ready) SplashScreen.hide();
   }, [ready]);
 
-  // A font that failed to load falls back to the system face rather than blocking the app.
   if (!ready) return null;
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <ToastProvider>
-        {/* The app is dark-only (`userInterfaceStyle: "dark"` in app.json). */}
-        <StatusBar style="light" />
-        <Stack
-          screenOptions={{
-            headerShown: false,
-            contentStyle: { backgroundColor: colors.bg },
-          }}
-        />
-      </ToastProvider>
-    </QueryClientProvider>
+    <Stack
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: colors.bg },
+      }}
+    />
   );
 }
+
+/**
+ * Expo Router renders this instead of a route that threw while rendering (audit P2-05): the
+ * design's "Algo deu errado" state with a retry that re-renders the route, rather than a red box
+ * in development or a blank screen in a release build.
+ */
+export function ErrorBoundary({ retry }: ErrorBoundaryProps) {
+  useEffect(() => {
+    SplashScreen.hide();
+  }, []);
+  return (
+    <View style={styles.error}>
+      <ErrorState onRetry={() => void retry()} />
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  error: { flex: 1, justifyContent: "center", backgroundColor: colors.bg },
+});

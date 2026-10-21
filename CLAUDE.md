@@ -6,8 +6,9 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project status
 
-Vertice Mobile is a **bootstrapped skeleton**: Expo (React Native) + TypeScript + Expo Router,
-with React Query and an API client helper wired up, but no product screens implemented yet. It
+Vertice Mobile is the **trainer app** being built from the pen.dev mobile designs: Expo (React
+Native) + TypeScript + Expo Router, with the design-system kit, API client and auth in place and
+the screens landing PR by PR. It
 serves both iOS and Android from one codebase, alongside the sibling repos
 [`vertice-web-react`](../vertice-web-react) (Next.js web app), [`vertice-bff`](../vertice-bff)
 (REST API), [`vertice-api`](../vertice-api) (Spring Boot / gRPC), and
@@ -58,19 +59,30 @@ drift check stays green.
   mirroring `vertice-bff`'s `src/config/env.ts` pattern — don't read `process.env` directly
   elsewhere. Expo only inlines env vars prefixed `EXPO_PUBLIC_` into the client bundle; anything
   without that prefix is `undefined` at runtime here.
-- **`src/lib/api/client.ts`** exports `apiFetch<T>(path, init?)`, a thin `fetch` wrapper against
-  `EXPO_PUBLIC_BFF_URL`, and `ApiError` (`status`, optional `code` — a `string`, not the
-  generated `ErrorCode` union, since a BFF deployed ahead of an installed build can send a code
-  this spec copy doesn't know; `ErrorCode` is exported for a `switch` over handled codes — and
-  `details`, Zod's flattened field errors on `VALIDATION_ERROR`), matching the
-  `{ error: { code, message, details } }` shape `vertice-bff`'s error handler returns. `path` is
-  the route exactly as the OpenAPI document names it, **`/api` prefix included**
-  (`/api/clients/7`), since that is what the generated `paths` keys are; `/health` has no prefix.
-  `T` comes from `ApiResult<path, method>` (and request bodies from `ApiBody<path, method>`), so
-  `apiFetch<ApiResult<"/api/auth/me", "get">>("/api/auth/me")` breaks at `npm run typecheck` if
-  that response changes upstream. There's no auth/token handling yet — `vertice-bff` issues JWTs
-  (see its `CLAUDE.md`); when wiring up auth here, tokens should go in `expo-secure-store` (not
-  `AsyncStorage`), not committed yet since nothing here needs them.
+- **`src/lib/api/client.ts`** exports `apiFetch<T>(path, init?)` and `apiClient`
+  (`get/post/put/patch/delete`, the web's shape) against `EXPO_PUBLIC_BFF_URL`, plus `ApiError`
+  (`code` — any string, since a BFF deployed ahead of an installed build can send a code this copy
+  doesn't know; `status`, `details` on `VALIDATION_ERROR`, `retryAfter` on 429). Every failure is
+  an `ApiError`: no network → `NETWORK_ERROR`, 15 s without an answer → `TIMEOUT` (status 0).
+  `path` is the route exactly as the OpenAPI document names it, **`/api` prefix included**
+  (`/api/clients/7`). Calls carry the session's bearer token, and a 401 on one signs out; the public
+  routes (login, register, legal versions, password setup) pass `{ auth: false }` so a 401 there
+  stays a "wrong credentials" error. One module per BFF resource in `src/lib/api/*.ts` (ported
+  from the web; add endpoints there, never inline `apiFetch` in a screen), wire types aliased in
+  `types.ts`, pt-BR copy per error `code` in `errorMessages.ts` (`apiErrorMessage`, never
+  `error.message`).
+- **Auth, `src/lib/auth/`** — `AuthProvider` (root layout) restores the token from
+  `expo-secure-store` (Keychain/Keystore, `WHEN_UNLOCKED_THIS_DEVICE_ONLY`; never AsyncStorage)
+  while the splash stays up, hands it to `apiFetch`, and signs out on a 401 (`sessionExpired` tells
+  the login screen why). Only the token is persisted; who the user is comes from `useMe()`
+  (`GET /api/auth/me`). Tokens last 8 h with no refresh token (a BFF decision, audit P2-05).
+- **`src/lib/query-client.ts`**: 30 s `staleTime`, no retries on a 4xx (`shouldRetry`), refetch on
+  app foreground (`focusManager` ← `AppState`) and pause offline (`onlineManager` ← NetInfo).
+- **Dates**: `src/lib/{format,calendar,plans}.ts` are ports of the web's, with its rules
+  (instants in `America/Sao_Paulo`, business dates `yyyy-MM-dd` never through local `Date`);
+  `npm run test:hostile-tz` runs them at UTC+14 and UTC−10.
+- **Validation**: `src/lib/validation/*` are the web's Zod schemas and bounds (same pt-BR
+  messages); `contract.test.ts` ties the form enums to the generated ones at typecheck.
 - **`src/lib/api/schema.ts` is generated — never edit it.** `npm run api:types` regenerates it
   (`scripts/sync-api-types.mts`, run through `tsx`, so `npm run typecheck` covers it)
   with `openapi-typescript` (pinned exactly) from `vertice-bff`'s `docs/openapi.json` at the
@@ -85,11 +97,8 @@ drift check stays green.
   levels, set strategies, roles), keyed by the generated enums so a renamed member fails
   typecheck. Labels stay hand-written and per app: don't import `vertice-web-react`'s, and keep
   them in this one file.
-- **`src/lib/query-client.ts`** exports a single shared `QueryClient` instance, provided at the
-  root in `_layout.tsx` — data-fetching hooks should use React Query (`useQuery`/`useMutation`)
-  against `apiFetch`, matching `vertice-web-react`'s use of `@tanstack/react-query`.
-- **Forms**: `react-hook-form` + `@hookform/resolvers` + `zod` are installed to match
-  `vertice-web-react`'s form stack, not yet used anywhere.
+- **Forms**: `react-hook-form` + `@hookform/resolvers` + `zod`, as on the web. Read values with
+  `useWatch`, never `watch()` (it makes the React Compiler skip the component).
 - **Design system (`src/theme/`, `src/components/ui/`)** — the app is dark-only and styled with
   `StyleSheet` + typed tokens; never hardcode a color, spacing, radius or font size. `tokens.ts`
   mirrors vertice-web-react's `src/app/globals.css` 1:1 (`--color-surface-hover` →

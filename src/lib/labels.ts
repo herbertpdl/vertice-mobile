@@ -4,7 +4,8 @@
  * user-facing words are not, and they are deliberately not shared with `vertice-web-react`.
  *
  * Every map is keyed by the generated enum, so a member added or renamed in vertice-bff's spec
- * fails `npm run typecheck` here until it has a label. The wording matches the web app's
+ * fails `npm run typecheck` here until it has a label. The ported validation schemas
+ * (`src/lib/validation/*`) carry no labels of their own: forms read these. The wording matches the web app's
  * (`src/lib/days.ts`, `src/lib/validation/*.ts`) so the two products read the same.
  */
 import type { components } from "@/lib/api/schema";
