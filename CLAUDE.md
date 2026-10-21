@@ -48,6 +48,13 @@ drift check stays green.
   `QueryClientProvider` and renders the route `Stack`); route files under `src/app/` should stay
   thin (screens + layouts only), with everything else (`lib/`, `components/`, `hooks/`) living
   alongside it under `src/`.
+- **Screens**: route files under `src/app/` stay thin (`export default LoginScreen`); the screen
+  lives in `src/screens/<area>/<Name>Screen.tsx` with its test next to it. Routes: `(app)/` is
+  everything behind the session (`Stack.Protected` in the root layout; `(app)/_layout.tsx` gates on
+  `useSessionGate`: loading → non-trainer notice → Terms consent → app), `login` and `cadastro`
+  are the signed-out screens, `(dev)/kit` the kit gallery. Forms bind fields with
+  `FormTextField` (`src/components/form/`). Screen tests use `src/test/` — `mockBff({ "POST
+  /api/…": body })` replaces `fetch` with a route table and `renderScreen` adds the providers.
 - **Path alias**: `@/*` maps to `src/*`, `@/assets/*` maps to `assets/*` (`tsconfig.json`).
 - **No server-side layer.** Unlike `vertice-web-react`, which proxies through its own `/api`
   routes so `BFF_URL` stays server-only, this app has no backend of its own — it calls

@@ -13,8 +13,20 @@ describe("parseEnv", () => {
     expect(() => parseEnv({ EXPO_PUBLIC_BFF_URL: "ftp://bff.vertice.app" }, { release: false })).toThrow();
   });
 
+  it("validates the web URL the same way", () => {
+    expect(parseEnv({}, { release: false }).EXPO_PUBLIC_WEB_URL).toBe("http://localhost:5173");
+    expect(() =>
+      parseEnv({ EXPO_PUBLIC_BFF_URL: "https://api.vertice.app", EXPO_PUBLIC_WEB_URL: "http://vertice.app" }, { release: true }),
+    ).toThrow(/EXPO_PUBLIC_WEB_URL must use https/);
+  });
+
   it("requires https and a non-local host in a release build", () => {
-    expect(parseEnv({ EXPO_PUBLIC_BFF_URL: "https://api.vertice.app" }, { release: true }).EXPO_PUBLIC_BFF_URL).toBe(
+    expect(
+      parseEnv(
+        { EXPO_PUBLIC_BFF_URL: "https://api.vertice.app", EXPO_PUBLIC_WEB_URL: "https://vertice.app" },
+        { release: true },
+      ).EXPO_PUBLIC_BFF_URL,
+    ).toBe(
       "https://api.vertice.app",
     );
     expect(() => parseEnv({ EXPO_PUBLIC_BFF_URL: "http://api.vertice.app" }, { release: true })).toThrow(/https/);

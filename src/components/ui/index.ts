@@ -33,6 +33,8 @@ export { InfoCard } from "./InfoCard";
 export type { InfoRowData, InfoCardProps } from "./InfoCard";
 export { ListRow } from "./ListRow";
 export type { ListRowProps } from "./ListRow";
+export { LogoMark, Logo } from "./Logo";
+export type { LogoProps } from "./Logo";
 export { MultiSelectField } from "./MultiSelectField";
 export type { MultiSelectFieldProps } from "./MultiSelectField";
 export { OptionRow } from "./OptionRow";

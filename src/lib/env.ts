@@ -25,23 +25,30 @@ export function isLocalHost(hostname: string): boolean {
  * `http://localhost:3000` would ship tokens in clear text to whatever answers there (audit P2-05).
  */
 export function parseEnv(raw: Record<string, string | undefined>, { release }: { release: boolean }) {
-  const schema = z.object({
-    EXPO_PUBLIC_BFF_URL: z
-      .url({ protocol: /^https?$/, error: "EXPO_PUBLIC_BFF_URL must be an http(s) URL" })
-      .default("http://localhost:3000")
+  const serviceUrl = (name: string, fallback: string) =>
+    z
+      .url({ protocol: /^https?$/, error: `${name} must be an http(s) URL` })
+      .default(fallback)
       .transform((url) => url.replace(/\/+$/, ""))
       .refine((url) => !release || new URL(url).protocol === "https:", {
-        error: "EXPO_PUBLIC_BFF_URL must use https in a release build",
+        error: `${name} must use https in a release build`,
       })
       .refine((url) => !release || !isLocalHost(new URL(url).hostname), {
-        error: "EXPO_PUBLIC_BFF_URL must not point at a local address in a release build",
-      }),
+        error: `${name} must not point at a local address in a release build`,
+      });
+  const schema = z.object({
+    EXPO_PUBLIC_BFF_URL: serviceUrl("EXPO_PUBLIC_BFF_URL", "http://localhost:3000"),
+    /** The web app, for pages the app links to rather than ships (`/termos`, `/privacidade`). */
+    EXPO_PUBLIC_WEB_URL: serviceUrl("EXPO_PUBLIC_WEB_URL", "http://localhost:5173"),
   });
   return schema.parse(raw);
 }
 
 // `process.env.EXPO_PUBLIC_*` must be read by its literal name for Expo to inline it.
 export const env = parseEnv(
-  { EXPO_PUBLIC_BFF_URL: process.env.EXPO_PUBLIC_BFF_URL },
+  {
+    EXPO_PUBLIC_BFF_URL: process.env.EXPO_PUBLIC_BFF_URL,
+    EXPO_PUBLIC_WEB_URL: process.env.EXPO_PUBLIC_WEB_URL,
+  },
   { release: !__DEV__ },
 );
