@@ -11,6 +11,8 @@ export type BannerProps = {
   message: string;
   /** `danger` = M Form Error Banner, `info` = M Info Banner. */
   tone?: "danger" | "info";
+  /** Replaces the tone's glyph (the starter-exercise notice's lock). */
+  icon?: LucideIcon;
   style?: StyleProp<ViewStyle>;
 };
 
@@ -18,9 +20,9 @@ export type BannerProps = {
  * M Form Error Banner / M Info Banner: a bordered message box above a form ("Não foi possível
  * entrar. Corrija os campos abaixo."). A danger banner is announced when it appears.
  */
-export function Banner({ message, tone = "danger", style }: BannerProps) {
+export function Banner({ message, tone = "danger", icon, style }: BannerProps) {
   useAnnounceOnIos(tone === "danger" ? message : undefined);
-  const Icon = tone === "danger" ? CircleAlert : Info;
+  const Icon = icon ?? (tone === "danger" ? CircleAlert : Info);
   return (
     <View
       style={[

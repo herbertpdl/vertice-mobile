@@ -182,6 +182,12 @@ export const sizes = {
   rowGlyph: 18,
   /** M Save Bar status dot. */
   statusDot: 8,
+  /** M Video Thumbnail: play disc and glyph, the "Abrir vídeo" chip height and its inset. */
+  videoPlay: 64,
+  videoPlayGlyph: 28,
+  videoChipHeight: 32,
+  videoChipInset: 12,
+  videoChipGap: 6,
 } as const;
 
 /** Horizontal padding of a screen's content (pen.dev mobile screens use 20 on a 390 frame). */

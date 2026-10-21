@@ -26,8 +26,13 @@ export function fetchExercises(params: ExerciseListParams = {}, init?: Pick<ApiR
   return apiClient.get<Exercise[]>("/api/exercises", hasQuery ? query : undefined, init);
 }
 
-export function fetchExercise(id: number) {
-  return apiClient.get<Exercise>(`/api/exercises/${id}`);
+/** One exercise (the detail screen and its edit form). */
+export function exerciseQueryKey(id: number) {
+  return ["exercise", id] as const;
+}
+
+export function fetchExercise(id: number, init?: Pick<ApiRequestInit, "signal">) {
+  return apiClient.get<Exercise>(`/api/exercises/${id}`, undefined, init);
 }
 
 export function exerciseProgressQueryKey(exerciseId: number, clientId: number) {

@@ -383,11 +383,12 @@ Design: M - Catálogo de Exercícios `TCbcY`, Exercícios (Loading) `TH76k`, Det
 `e77Zxl`, Detalhe (Padrão) `Fl7Jy`, Novo Exercício `I6Bay`, Grupos Musculares (Sheet) `y0qSWB`, Excluir
 Exercício `hZjTv`, (Em uso) `T2bhd`; components M Exercise Card `h5cL2Q`, M Video Thumbnail `d2jZxp`,
 M Badge Outline "Padrão" `adZeY`. Replace the `(tabs)/exercicios.tsx` placeholder.
-- [ ] Catálogo: `GET /api/exercises?muscleGroupId=&q=` (debounced search), group chips from `GET /api/muscle-groups` (horizontal scroll), `ExerciseThumb` (YouTube still via `videoThumbnailUrl`, else dumbbell), "Padrão" badge for `isStarter`, "+" → Novo
-- [ ] Detalhe: video thumbnail → opens externally (`expo-web-browser`, http(s) only — `isOpenableVideoUrl`), all muscle groups as badges, description; starter exercises read-only (no ⋮, info banner "Exercício padrão — não pode ser editado.")
-- [ ] Novo/Editar (`POST /api/exercises`, `PATCH /api/exercises/{id}`): name, `MultiSelectField` groups (≥ 1), description (`TextArea`, max from `bounds.ts`), video URL (http(s) only, preview thumbnail) — schema `src/lib/validation/exercises.ts`
-- [ ] Excluir: `DELETE /api/exercises/{id}`; 409 `PRECONDITION_FAILED` = used by a workout → the "em uso" copy (web `ExerciseDialog`); invalidate `exercisesQueryKey`
-- [ ] tests; `ExerciseCard` domain component + test
+- [x] Catálogo (`ExercisesScreen`, the Exercícios tab): server-side search (debounced) and muscle-group chips, `ExerciseCard` rows (YouTube still or dumbbell, groups, "Padrão"), "48 exercícios · 32 padrão" / "N exercícios encontrados", skeleton, empty / no-match states, pull to refresh, "+" → Novo
+- [x] Detalhe (`/exercicios/[id]`): M Video Thumbnail (`VideoThumbnail`, opens the link in the in-app browser, http(s) only via `openVideo`), groups, description; own exercise → ⋮ (Editar / Excluir) + "Editar exercício"; starter → read-only with the "Exercício padrão" info banner (`Banner` gained `icon`)
+- [x] Novo/Editar (`/exercicios/novo`, `/exercicios/[id]/editar`): name, `MultiSelectField` groups (≥ 1), description (`DESCRIPTION_MAX`), video URL (http(s) only, live preview) — `exerciseSchema`; a starter's edit route goes back
+- [x] Excluir: `DELETE /api/exercises/{id}`; 409 → the web's "Um treino usa este exercício…" in the dialog (`deleteErrorMessage(…, "exercise")`); 403 → "sem permissão"; invalidates `["exercises"]` (and `["workout"]` on save, whose trees embed the entry)
+- [x] tests: `ExerciseCard`, `VideoThumbnail`, `openVideo`, the three screens
+- [ ] **device checklist**: the in-app browser opening a YouTube link on iOS and Android
 
 ### PR 13 — `feat/profile-account`
 Design: M - Perfil `TbmfV`, Editar Perfil (Sheet) `geQn7`, Alterar Senha `Y5BgRF`, Excluir Conta
@@ -429,6 +430,7 @@ merged first. Rollback = revert the mobile PR; nothing server-side depends on it
 | 9 | `feat/student-detail` | [#22](https://github.com/herbertpdl/vertice-mobile/pull/22) | open (base #21) | reviewed: 1 blocking + 14 non-blocking, fixed or logged |
 | 10 | `feat/training-plans` | [#23](https://github.com/herbertpdl/vertice-mobile/pull/23) | open (base #22) | reviewed: 1 blocking + 11 non-blocking, fixed or logged |
 | 11 | `feat/workout-editor` | [#25](https://github.com/herbertpdl/vertice-mobile/pull/25) | merged | reviewed: 1 blocking + 10 non-blocking, fixed or logged |
+| 12 | `feat/exercises` | _pending_ | open (base `main`) | review pending |
 
 ## Decisions log
 - 2026-10-20 — v1 is the **trainer** app because that is what the pen.dev mobile designs cover; the client app needs its own PRD + designs (audit P2-13).
@@ -492,3 +494,4 @@ merged first. Rollback = revert the mobile PR; nothing server-side depends on it
 - 2026-10-21 — PR 11: an expired session no longer loses an unsaved workout. A 401 still signs out at once (no deferred sign-out), but the editor stashes its draft in memory (`src/lib/draftStash.ts`, keyed by user + plan + workout, never on disk, cleared by a deliberate "Sair") and restores it, with an info banner, when the same workout's editor is opened after re-login. The trainer navigates back to it; the app doesn't reopen it automatically.
 - 2026-10-21 — PR 11: after "Salvar treino" succeeds the editor goes back to the plan with a toast; when the save restored a refused removal it stays, showing why.
 - 2026-10-21 — Review of #25: the leave guard lets a deliberate exit through (`markLeft`/`isLeaving`) — deleting a workout with unsaved edits no longer asks to discard them. An editor unmounted mid-save stashes its draft only once that save settles, under the id it got (else a created workout would be restored as new and created twice). "Sair" clears the stash again after the signed-in screens unmount. Manual-mode engine fix: a save that an edit during it left dirty now rests instead of staying "saving". Kept as is: a stashed new-workout draft is per plan, not per weekday (opening "novo" for that plan restores it, whatever `?dayOfWeek=`); the discard dialog's confirm stays danger (M - Descartar alterações draws it red); the breadcrumb's student name comes from the roster, as on the plan detail.
+- 2026-10-21 — PR 12: the exercise description keeps the web's 255-character bound (`DESCRIPTION_MAX`; the design's counter says 2000). Video links open in the in-app browser (no embedded player); a link without a known still (anything but YouTube) shows the dumbbell placeholder in M Video Thumbnail. The catalog subtitle is the design's "N exercícios · M padrão", and the web's "N exercícios encontrados" while narrowed. The create/edit form is a screen (like the plan form), not a sheet.

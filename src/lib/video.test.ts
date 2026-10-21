@@ -1,4 +1,8 @@
-import { isOpenableVideoUrl, videoThumbnailUrl, youtubeVideoId } from "./video";
+import * as WebBrowser from "expo-web-browser";
+
+import { isOpenableVideoUrl, openVideo, videoThumbnailUrl, youtubeVideoId } from "./video";
+
+jest.mock("expo-web-browser", () => ({ openBrowserAsync: jest.fn() }));
 
 describe("youtubeVideoId", () => {
   it.each([
@@ -44,5 +48,14 @@ describe("isOpenableVideoUrl", () => {
     expect(isOpenableVideoUrl("javascript:alert(1)")).toBe(false);
     expect(isOpenableVideoUrl("intent://x")).toBe(false);
     expect(isOpenableVideoUrl("")).toBe(false);
+  });
+});
+
+describe("openVideo", () => {
+  it("opens http(s) links in the in-app browser and ignores anything else", async () => {
+    await openVideo("javascript:alert(1)");
+    expect(WebBrowser.openBrowserAsync).not.toHaveBeenCalled();
+    await openVideo("https://youtu.be/dQw4w9WgXcQ");
+    expect(WebBrowser.openBrowserAsync).toHaveBeenCalledWith("https://youtu.be/dQw4w9WgXcQ");
   });
 });

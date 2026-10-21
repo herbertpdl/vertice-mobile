@@ -1,3 +1,5 @@
+import * as WebBrowser from "expo-web-browser";
+
 /**
  * Exercise videos are any http(s) link (`Exercise.videoUrl`, `""` when none — the BFF only accepts
  * http/https, like the web's `videoUrl` schema). Mobile v1 opens them externally and shows a
@@ -33,6 +35,11 @@ export function youtubeVideoId(url: string): string | null {
 export function videoThumbnailUrl(videoUrl: string): string | null {
   const id = youtubeVideoId(videoUrl);
   return id === null ? null : `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
+}
+
+/** Opens an exercise video in the in-app browser; anything but http(s) is ignored (a shared catalog). */
+export async function openVideo(videoUrl: string): Promise<void> {
+  if (isOpenableVideoUrl(videoUrl)) await WebBrowser.openBrowserAsync(videoUrl);
 }
 
 /** Whether a stored `videoUrl` is something the app may open (http/https only). */
