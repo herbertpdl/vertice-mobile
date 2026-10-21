@@ -271,7 +271,10 @@ conventional style (`feat(ui): …`, `chore: …`).
 - [ ] feedback rows open the student (wired in PR 9 when `/alunos/[id]` exists); plan-ending rows stay static (the dashboard gives no ids)
 
 ### PR 8 — `feat/students-list`
-- [ ] Alunos (search, filter chips, `WeekDots`, empty/no-results, skeleton); Novo aluno sheet + success (share link)
+- [x] Alunos tab (`M - Alunos`, `(Vazio)`, `(Loading)`): count / "N resultados para a busca", "+" (Novo aluno), search (case- and accent-insensitive), plan filter chips (as the web), `M Student Card`s (plan or "Sem plano ativo" in warning, this week's last workout or "Sem treino nesta semana", Mon–Fri `WeekDots`), empty roster vs empty search (Limpar busca), skeleton, error strip / offline banner, pull to refresh
+- [x] Novo aluno → success (`M - Novo Aluno (Sheet)` / `(Sucesso)`): `POST /api/clients` (CPF digits), then `AccessLinkPanel` — the web's `/definir-senha?token=` link (`M Link Box` + copy via `expo-clipboard`, expiry "Expira em 3 dias · 23 out, 14:30" in São Paulo, "Compartilhar link" via the share sheet); a `setup: null` response says to issue a new link from the student page
+- [x] `/alunos/[id]` placeholder (PR 9)
+- [x] tests: roster logic, screen (filters, search, empty states, error, create + copy, setup null), `StudentCard`; the test query client no longer leaks the mutation GC timer that kept Jest alive
 
 ### PR 9 — `feat/student-detail`
 - [ ] Detalhe do aluno (overview stats, Planos/Feedbacks/Progresso tabs), action sheet, Editar aluno, Link de acesso, Encerrar vínculo
@@ -311,6 +314,7 @@ merged first. Rollback = revert the mobile PR; nothing server-side depends on it
 | 5 | `feat/api-auth-foundation` | [#18](https://github.com/herbertpdl/vertice-mobile/pull/18) | open (base #17) | reviewed: 1 blocking + 12 non-blocking, fixed |
 | 6 | `feat/auth-screens` | [#19](https://github.com/herbertpdl/vertice-mobile/pull/19) | open (base #18) | reviewed: 2 blocking + 18 non-blocking, fixed or logged |
 | 7 | `feat/home-dashboard` | [#20](https://github.com/herbertpdl/vertice-mobile/pull/20) | open (base #19) | reviewed: 2 blocking + 10 non-blocking, fixed or logged |
+| 8 | `feat/students-list` | — | open (base #20) | — |
 
 ## Decisions log
 - 2026-10-20 — v1 is the **trainer** app because that is what the pen.dev mobile designs cover; the client app needs its own PRD + designs (audit P2-13).
@@ -358,3 +362,5 @@ merged first. Rollback = revert the mobile PR; nothing server-side depends on it
 - 2026-10-21 — Dashboard copy follows the BFF, not the design: `recentFeedbackCount` is all-time ("Feedbacks · recebidos no total", summary "6 feedbacks") and `expiringPlans` covers 14 days ("próximos 14 dias"). Follow-up for vertice-bff: a 7-day "new feedback" count if the product wants the design's copy.
 - 2026-10-21 — Dates in the mobile designs drop the "de" ("24 mai"): `formatDayMonth`. Empty-section lines use the web's copy.
 - Follow-up — "Hoje/Ontem" labels and the greeting are computed at render; re-derive them when the app returns to the foreground (low priority).
+- 2026-10-21 — Sheets that hold a flow (Novo aluno, Editar aluno, Link de acesso, Editar perfil) use the kit `Sheet`, not `presentation: "formSheet"` routes: the same look and behaviour on both platforms, no Android fallback to verify, and the one-time setup token never goes through route params. The §2 formSheet line is superseded.
+- 2026-10-21 — The access link is the web's `/definir-senha?token=` page (`EXPO_PUBLIC_WEB_URL`): students set their password there, as with the web app's link. The token lives only in component state.

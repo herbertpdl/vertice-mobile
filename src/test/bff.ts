@@ -2,7 +2,7 @@ import { env } from "@/lib/env";
 
 type Handler = (request: { body: unknown; url: URL; headers: Record<string, string> }) => Response | Promise<Response>;
 
-export type BffRoutes = Record<string, Handler | Response | unknown>;
+export type BffRoutes = Record<string, Handler | Response | object>;
 
 export type BffMock = {
   /** Every request the app sent, in order: `"POST /api/auth/login"` plus its parsed JSON body. */

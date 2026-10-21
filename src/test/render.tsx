@@ -4,10 +4,14 @@ import type { ReactElement } from "react";
 
 import { ToastProvider } from "@/components/ui/Toast";
 
-/** A fresh query client per test: no retries, no cache shared between tests. */
+/**
+ * A fresh query client per test: no retries, no cache shared between tests. `gcTime: Infinity`
+ * for both queries and mutations: a finite one schedules a garbage-collection timer (5 min by
+ * default for mutations) that keeps Jest from exiting.
+ */
 export function testQueryClient(): QueryClient {
   return new QueryClient({
-    defaultOptions: { queries: { retry: false, gcTime: Infinity }, mutations: { retry: false } },
+    defaultOptions: { queries: { retry: false, gcTime: Infinity }, mutations: { retry: false, gcTime: Infinity } },
   });
 }
 

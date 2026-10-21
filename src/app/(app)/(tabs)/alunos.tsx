@@ -1,5 +1,3 @@
-import { ComingSoonScreen } from "@/screens/home/ComingSoonScreen";
+import { StudentsScreen } from "@/screens/students/StudentsScreen";
 
-export default function Placeholder() {
-  return <ComingSoonScreen title="Alunos" />;
-}
+export default StudentsScreen;
