@@ -1,10 +1,39 @@
 import { Redirect } from "expo-router";
-import { Plus, Search } from "lucide-react-native";
 import { useState, type ReactNode } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import {
+  Calendar,
+  Dumbbell,
+  EllipsisVertical,
+  Gauge,
+  Link,
+  Pencil,
+  Plus,
+  Search,
+  SearchX,
+  Trash2,
+  UserX,
+} from "lucide-react-native";
+
+import { NavBar } from "@/components/layout";
+import {
+  ActionSheet,
+  Banner,
+  ConfirmDialog,
+  DateField,
+  EmptyState,
+  ErrorState,
+  InfoCard,
+  ListRow,
+  MultiSelectField,
+  SectionHeader,
+  SegmentedTabs,
+  SelectField,
+  Sheet,
+  StatusBanner,
+  useToast,
   Avatar,
   Badge,
   Button,
@@ -38,13 +67,22 @@ export default function KitScreen() {
   const [search, setSearch] = useState("");
   const [checked, setChecked] = useState(true);
   const [notes, setNotes] = useState("Movimento composto para espessura de dorsais.");
+  const [tab, setTab] = useState<"plans" | "feedback" | "progress">("plans");
+  const [level, setLevel] = useState<"BEGINNER" | "INTERMEDIATE" | "ADVANCED" | null>(null);
+  const [groups, setGroups] = useState<number[]>([1]);
+  const [date, setDate] = useState<string | null>("2026-10-24");
+  const [overlay, setOverlay] = useState<"sheet" | "actions" | "confirm" | null>(null);
+  const toast = useToast();
 
   if (!__DEV__) return <Redirect href="/" />;
 
   return (
     <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
       <ScrollView contentContainerStyle={styles.content}>
-        <Text variant="title">Kit</Text>
+        <NavBar
+          title="Kit"
+          action={{ icon: EllipsisVertical, accessibilityLabel: "Ações", onPress: () => setOverlay("actions") }}
+        />
 
         <Section title="Text">
           {(["display", "title", "headline", "titleSm", "section", "navTitle", "lead", "body", "label", "caption", "overline"] as const).map(
@@ -167,7 +205,117 @@ export default function KitScreen() {
           <Checkbox checked={false} onChange={() => {}} label="Peito" error="Selecione ao menos um grupo." />
           <Checkbox checked onChange={() => {}} label="Desabilitado" disabled />
         </Section>
+        <Section title="Navigation & content">
+          <SectionHeader title="Feedbacks recentes" action={{ label: "Ver todos", onPress: () => {} }} />
+          <SegmentedTabs
+            value={tab}
+            onChange={setTab}
+            tabs={[
+              { key: "plans", label: "Planos" },
+              { key: "feedback", label: "Feedbacks", count: 6 },
+              { key: "progress", label: "Progresso" },
+            ]}
+          />
+          <InfoCard
+            rows={[
+              { icon: Calendar, label: "PERÍODO", value: "01 mar – 24 mai 2026" },
+              { icon: Gauge, label: "NÍVEL", value: "Intermediário" },
+              { icon: Dumbbell, label: "TREINOS", value: "4 treinos" },
+            ]}
+          />
+          <View>
+            <ListRow icon={Pencil} label="Editar perfil" onPress={() => {}} />
+            <ListRow icon={Trash2} label="Excluir conta" danger last onPress={() => {}} />
+          </View>
+        </Section>
+
+        <Section title="Feedback">
+          <Banner message="Não foi possível entrar. Corrija os campos abaixo." />
+          <Banner tone="info" message="Exercício padrão — não pode ser editado." />
+          <StatusBanner kind="offline" action={{ label: "Tentar", onPress: () => {} }} />
+          <StatusBanner kind="error" action={{ label: "Tentar novamente", onPress: () => {} }} />
+          <EmptyState icon={SearchX} title="Nenhum aluno encontrado" message="Tente outro termo ou limpe a busca para ver todos os alunos." action={{ label: "Limpar busca", onPress: () => {} }} />
+          <ErrorState onRetry={() => {}} />
+        </Section>
+
+        <Section title="Pickers">
+          <SelectField
+            label="Nível"
+            value={level}
+            onChange={setLevel}
+            options={[
+              { value: "BEGINNER", label: "Iniciante" },
+              { value: "INTERMEDIATE", label: "Intermediário" },
+              { value: "ADVANCED", label: "Avançado" },
+            ]}
+          />
+          <SelectField label="Dia da semana" value={null} onChange={() => {}} options={[]} error="Selecione o dia." />
+          <MultiSelectField
+            label="Grupos musculares"
+            values={groups}
+            onChange={setGroups}
+            minSelected={1}
+            options={[
+              { value: 1, label: "Costas" },
+              { value: 2, label: "Bíceps" },
+              { value: 3, label: "Peito" },
+            ]}
+          />
+          <DateField label="Início" value={date} onChange={setDate} />
+        </Section>
+
+        <Section title="Overlays">
+          <Button label="Abrir sheet" variant="secondary" onPress={() => setOverlay("sheet")} />
+          <Button label="Abrir confirmação" variant="secondary" onPress={() => setOverlay("confirm")} />
+          <Button label="Mostrar toast" variant="secondary" onPress={() => toast.show("Treino salvo com sucesso.")} />
+          <Button label="Toast de erro" variant="secondary" onPress={() => toast.show("Não foi possível salvar. Tente novamente.", "error")} />
+        </Section>
       </ScrollView>
+
+      <Sheet
+        visible={overlay === "sheet"}
+        onClose={() => setOverlay(null)}
+        title="Novo aluno"
+        footer={
+          <>
+            <Button label="Cancelar" variant="secondary" style={styles.flex} onPress={() => setOverlay(null)} />
+            <Button label="Criar aluno" style={styles.flex} onPress={() => setOverlay(null)} />
+          </>
+        }
+      >
+        <TextField label="Nome completo" placeholder="Nome do aluno" />
+        <TextField label="E-mail" defaultValue="bruno.ferreira" error="Informe um e-mail válido." />
+        {/* Pickers inside a sheet: a modal over a modal — check this one on both platforms. */}
+        <SelectField
+          label="Nível"
+          value={level}
+          onChange={setLevel}
+          options={[
+            { value: "BEGINNER", label: "Iniciante" },
+            { value: "INTERMEDIATE", label: "Intermediário" },
+            { value: "ADVANCED", label: "Avançado" },
+          ]}
+        />
+        <DateField label="Início" value={date} onChange={setDate} />
+      </Sheet>
+      <ActionSheet
+        visible={overlay === "actions"}
+        onClose={() => setOverlay(null)}
+        title="Marina Costa"
+        actions={[
+          { icon: Pencil, label: "Editar aluno", onPress: () => {} },
+          { icon: Link, label: "Link de acesso", onPress: () => {} },
+          { icon: UserX, label: "Encerrar vínculo", danger: true, onPress: () => setOverlay("confirm") },
+        ]}
+      />
+      <ConfirmDialog
+        visible={overlay === "confirm"}
+        title="Excluir plano?"
+        message="O plano “Hipertrofia II” e seus 4 treinos serão excluídos. Essa ação não pode ser desfeita."
+        confirmLabel="Excluir"
+        onConfirm={() => setOverlay(null)}
+        onCancel={() => setOverlay(null)}
+      />
     </SafeAreaView>
   );
 }

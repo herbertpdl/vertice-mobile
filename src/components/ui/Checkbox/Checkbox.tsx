@@ -93,8 +93,8 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   checked: { backgroundColor: colors.primary },
-  unchecked: { borderWidth: 1.5, borderColor: colors.borderStrong },
-  invalid: { borderWidth: 1.5, borderColor: colors.danger },
+  unchecked: { borderWidth: sizes.checkboxBorderWidth, borderColor: colors.borderStrong },
+  invalid: { borderWidth: sizes.checkboxBorderWidth, borderColor: colors.danger },
   label: { flex: 1, paddingTop: 2 },
   disabled: { opacity: disabledOpacity.field },
 });

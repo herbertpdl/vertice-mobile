@@ -11,6 +11,7 @@
     "@hookform/resolvers": "^5.9.1",
     "@tanstack/react-query": "^5.103.1",
     "expo": "~57.0.30",
+    "expo-blur": "~57.0.3",
     "expo-constants": "~57.0.18",
     "expo-font": "~57.0.4",
     "expo-image": "~57.0.5",
@@ -60,7 +61,8 @@
     "lint": "expo lint",
     "api:types": "tsx scripts/sync-api-types.mts",
     "test": "jest",
-    "tokens:check": "tsx scripts/check-tokens.mts"
+    "tokens:check": "tsx scripts/check-tokens.mts",
+    "test:hostile-tz": "TZ=Pacific/Kiritimati jest src/lib --ci && TZ=Pacific/Honolulu jest src/lib --ci"
   },
   "private": true,
   "jest": {

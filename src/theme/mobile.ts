@@ -55,6 +55,59 @@ export const sizes = {
   fieldHelpGap: 6,
   /** M Field focused border width (1 otherwise). */
   focusBorderWidth: 1.5,
+  /** M Empty State icon disc and glyph. */
+  emptyDisc: 72,
+  emptyIcon: 30,
+  /** M Form Error Banner / M Info Banner padding and gap (also the M Offline Banner gap). */
+  bannerPadding: 14,
+  bannerGap: 10,
+  /** M List Row height and gap. */
+  listRowHeight: 56,
+  listRowGap: 14,
+  /** M Multi Select Field gap between tags. */
+  multiSelectTagGap: 6,
+  /** M Empty State button minimum width. */
+  emptyButtonMinWidth: 200,
+  /** M Option Row / M Checkbox Row height. */
+  optionRowHeight: 52,
+  /** M Info Row vertical padding and label column width. */
+  infoRowPaddingVertical: 13,
+  infoLabelWidth: 96,
+  /** M Segmented Tabs gap between items, and the gap inside an item (label ↔ count). */
+  segmentedGap: 2,
+  segmentedItemGap: 6,
+  /** M Tab Bar capsule padding, tab pill radius, icon ↔ label gap. */
+  tabCapsulePadding: 6,
+  tabItemRadius: 22,
+  tabItemGap: 3,
+  /** M Bottom Sheet grabber. */
+  grabberWidth: 36,
+  grabberHeight: 5,
+  /** M Bottom Sheet content gap between fields. */
+  sheetContentGap: 18,
+  /** M Calendar day cell height and selection circle. */
+  calendarCell: 44,
+  calendarDay: 40,
+  calendarWeekdayHeight: 32,
+  /** M Confirm Dialog width and icon disc. */
+  dialogWidth: 330,
+  dialogIcon: 48,
+  /** M Toast padding. */
+  toastPaddingVertical: 14,
+  /** M Checkbox / M Checkbox Row unchecked ring width. */
+  checkboxBorderWidth: 1.5,
+  /**
+   * M Tab Bar capsule height at the default text size: padding 6 + tab (8 + 22 icon + 3 + ~16
+   * label + 8) + 6. Tab labels cap their font scaling (`TAB_LABEL_MAX_SCALE`) so this holds.
+   */
+  tabBarCapsuleHeight: 69,
+  /** M Tab Bar's padding below the capsule, above the home indicator. */
+  tabBarBottomGap: 12,
+  /** M Confirm Dialog: stacked buttons gap and error row vertical padding. */
+  dialogButtonGap: 10,
+  dialogErrorPaddingVertical: 10,
+  /** M Bottom Sheet top padding (above the grabber). */
+  sheetPaddingTop: 10,
 } as const;
 
 /** Horizontal padding of a screen's content (pen.dev mobile screens use 20 on a 390 frame). */
@@ -72,3 +125,15 @@ export const disabledOpacity = {
 
 /** Opacity of `M Button - Loading`. */
 export const loadingOpacity = 0.75;
+
+/** The largest font scale tab labels follow, so the floating capsule keeps its height. */
+export const TAB_LABEL_MAX_SCALE = 1.2;
+
+/**
+ * How far from the bottom the floating M Tab Bar reaches (its top edge), for a given bottom safe
+ * area inset. Tab screens pad their content by this (plus breathing room) so their last row clears
+ * the capsule; toasts sit just above it.
+ */
+export function tabBarInset(safeAreaBottom: number): number {
+  return safeAreaBottom + sizes.tabBarBottomGap + sizes.tabBarCapsuleHeight;
+}

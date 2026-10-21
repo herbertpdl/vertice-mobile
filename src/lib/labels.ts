@@ -25,6 +25,31 @@ export const DAY_ORDER: DayOfWeek[] = [
   "SUNDAY",
 ];
 
+/**
+ * Sunday first: the column order of the date picker's month grid (`monthGrid` in `calendar.ts`,
+ * whose test pins the two together).
+ */
+export const CALENDAR_DAY_ORDER: DayOfWeek[] = [
+  "SUNDAY",
+  "MONDAY",
+  "TUESDAY",
+  "WEDNESDAY",
+  "THURSDAY",
+  "FRIDAY",
+  "SATURDAY",
+];
+
+/** One letter per day, for the calendar header and the roster's week dots. */
+export const DAY_INITIAL: Record<DayOfWeek, string> = {
+  MONDAY: "S",
+  TUESDAY: "T",
+  WEDNESDAY: "Q",
+  THURSDAY: "Q",
+  FRIDAY: "S",
+  SATURDAY: "S",
+  SUNDAY: "D",
+};
+
 export const DAY_NAMES: Record<DayOfWeek, string> = {
   MONDAY: "Segunda",
   TUESDAY: "Terça",

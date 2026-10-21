@@ -45,7 +45,7 @@ and account (edit, password, export, delete), consent gate.
 | Fonts | `@expo-google-fonts/inter` (400/500/600/700) and `@expo-google-fonts/space-grotesk` (500/600/700; the design never uses 400) through `useFonts`, imported per weight subpath, splash held until loaded. **Weight is selected by family name, never `fontWeight`** (Android ignores `fontWeight` on custom fonts) — the `Text` primitive maps `weight` → family. |
 | Components | `src/components/ui/<Name>/{<Name>.tsx,index.ts,<Name>.test.tsx}` (design-system kit, 1:1 with `M ` components), `src/components/domain/` (product pieces: rows, cards, sheets), `src/components/layout/` (Screen, NavBar, TabBar). Same one-folder-per-component rule as the web; import through the folder index. |
 | Kit preview | A dev-only route `src/app/(dev)/kit.tsx` (guarded by `__DEV__`, not linked in release) renders every kit component in every state — the mobile stand-in for the web's Storybook. |
-| Navigation | Expo Router. Groups: `(auth)` (login, cadastro), `(app)` behind the session with `(tabs)` (`index`=Início, `alunos`, `exercicios`, `perfil`) and stack screens pushed over the tabs. Guards with `Stack.Protected`. Bottom-sheet screens (Novo aluno, Editar aluno, Link de acesso, Editar perfil…) are routes with `presentation: "formSheet"` (native sheet, swipe to dismiss on iOS; react-native-screens documents a fallback to `modal` on Android — verify on an Android device in PR 4 and, if it reads wrong, render those routes with the kit `Sheet` on Android). In-form pickers (select, date, multi-select) use the kit `Sheet` (RN `Modal`). React Navigation is vendored by expo-router in SDK 57: import its hooks (`usePreventRemove`, …) from `expo-router/react-navigation`, never `@react-navigation/*`. |
+| Navigation | Expo Router. Groups: `(auth)` (login, cadastro), `(app)` behind the session with `(tabs)` (`index`=Início, `alunos`, `exercicios`, `perfil`) and stack screens pushed over the tabs. Guards with `Stack.Protected`. Bottom-sheet screens (Novo aluno, Editar aluno, Link de acesso, Editar perfil…) are routes with `presentation: "formSheet"` (native sheet, swipe to dismiss on iOS; react-native-screens documents a fallback to `modal` on Android — verify on an Android device in PR 8, the first route sheet, and if it reads wrong, render those routes with the kit `Sheet` on Android). In-form pickers (select, date, multi-select) use the kit `Sheet` (RN `Modal`). React Navigation is vendored by expo-router in SDK 57: import its hooks (`usePreventRemove`, …) from `expo-router/react-navigation`, never `@react-navigation/*`. |
 | Tab bar | Custom `tabBar` for `Tabs` rendering the `M Tab Bar` capsule with a safe-area bottom inset. Blur via `expo-blur` on iOS; on Android use the design's translucent `#141A22CC` surface without blur (Android blur needs an explicit blur target and costs frames). |
 | Status bar | The `M Status Bar` in the design is the device's; never draw it. Screens use safe-area insets (`react-native-safe-area-context`). |
 | Server state | TanStack Query, query keys per resource (`["clients"]`, `["client", id, "overview"]`, `["trainingPlan", id]`, `["workout", id, "full"]`, `["exercises", filters]`, `["me"]`, `["dashboard"]`…); mutations invalidate by key (same convention as the web). `focusManager` on `AppState`, `onlineManager` on `@react-native-community/netinfo`, no retries on 4xx. Pull-to-refresh on every list. |
@@ -88,9 +88,9 @@ from its report; implement from the pen.dev node, not from this list.**
 | `TextField` | M Field | label, placeholder, error (danger border + `circle-alert`), help, trailing icon, password eye toggle, focused border |
 | `TextArea` | M Text Area | counter "n / max caracteres" |
 | `SearchField` | M Search Field | pill, search icon, clear button |
-| `SelectField` + `SelectSheet` | M Select Field + M - Selecionar (Sheet) | single select |
-| `MultiSelectField` + sheet | M - Grupos Musculares (Sheet) | chips of chosen values |
-| `DateField` + `CalendarSheet` | M - Calendário (Sheet) | value is `yyyy-MM-dd` string only |
+| `SelectField` | M Select Field + M - Selecionar (Sheet) | single select; the sheet is built in |
+| `MultiSelectField` | M Multi Select Field + M - Grupos Musculares (Sheet) | tags of chosen values; draft + "Aplicar (n)" |
+| `DateField` + `Calendar` | M Date Field + M Calendar / M - Calendário (Sheet) | value is `yyyy-MM-dd` string only |
 | `Checkbox` | M Checkbox | label can contain links |
 | `Chip` | M Chip | selected = primary fill |
 | `Badge` | M Badge (+ tones) | `tone`: neutral/success/warning/danger/info/outline; `CountPill`, `Tag` alongside |
@@ -103,8 +103,9 @@ from its report; implement from the pen.dev node, not from this list.**
 | `ProgressBar`, `WeekDots` | M Progress Bar, M Week Dots | |
 | `Spinner`, `Skeleton` | M Spinner, M Skeleton* | `Skeleton.Line/Circle/Block` |
 | `EmptyState`, `ErrorState` | M Empty State, M - Erro (Tela) | |
-| `FormErrorBanner`, `OfflineBanner`, `Toast` | M Form Error Banner, M Offline Banner, M Toast | |
-| `Sheet`, `ActionSheet`, `ConfirmDialog` | M Bottom Sheet, M Action Sheet, M Confirm Dialog | |
+| `Banner`, `StatusBanner`, `Toast` (+ `ToastProvider`, `useToast`) | M Form Error / Info Banner, M Offline / Error Banner, M Toast | show a toast after the sheet that raised it has closed |
+| `Sheet` (+ `SheetModal`), `ActionSheet`, `ConfirmDialog` | M Bottom Sheet, M Action Sheet, M Confirm Dialog | |
+| `ListRow`, `OptionRow`, `InfoCard`, `PickerField` | M List Row, M Option / Checkbox Row, M Info Card, M Select Field box | |
 | `NavBar` (layout) | M Nav Bar | back, centered 17/600 title, action |
 | `TabBar` (layout) | M Tab Bar | capsule, blur, active pill |
 | `Screen` (layout) | — | safe area, bg, scroll/keyboard handling |
@@ -235,8 +236,11 @@ conventional style (`feat(ui): …`, `chore: …`).
 - [x] `(dev)/kit` preview route, checked on react-native-web at 390 pt against the pen.dev values
 
 ### PR 4 — `feat/ui-kit-layout`: layout, navigation & overlays
-- [ ] `Screen`, `NavBar`, `TabBar`, `SectionHeader`, `SegmentedTabs`, `EmptyState`, `ErrorState`, `FormErrorBanner`, `OfflineBanner`, `Toast` (+ provider), `Sheet`, `ActionSheet`, `ConfirmDialog`, `SelectField`/`SelectSheet`, `MultiSelectField`, `DateField`/`CalendarSheet`
-- [ ] tests; added to the kit preview
+- [x] layout: `Screen` (safe area, keyboard, pull to refresh, pinned header/footer, tab inset), `NavBar`, `TabBar` (+ `tabBarInset`; blur on iOS, translucent fill on Android)
+- [x] `SectionHeader`, `SegmentedTabs`, `EmptyState`/`ErrorState`, `Banner`/`StatusBanner`, `InfoCard`, `ListRow`, `OptionRow`, `Toast` (+ `ToastProvider`/`useToast`, mounted in the root layout), `Sheet` (+ `SheetModal`), `ActionSheet` (iOS: action runs on `onDismiss`), `ConfirmDialog` (+ `useSingleFlight`), `SelectField` (+ `PickerField`), `MultiSelectField`, `DateField` + `Calendar`
+- [x] ported from the web (moved up from PR 5, DateField needs them): `src/lib/{format,calendar,plans}.ts` + tests, `formatMonthTitle`; `CALENDAR_DAY_ORDER`/`DAY_INITIAL` in `labels.ts`; `npm run test:hostile-tz` (+ CI)
+- [x] tests for every component (incl. `Calendar`; both ActionSheet platform paths); kit gallery sections (pickers nested in a sheet); checked on react-native-web
+- [ ] **device checklist** (none available here): Android keyboard inside `Sheet` and over `Screen` footers (`KeyboardAvoidingView behavior="height"`); pickers nested in a sheet present and dismiss on iOS (kit → Abrir sheet); `formSheet` routes on Android — moved to PR 8, the first route sheet
 
 ### PR 5 — `feat/api-auth-foundation` (audit P2-05)
 - [ ] bump `src/lib/api/.bff-ref` to vertice-bff `main` + `npm run api:types` (picks up `completedToday[].completedAt`)
@@ -244,7 +248,7 @@ conventional style (`feat(ui): …`, `chore: …`).
 - [ ] `env.ts`: URL validation; release builds require `https:` and refuse localhost
 - [ ] `src/lib/auth/` (SecureStore storage, `AuthProvider`, `useSession`), `src/lib/api/{types,auth,errorMessages}.ts`
 - [ ] query client: no 4xx retries, `focusManager`/`onlineManager`
-- [ ] port `format.ts`/`plans.ts`/`calendar.ts`/validation + tests (Hermes `Intl` timeZone check)
+- [ ] port validation schemas + tests; Hermes `Intl` timeZone check on a device (`format`/`calendar`/`plans` landed in PR 4)
 - [ ] root `ErrorBoundary`
 - [ ] tests for `apiFetch`, `env`, auth storage
 
@@ -293,6 +297,7 @@ merged first. Rollback = revert the mobile PR; nothing server-side depends on it
 | 1 | `docs/mobile-app-spec` | [#14](https://github.com/herbertpdl/vertice-mobile/pull/14) | open | reviewed: 2 blocking + 9 non-blocking, all fixed |
 | 2 | `feat/theme-foundation` | [#15](https://github.com/herbertpdl/vertice-mobile/pull/15) | open (base #14) | reviewed: 2 blocking + 12 non-blocking, all fixed |
 | 3 | `feat/ui-kit-controls` | [#16](https://github.com/herbertpdl/vertice-mobile/pull/16) | open (base #15) | reviewed: 2 blocking + 13 non-blocking, all fixed |
+| 4 | `feat/ui-kit-layout` | [#17](https://github.com/herbertpdl/vertice-mobile/pull/17) | open (base #16) | reviewed: 1 blocking + 24 non-blocking, fixed (device-only items listed below) |
 
 ## Decisions log
 - 2026-10-20 — v1 is the **trainer** app because that is what the pen.dev mobile designs cover; the client app needs its own PRD + designs (audit P2-13).
@@ -314,3 +319,10 @@ merged first. Rollback = revert the mobile PR; nothing server-side depends on it
 - 2026-10-20 — React Compiler + Reanimated 4: shared values use `.get()`/`.set()`, never `.value`.
 - 2026-10-20 — Pressed styles can't be driven in the Jest renderer; components whose pressed look matters expose the style rule as a pure function (`buttonFill`) and test that.
 - 2026-10-20 — Jest maps `lucide-react-native` to its CJS build (`moduleNameMapper`): its `react-native` entry is `.mjs`, which jest-expo's transform doesn't cover. Revisit if lucide changes its dist layout.
+- 2026-10-20 — `DateField` opens the calendar sheet instead of the web's masked `dd/mm/aaaa` input (two taps beat typing with a mask on a phone); its value is still a `yyyy-MM-dd` string throughout.
+- 2026-10-20 — Sheets are RN `Modal`s (fade backdrop + Reanimated slide-up); swipe-to-dismiss is not implemented — backdrop tap, the close button and Android back dismiss them.
+- 2026-10-20 — Plan status label is "Encerrado" on mobile (the design), "Concluído" on the web; labels are per app.
+- 2026-10-20 — Jest uses `react-native-safe-area-context`'s own mock (zero insets) globally.
+- 2026-10-20 — `plans.ts` moved into PR 4 with `format.ts`/`calendar.ts` because it is the same port with the same hostile-TZ test run; its first consumer is PR 9. Review of #17.
+- 2026-10-20 — Toasts render under the root `Stack`, so a sheet covers them: screens show a toast after the sheet that raised it has closed.
+- 2026-10-20 — Tab labels cap font scaling at 1.2× so the floating capsule keeps the height `tabBarInset` assumes (measuring it at runtime was judged not worth a context for v1).
