@@ -42,7 +42,7 @@ type TextPreset = {
 /**
  * The type styles the pen.dev mobile frames use ("Vertice — Mobile App" and "DS - Mobile
  * Components", read with instances resolved), named by role. Sizes that are not on the web's
- * `--text-*` scale (26, 20, 17, 15, 10) come from the mobile designs, which size for phones; they
+ * `--text-*` scale (26, 20, 17, 15) come from the mobile designs, which size for phones; they
  * stay here rather than in `tokens.ts`. Line heights of 1.4–1.5 in the design map to the nearest
  * `*Relaxed`/`lead` preset.
  */
@@ -65,8 +65,12 @@ export const textPresets = {
   lead: { family: "base", weight: "regular", size: 16, lineHeight: 1.4 },
   /** Input text, row titles. */
   bodyLg: { family: "base", weight: "regular", size: 16 },
-  /** Button labels, list names. */
+  /** Multi-line input text (M Text Area). */
+  bodyLgRelaxed: { family: "base", weight: "regular", size: 16, lineHeight: 1.4 },
+  /** Button labels, list names; M Avatar 48 initials. */
   bodyLgStrong: { family: "base", weight: "semibold", size: 16 },
+  /** M Avatar 64 initials. */
+  avatarLg: { family: "base", weight: "semibold", size: 22 },
   /** "Não tem uma conta?". */
   bodyMd: { family: "base", weight: "regular", size: 15 },
   bodyMdStrong: { family: "base", weight: "semibold", size: 15 },
@@ -81,14 +85,12 @@ export const textPresets = {
   /** Help and error lines, secondary row text. */
   caption: { family: "base", weight: "regular", size: 13 },
   small: { family: "base", weight: "regular", size: 12 },
-  /** M Badge, M Stat Card labels. */
+  /** M Badge, M Stat Card labels, M Tab Bar labels. */
   smallStrong: { family: "base", weight: "semibold", size: 12 },
   /** M Week Dot letters, M Count Pill, weekday chips ("SEG"). */
   smallBold: { family: "base", weight: "bold", size: 12 },
   /** "PERÍODO", "CONTA" — section/table captions (the copy itself is uppercase). */
   overline: { family: "base", weight: "semibold", size: 12, letterSpacing: 0.5 },
-  /** M Tab Bar labels ("Início"). */
-  micro: { family: "base", weight: "semibold", size: 10 },
   /** Numbers in the heading face: times, percentages. */
   numeric: { family: "heading", weight: "semibold", size: 14 },
   /** The tracked "VERTICE" wordmark next to the logo mark. */

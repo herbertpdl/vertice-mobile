@@ -13,6 +13,7 @@
     "expo": "~57.0.30",
     "expo-constants": "~57.0.18",
     "expo-font": "~57.0.4",
+    "expo-image": "~57.0.5",
     "expo-linking": "~57.0.13",
     "expo-router": "~57.0.28",
     "expo-splash-screen": "~57.0.10",
@@ -63,6 +64,12 @@
   },
   "private": true,
   "jest": {
-    "preset": "jest-expo"
+    "preset": "jest-expo",
+    "setupFiles": [
+      "<rootDir>/jest.setup.ts"
+    ],
+    "moduleNameMapper": {
+      "^lucide-react-native$": "<rootDir>/node_modules/lucide-react-native/dist/cjs/lucide-react-native.js"
+    }
   }
 }
