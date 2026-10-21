@@ -1,16 +1,18 @@
 import { fireEvent, screen, waitFor } from "@testing-library/react-native";
 
-import { mockBff, type BffMock } from "@/test/bff";
+import { bffError, mockBff, type BffMock } from "@/test/bff";
 import { renderScreen } from "@/test/render";
 
 import { RegisterScreen } from "./RegisterScreen";
 
 const mockSignIn = jest.fn();
-jest.mock("@/lib/auth", () => ({
-  ...jest.requireActual("@/lib/auth/useSessionGate"),
-  useAuth: () => ({ signIn: mockSignIn }),
+jest.mock("@/lib/auth", () => ({ useAuth: () => ({ signIn: mockSignIn }) }));
+const mockRouter = { push: jest.fn(), back: jest.fn(), replace: jest.fn(), canGoBack: jest.fn(() => true) };
+jest.mock("expo-router", () => ({
+  get router() {
+    return mockRouter;
+  },
 }));
-jest.mock("expo-router", () => ({ router: { push: jest.fn(), back: jest.fn(), canGoBack: () => true } }));
 jest.mock("@/lib/legal", () => ({ openLegalPage: jest.fn(), LEGAL_PAGE_TITLES: {} }));
 
 let bff: BffMock;
@@ -64,4 +66,28 @@ describe("RegisterScreen", () => {
       role: "TRAINER",
     });
   });
+
+  it("says the e-mail or CPF is taken on a 409", async () => {
+    bff = mockBff({
+      "GET /api/legal/versions": { terms: "v1", healthData: "v1" },
+      "POST /api/auth/register": bffError(409, "CONFLICT"),
+    });
+    await renderScreen(<RegisterScreen />);
+    await fillValid();
+    await fireEvent.press(screen.getByRole("checkbox"));
+    await fireEvent.press(screen.getByRole("button", { name: "Criar conta" }));
+    expect(await screen.findByText("E-mail ou CPF já cadastrado")).toBeOnTheScreen();
+    expect(mockSignIn).not.toHaveBeenCalled();
+  });
+
+  it("'Entrar' goes back, or to login when opened from a link with no history", async () => {
+    bff = mockBff({ "GET /api/legal/versions": { terms: "v1", healthData: "v1" } });
+    await renderScreen(<RegisterScreen />);
+    await fireEvent.press(screen.getByRole("button", { name: "Entrar" }));
+    expect(mockRouter.back).toHaveBeenCalled();
+    mockRouter.canGoBack.mockReturnValueOnce(false);
+    await fireEvent.press(screen.getByRole("button", { name: "Entrar" }));
+    expect(mockRouter.replace).toHaveBeenCalledWith("/login");
+  });
 });
+

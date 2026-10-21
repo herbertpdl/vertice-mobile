@@ -1,105 +1,67 @@
-import { CloudOff, FileText, ShieldCheck } from "lucide-react-native";
+import { FileText, ShieldCheck } from "lucide-react-native";
 import { StyleSheet, View } from "react-native";
-import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { Banner, Button, EmptyState, ListRow, Logo, Text } from "@/components/ui";
+import { Screen } from "@/components/layout/Screen";
+import { Banner, Button, ListRow, Logo, Text } from "@/components/ui";
 import { LEGAL_PAGE_TITLES, openLegalPage } from "@/lib/legal";
-import { colors, radius, screenPaddingHorizontal, space } from "@/theme";
+import { colors, radius, space } from "@/theme";
 
 export type ConsentScreenProps = {
-  /** The Terms version to accept (`GET /api/legal/versions` `.terms`); null when it failed to load. */
-  version: string | null;
+  /** The Terms version to accept (`GET /api/legal/versions` `.terms`). */
+  version: string;
+  /** False for an account that never accepted any version (the web's "Antes de continuar"). */
+  updated: boolean;
   onAccept: () => void;
   accepting: boolean;
-  /** The accept request failed. */
   acceptError?: string;
-  /** Loading the account or the versions failed: show the error state with a retry. */
-  loadFailed: boolean;
-  onRetry: () => void;
-  retrying: boolean;
   onSignOut: () => void;
 };
 
 /**
- * M - Termos (Consentimento) / M - Termos (Erro): the blocking gate in front of the app while
- * the trainer's accepted Terms version isn't the current one. It fails closed — if the account or
- * the versions can't be loaded, the error state replaces it, never the app (spec §2, "Consent").
+ * M - Termos (Consentimento): the blocking gate in front of the app while the trainer's accepted
+ * Terms version isn't the current one. Scrolls (large text, small phones), with the actions pinned.
+ * pen.dev only draws the "updated" variant; the first-acceptance copy is the web's.
  */
-export function ConsentScreen({
-  version,
-  onAccept,
-  accepting,
-  acceptError,
-  loadFailed,
-  onRetry,
-  retrying,
-  onSignOut,
-}: ConsentScreenProps) {
-  const insets = useSafeAreaInsets();
+export function ConsentScreen({ version, updated, onAccept, accepting, acceptError, onSignOut }: ConsentScreenProps) {
   return (
-    <View style={[styles.root, { paddingTop: insets.top + space[6], paddingBottom: Math.max(insets.bottom, space[5]) + space[4] }]}>
-      <View style={styles.top}>
-        <Logo />
-        {loadFailed ? (
-          <EmptyState
-            icon={CloudOff}
-            title="Não foi possível carregar seus dados"
-            message="Verifique sua conexão e tente novamente."
-          />
-        ) : (
-          <>
-            <Text variant="display" accessibilityRole="header">
-              Atualizamos nossos termos
-            </Text>
-            <Text variant="lead" color="textSecondary">
-              Para continuar usando o Vertice, leia e aceite a versão mais recente dos Termos de uso e da
-              Política de privacidade.
-            </Text>
-            <View style={styles.docs}>
-              <ListRow
-                icon={FileText}
-                role="link"
-                label={LEGAL_PAGE_TITLES.termos}
-                onPress={() => void openLegalPage("termos")}
-              />
-              <ListRow
-                icon={ShieldCheck}
-                role="link"
-                label={LEGAL_PAGE_TITLES.privacidade}
-                last
-                onPress={() => void openLegalPage("privacidade")}
-              />
-            </View>
-            {version === null ? null : (
-              <Text variant="caption" color="textSecondary">
-                {`Versão ${version}`}
-              </Text>
-            )}
-            {acceptError === undefined ? null : <Banner message={acceptError} />}
-          </>
-        )}
+    <Screen
+      contentStyle={styles.content}
+      footer={
+        <View style={styles.actions}>
+          <Button label="Aceitar e continuar" loading={accepting} onPress={onAccept} />
+          <Button label="Sair" variant="ghost" disabled={accepting} onPress={onSignOut} />
+        </View>
+      }
+    >
+      <Logo />
+      <Text variant="display" accessibilityRole="header">
+        {updated ? "Atualizamos nossos termos" : "Antes de continuar"}
+      </Text>
+      <Text variant="lead" color="textSecondary">
+        {updated
+          ? "Para continuar usando o Vertice, leia e aceite a versão mais recente dos Termos de uso e da Política de privacidade."
+          : "Para usar o Vertice, é preciso aceitar os Termos de uso e a Política de privacidade."}
+      </Text>
+      <View style={styles.docs}>
+        <ListRow icon={FileText} role="link" label={LEGAL_PAGE_TITLES.termos} onPress={() => void openLegalPage("termos")} />
+        <ListRow
+          icon={ShieldCheck}
+          role="link"
+          label={LEGAL_PAGE_TITLES.privacidade}
+          last
+          onPress={() => void openLegalPage("privacidade")}
+        />
       </View>
-      <View style={styles.actions}>
-        {loadFailed ? (
-          <Button label="Tentar novamente" loading={retrying} onPress={onRetry} />
-        ) : (
-          <Button label="Aceitar e continuar" loading={accepting} disabled={version === null} onPress={onAccept} />
-        )}
-        <Button label="Sair" variant="ghost" disabled={accepting} onPress={onSignOut} />
-      </View>
-    </View>
+      <Text variant="caption" color="textSecondary">
+        {`Versão ${version} · Ao aceitar, você declara que leu e concorda com os dois textos.`}
+      </Text>
+      {acceptError === undefined ? null : <Banner message={acceptError} />}
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: colors.bg,
-    paddingHorizontal: screenPaddingHorizontal,
-    justifyContent: "space-between",
-    gap: space[6],
-  },
-  top: { gap: space[5] },
+  content: { paddingTop: space[6], gap: space[5] },
   docs: {
     backgroundColor: colors.surface,
     borderRadius: radius.lg,

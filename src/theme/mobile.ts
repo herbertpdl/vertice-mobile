@@ -97,6 +97,8 @@ export const sizes = {
   /** M - Login / M - Splash: gap between the screen's groups; the splash's spinner ↔ text gap. */
   authGroupGap: 28,
   loadingGroupGap: 14,
+  /** Logo Mark's frame (the mark is inset inside it). */
+  logoMark: 34,
   /** "Não tem uma conta? Cadastre-se": gap between the sentence and its link. */
   inlineLinkGap: 6,
   /** M Checkbox / M Checkbox Row unchecked ring width. */

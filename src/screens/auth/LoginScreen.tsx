@@ -7,7 +7,8 @@ import { z } from "zod";
 
 import { FormTextField } from "@/components/form";
 import { Screen } from "@/components/layout/Screen";
-import { Banner, Button, Divider, Logo, Text, TextLink } from "@/components/ui";
+import { AuthFooter } from "@/components/domain";
+import { Banner, Button, Divider, Logo, Text } from "@/components/ui";
 import { login } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { apiErrorMessage } from "@/lib/api/errorMessages";
@@ -91,17 +92,15 @@ export function LoginScreen() {
           autoComplete="current-password"
           textContentType="password"
           returnKeyType="go"
-          onSubmitEditing={() => void submit()}
+          // The keyboard's "go" bypasses the disabled button: don't send a second request.
+          onSubmitEditing={() => {
+            if (!isSubmitting) void submit();
+          }}
         />
       </View>
       <Button label={isSubmitting ? "Entrando…" : "Entrar"} loading={isSubmitting} onPress={() => void submit()} />
       <Divider label="ou" />
-      <View style={styles.footer}>
-        <Text variant="bodyMd" color="textSecondary">
-          Não tem uma conta?
-        </Text>
-        <TextLink label="Cadastre-se" variant="bodyMdStrong" onPress={() => router.push("/cadastro")} />
-      </View>
+      <AuthFooter question="Não tem uma conta?" action="Cadastre-se" onPress={() => router.push("/cadastro")} />
     </Screen>
   );
 }
@@ -111,5 +110,4 @@ const styles = StyleSheet.create({
   content: { paddingTop: space[6], gap: sizes.authGroupGap },
   head: { gap: space[2] },
   fields: { gap: space[5] },
-  footer: { flexDirection: "row", justifyContent: "center", alignItems: "center", gap: sizes.inlineLinkGap },
 });

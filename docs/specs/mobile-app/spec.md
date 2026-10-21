@@ -45,7 +45,7 @@ and account (edit, password, export, delete), consent gate.
 | Fonts | `@expo-google-fonts/inter` (400/500/600/700) and `@expo-google-fonts/space-grotesk` (500/600/700; the design never uses 400) through `useFonts`, imported per weight subpath, splash held until loaded. **Weight is selected by family name, never `fontWeight`** (Android ignores `fontWeight` on custom fonts) — the `Text` primitive maps `weight` → family. |
 | Components | `src/components/ui/<Name>/{<Name>.tsx,index.ts,<Name>.test.tsx}` (design-system kit, 1:1 with `M ` components), `src/components/domain/` (product pieces: rows, cards, sheets), `src/components/layout/` (Screen, NavBar, TabBar). Same one-folder-per-component rule as the web; import through the folder index. |
 | Kit preview | A dev-only route `src/app/(dev)/kit.tsx` (guarded by `__DEV__`, not linked in release) renders every kit component in every state — the mobile stand-in for the web's Storybook. |
-| Navigation | Expo Router. Groups: `(auth)` (login, cadastro), `(app)` behind the session with `(tabs)` (`index`=Início, `alunos`, `exercicios`, `perfil`) and stack screens pushed over the tabs. Guards with `Stack.Protected`. Bottom-sheet screens (Novo aluno, Editar aluno, Link de acesso, Editar perfil…) are routes with `presentation: "formSheet"` (native sheet, swipe to dismiss on iOS; react-native-screens documents a fallback to `modal` on Android — verify on an Android device in PR 8, the first route sheet, and if it reads wrong, render those routes with the kit `Sheet` on Android). In-form pickers (select, date, multi-select) use the kit `Sheet` (RN `Modal`). React Navigation is vendored by expo-router in SDK 57: import its hooks (`usePreventRemove`, …) from `expo-router/react-navigation`, never `@react-navigation/*`. |
+| Navigation | Expo Router. `(app)` behind the session (`Stack.Protected`, declared first so a blocked route falls back to it or to `login`), with `(tabs)` (`index`=Início, `alunos`, `exercicios`, `perfil`) and stack screens pushed over the tabs; `login` and `cadastro` at the root, signed-out only. The consent gate, the error state and the non-trainer notice render inside `(app)/_layout` (not routes). Bottom-sheet screens (Novo aluno, Editar aluno, Link de acesso, Editar perfil…) are routes with `presentation: "formSheet"` (native sheet, swipe to dismiss on iOS; react-native-screens documents a fallback to `modal` on Android — verify on an Android device in PR 8, the first route sheet, and if it reads wrong, render those routes with the kit `Sheet` on Android). In-form pickers (select, date, multi-select) use the kit `Sheet` (RN `Modal`). React Navigation is vendored by expo-router in SDK 57: import its hooks (`usePreventRemove`, …) from `expo-router/react-navigation`, never `@react-navigation/*`. |
 | Tab bar | Custom `tabBar` for `Tabs` rendering the `M Tab Bar` capsule with a safe-area bottom inset. Blur via `expo-blur` on iOS; on Android use the design's translucent `#141A22CC` surface without blur (Android blur needs an explicit blur target and costs frames). |
 | Status bar | The `M Status Bar` in the design is the device's; never draw it. Screens use safe-area insets (`react-native-safe-area-context`). |
 | Server state | TanStack Query, query keys per resource (`["clients"]`, `["client", id, "overview"]`, `["trainingPlan", id]`, `["workout", id, "full"]`, `["exercises", filters]`, `["me"]`, `["dashboard"]`…); mutations invalidate by key (same convention as the web). `focusManager` on `AppState`, `onlineManager` on `@react-native-community/netinfo`, no retries on 4xx. Pull-to-refresh on every list. |
@@ -115,9 +115,9 @@ from its report; implement from the pen.dev node, not from this list.**
 | Route | pen.dev screen(s) | Data |
 |---|---|---|
 | boot | M - Splash (Carregando) | session restore, fonts |
-| `(auth)/login` | M - Login, M - Login (Erro de Validação) | `POST /api/auth/login` |
-| `(auth)/cadastro` | M - Cadastro, M - Cadastro (Erros de Validação) | `GET /api/legal/versions`, `POST /api/auth/register` |
-| `(app)/consentimento` | M - Termos (Consentimento) | `GET /api/auth/me`, `POST /api/auth/me/consent` |
+| `login` | M - Login, M - Login (Erro de Validação) | `POST /api/auth/login` |
+| `cadastro` | M - Cadastro, M - Cadastro (Erros de Validação) | `GET /api/legal/versions`, `POST /api/auth/register` |
+| (in `(app)/_layout`) | M - Termos (Consentimento), M - Termos (Erro) | `GET /api/auth/me`, `POST /api/auth/me/consent` |
 | `(app)/(tabs)/index` | M - Dashboard, M - Dashboard (Loading) | `GET /api/dashboard` |
 | `(app)/feedbacks` | M - Feedbacks | `GET /api/feedback` |
 | `(app)/(tabs)/alunos` | M - Alunos, M - Alunos (Vazio), M - Alunos (Loading) | `GET /api/clients` |
@@ -138,7 +138,7 @@ from its report; implement from the pen.dev node, not from this list.**
 | `(app)/perfil/excluir` | M - Excluir Conta | `DELETE /api/auth/me` |
 | — | export (action on Perfil) | `GET /api/auth/me/export` |
 | legal | links | open web `/termos`, `/privacidade` with `expo-web-browser` |
-| `(app)/aluno` | (role notice; built from `EmptyState`) | any non-`TRAINER` role in v1 |
+| (in `(app)/_layout`) | role notice (built from `EmptyState`) | any non-`TRAINER` role in v1 |
 
 **Workout editor on mobile uses explicit save** (design: "Alterações não salvas" + Descartar /
 Salvar treino), not the web's debounced autosave. New workout: one nested
@@ -304,7 +304,7 @@ merged first. Rollback = revert the mobile PR; nothing server-side depends on it
 | 3 | `feat/ui-kit-controls` | [#16](https://github.com/herbertpdl/vertice-mobile/pull/16) | open (base #15) | reviewed: 2 blocking + 13 non-blocking, all fixed |
 | 4 | `feat/ui-kit-layout` | [#17](https://github.com/herbertpdl/vertice-mobile/pull/17) | open (base #16) | reviewed: 1 blocking + 24 non-blocking, fixed (device-only items listed below) |
 | 5 | `feat/api-auth-foundation` | [#18](https://github.com/herbertpdl/vertice-mobile/pull/18) | open (base #17) | reviewed: 1 blocking + 12 non-blocking, fixed |
-| 6 | `feat/auth-screens` | — | open (base #18) | — |
+| 6 | `feat/auth-screens` | [#19](https://github.com/herbertpdl/vertice-mobile/pull/19) | open (base #18) | reviewed: 2 blocking + 18 non-blocking, fixed or logged |
 
 ## Decisions log
 - 2026-10-20 — v1 is the **trainer** app because that is what the pen.dev mobile designs cover; the client app needs its own PRD + designs (audit P2-13).
@@ -341,3 +341,10 @@ merged first. Rollback = revert the mobile PR; nothing server-side depends on it
 - 2026-10-21 — `expo-web-browser`, `expo-file-system` and `expo-sharing` were installed with PR 5's native deps; their first users are PR 6 (legal links) and PR 13 (data export).
 - 2026-10-21 — The Terms version line on the consent screen shows the BFF's version string ("Versão 2026-10-draft"); the design's "atualizada em …" date has no source in the contract.
 - 2026-10-21 — Screens live in `src/screens/<area>/`; route files only re-export them.
+- 2026-10-21 — The session gate decides on cached *data*, never the error flag: a failed background refetch keeps the signed-in app (and its navigation state) on screen. Review of #19.
+- 2026-10-21 — First-time consent (no accepted version) uses the web's "Antes de continuar" copy; pen.dev only draws the "Atualizamos nossos termos" variant.
+- 2026-10-21 — CREF isn't asked at sign-up (pen.dev's Cadastro has no field; the contract makes it optional); it can be added from Perfil (PR 13).
+- 2026-10-21 — Design ↔ code copy differences kept on purpose: login asks "Informe a senha" (older passwords may be shorter than 8), the CPF error is the schema's "CPF inválido", the consent version line shows the BFF's version string (no date in the contract).
+- 2026-10-21 — On iOS the CPF `number-pad` has no return key, so the keyboard "next" chain stops there; accepted for v1.
+- 2026-10-21 — Typed routes (`.expo/types`) are generated by the dev server and git-ignored, so CI doesn't check `href`s; follow-up: generate them in CI before `typecheck`.
+- Follow-up — router-level tests with `expo-router/testing-library` (`renderRouter`): signed-in deep link to `/login`, sign-out from `(app)`, gate order.

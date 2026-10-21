@@ -68,4 +68,18 @@ describe("LoginScreen", () => {
     await renderScreen(<LoginScreen />);
     expect(screen.getByText("Sua sessão expirou. Entre novamente.")).toBeOnTheScreen();
   });
+
+  it("sends one request when the keyboard's 'go' follows a tap", async () => {
+    let answer!: (r: Response) => void;
+    bff = mockBff({ "POST /api/auth/login": () => new Promise<Response>((r) => (answer = r)) });
+    await renderScreen(<LoginScreen />);
+    await fireEvent.changeText(screen.getByLabelText("E-mail"), "ana@vertice.fit");
+    await fireEvent.changeText(screen.getByLabelText("Senha"), "segredo123");
+    await fireEvent.press(screen.getByRole("button", { name: "Entrar" }));
+    await fireEvent(screen.getByLabelText("Senha"), "submitEditing");
+    answer(Response.json(session));
+    await waitFor(() => expect(mockSignIn).toHaveBeenCalledTimes(1));
+    expect(bff.calls.filter((c) => c.route === "POST /api/auth/login")).toHaveLength(1);
+  });
 });
+

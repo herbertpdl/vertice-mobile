@@ -4,30 +4,31 @@ import { useAuth, useSessionGate } from "@/lib/auth";
 import { ConsentScreen } from "@/screens/session/ConsentScreen";
 import { LoadingScreen } from "@/screens/session/LoadingScreen";
 import { RoleNoticeScreen } from "@/screens/session/RoleNoticeScreen";
+import { SessionErrorScreen } from "@/screens/session/SessionErrorScreen";
 import { colors } from "@/theme";
 
 /** Everything behind the session, gated on the account: loading → role → Terms consent → app. */
 export default function AppLayout() {
   const { signOut } = useAuth();
   const gate = useSessionGate();
+  const leave = () => void signOut();
 
   switch (gate.kind) {
     case "loading":
       return <LoadingScreen />;
-    case "wrongRole":
-      return <RoleNoticeScreen onSignOut={() => void signOut()} />;
     case "error":
+      return <SessionErrorScreen onRetry={gate.retry} retrying={gate.retrying} onSignOut={leave} />;
+    case "wrongRole":
+      return <RoleNoticeScreen onSignOut={leave} />;
     case "consent":
       return (
         <ConsentScreen
-          loadFailed={gate.kind === "error"}
-          version={gate.kind === "consent" ? gate.version : null}
-          onAccept={gate.kind === "consent" ? gate.accept : () => {}}
-          accepting={gate.kind === "consent" && gate.accepting}
-          acceptError={gate.kind === "consent" ? gate.acceptError : undefined}
-          onRetry={gate.kind === "error" ? gate.retry : () => {}}
-          retrying={gate.kind === "error" && gate.retrying}
-          onSignOut={() => void signOut()}
+          version={gate.version}
+          updated={gate.updated}
+          onAccept={gate.accept}
+          accepting={gate.accepting}
+          acceptError={gate.acceptError}
+          onSignOut={leave}
         />
       );
     case "ready":

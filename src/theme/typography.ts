@@ -80,6 +80,11 @@ export const textPresets = {
   bodyStrong: { family: "base", weight: "semibold", size: 14 },
   /** Feedback quotes, plan description, empty-state text. */
   bodyRelaxed: { family: "base", weight: "regular", size: 14, lineHeight: 1.4 },
+  /**
+   * A sentence carrying inline links (the Cadastro terms line): the taller line (~24 pt) is what
+   * makes a nested-`Text` link, which can't take `hitSlop`, comfortable to tap.
+   */
+  bodyLinks: { family: "base", weight: "regular", size: 14, lineHeight: 1.75 },
   /** Field labels. */
   label: { family: "base", weight: "semibold", size: 13 },
   /** Help and error lines, secondary row text. */

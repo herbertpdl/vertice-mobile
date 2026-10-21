@@ -8,16 +8,17 @@ import { StyleSheet, View } from "react-native";
 import { FormTextField } from "@/components/form";
 import { NavBar } from "@/components/layout/NavBar";
 import { Screen } from "@/components/layout/Screen";
-import { Banner, Button, Checkbox, InlineLink, Text, TextLink } from "@/components/ui";
+import { AuthFooter } from "@/components/domain";
+import { Banner, Button, Checkbox, InlineLink, Text } from "@/components/ui";
 import { register } from "@/lib/api/auth";
 import { apiErrorMessage } from "@/lib/api/errorMessages";
-import { fetchLegalVersions } from "@/lib/api/legal";
-import { legalVersionsQueryKey, useAuth } from "@/lib/auth";
+import { legalVersionsQuery } from "@/lib/api/legal";
+import { useAuth } from "@/lib/auth";
 import { openLegalPage } from "@/lib/legal";
 import { maskCpf } from "@/lib/masks/cpf";
 import { PASSWORD_HELP_TEXT, registerSchema, type RegisterInput } from "@/lib/validation/auth";
 import { onlyDigits } from "@/lib/validation/cpf";
-import { sizes, space } from "@/theme";
+import { space } from "@/theme";
 
 /** M - Cadastro / M - Cadastro (Erros de Validação): trainer self-sign-up. */
 export function RegisterScreen() {
@@ -26,7 +27,7 @@ export function RegisterScreen() {
   // The version accepted is the BFF's current one: the app links to the web's live texts. Loaded
   // up front so submitting doesn't wait on it; `fetchQuery` below reuses it (or retries it).
   const queryClient = useQueryClient();
-  useQuery({ queryKey: legalVersionsQueryKey, queryFn: fetchLegalVersions });
+  useQuery(legalVersionsQuery);
   const {
     control,
     handleSubmit,
@@ -34,23 +35,19 @@ export function RegisterScreen() {
     formState: { isSubmitting, errors, submitCount },
   } = useForm<RegisterInput>({
     resolver: zodResolver(registerSchema),
-    // `terms` is `z.literal(true)`: it starts unchecked, which the schema rejects until accepted.
-    defaultValues: { name: "", email: "", cpf: "", password: "", confirmPassword: "", terms: false as true },
+    // `terms` starts unset (unchecked); the schema only accepts `true`.
+    defaultValues: { name: "", email: "", cpf: "", password: "", confirmPassword: "" },
   });
 
   const submit = handleSubmit(async (data) => {
     setFormError(null);
     try {
-      const { terms } = await queryClient.fetchQuery({
-        queryKey: legalVersionsQueryKey,
-        queryFn: fetchLegalVersions,
-      });
+      const { terms } = await queryClient.fetchQuery(legalVersionsQuery);
       await signIn(
         await register({
           name: data.name.trim(),
           email: data.email.trim(),
           cpf: onlyDigits(data.cpf),
-          cref: data.cref || undefined,
           password: data.password,
           acceptedTermsVersion: terms,
         }),
@@ -80,6 +77,7 @@ export function RegisterScreen() {
           name="name"
           label="Nome completo"
           placeholder="Seu nome"
+          autoCapitalize="words"
           autoComplete="name"
           textContentType="name"
           returnKeyType="next"
@@ -105,7 +103,10 @@ export function RegisterScreen() {
           name="cpf"
           label="CPF"
           placeholder="000.000.000-00"
+          // number-pad has no return key on iOS, so the "next" chain stops here (tap the next field).
           keyboardType="number-pad"
+          autoComplete="off"
+          textContentType="none"
           format={maskCpf}
           returnKeyType="next"
           submitBehavior="submit"
@@ -132,6 +133,7 @@ export function RegisterScreen() {
           password
           autoComplete="new-password"
           textContentType="newPassword"
+          // Last field: "done" just closes the keyboard; the terms box and button follow.
           returnKeyType="done"
         />
       </View>
@@ -145,7 +147,7 @@ export function RegisterScreen() {
             error={error?.message}
             accessibilityLabel="Li e aceito os termos de uso e a política de privacidade."
             label={
-              <Text variant="bodyRelaxed" color="textSecondary">
+              <Text variant="bodyLinks" color="textSecondary">
                 Li e aceito os <InlineLink label="termos de uso" onPress={() => void openLegalPage("termos")} /> e a{" "}
                 <InlineLink label="política de privacidade" onPress={() => void openLegalPage("privacidade")} />.
               </Text>
@@ -158,12 +160,12 @@ export function RegisterScreen() {
         loading={isSubmitting}
         onPress={() => void submit()}
       />
-      <View style={styles.footer}>
-        <Text variant="bodyMd" color="textSecondary">
-          Já tem uma conta?
-        </Text>
-        <TextLink label="Entrar" variant="bodyMdStrong" onPress={() => router.back()} />
-      </View>
+      <AuthFooter
+        question="Já tem uma conta?"
+        action="Entrar"
+        // Opened from a link with no history, "back" has nowhere to go.
+        onPress={() => (router.canGoBack() ? router.back() : router.replace("/login"))}
+      />
     </Screen>
   );
 }
@@ -173,5 +175,4 @@ const styles = StyleSheet.create({
   content: { paddingTop: space[4], gap: space[6] },
   head: { gap: space[2] },
   fields: { gap: space[5] },
-  footer: { flexDirection: "row", justifyContent: "center", alignItems: "center", gap: sizes.inlineLinkGap },
 });

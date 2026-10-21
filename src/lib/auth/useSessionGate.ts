@@ -2,12 +2,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { recordConsent } from "@/lib/api/auth";
 import { apiErrorMessage } from "@/lib/api/errorMessages";
-import { fetchLegalVersions } from "@/lib/api/legal";
+import { legalVersionsQuery } from "@/lib/api/legal";
 import type { Me } from "@/lib/api/types";
 
 import { meQueryKey, useMe } from "./useMe";
-
-export const legalVersionsQueryKey = ["legalVersions"] as const;
 
 export type SessionGate =
   | { kind: "loading" }
@@ -18,6 +16,8 @@ export type SessionGate =
   | {
       kind: "consent";
       version: string;
+      /** False for a first acceptance (accounts that never accepted any version). */
+      updated: boolean;
       accept: () => void;
       accepting: boolean;
       acceptError?: string;
@@ -29,25 +29,33 @@ export type SessionGate =
  * versions (`GET /api/legal/versions`) decide between the app, the Terms consent gate and the
  * role notice. Consent is compared against the BFF's version, never an embedded constant (the app
  * ships no copy of the texts — spec §2, "Consent").
+ *
+ * The decision reads the *data*, never the error flag (like the web's `TermsConsentGate`): a
+ * background refetch that fails while the data is still cached must not swap the signed-in app
+ * for the error screen and throw away its navigation state.
  */
 export function useSessionGate(): SessionGate {
   const queryClient = useQueryClient();
   const me = useMe();
-  const versions = useQuery({ queryKey: legalVersionsQueryKey, queryFn: fetchLegalVersions });
+  const versions = useQuery(legalVersionsQuery);
   const consent = useMutation({
     mutationFn: (version: string) => recordConsent({ type: "TERMS", version }),
     onSuccess: (recorded) => {
       queryClient.setQueryData<Me>(meQueryKey, (current) => (current ? { ...current, consent: recorded } : current));
     },
+    // The version may have changed since the gate loaded it: fetch the current one before a retry.
+    onError: () => void queryClient.invalidateQueries({ queryKey: legalVersionsQuery.queryKey }),
   });
 
-  if (me.isError || versions.isError) {
+  const meMissing = me.data === undefined;
+  const versionsMissing = versions.data === undefined;
+  if ((meMissing && me.isError) || (versionsMissing && versions.isError)) {
     return {
       kind: "error",
       retrying: me.isFetching || versions.isFetching,
       retry: () => {
-        if (me.isError) void me.refetch();
-        if (versions.isError) void versions.refetch();
+        if (meMissing) void me.refetch();
+        if (versionsMissing) void versions.refetch();
       },
     };
   }
@@ -55,10 +63,12 @@ export function useSessionGate(): SessionGate {
   if (me.data.role !== "TRAINER") return { kind: "wrongRole" };
 
   const current = versions.data.terms;
-  if (me.data.consent.termsVersion !== current) {
+  const accepted = me.data.consent.termsVersion;
+  if (accepted !== current) {
     return {
       kind: "consent",
       version: current,
+      updated: accepted !== null,
       accept: () => consent.mutate(current),
       accepting: consent.isPending,
       acceptError: consent.isError

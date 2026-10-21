@@ -65,4 +65,48 @@ describe("useSessionGate", () => {
     const { result } = await gate();
     await waitFor(() => expect(result.current.kind).toBe("error"));
   });
+
+  it("stays in the app when a background refetch fails with the data still cached", async () => {
+    let fail = false;
+    bff = mockBff({
+      "GET /api/auth/me": () => (fail ? bffError(503, "UPSTREAM_UNAVAILABLE") : Response.json(me())),
+      "GET /api/legal/versions": versions,
+    });
+    const client = testQueryClient();
+    const wrapper = ({ children }: { children: ReactNode }) => (
+      <QueryClientProvider client={client}>{children}</QueryClientProvider>
+    );
+    const { result } = await renderHook(() => useSessionGate(), { wrapper });
+    await waitFor(() => expect(result.current.kind).toBe("ready"));
+    fail = true;
+    await act(async () => {
+      await client.refetchQueries({ queryKey: ["me"] });
+    });
+    expect(client.getQueryState(["me"])?.status).toBe("error");
+    expect(result.current.kind).toBe("ready");
+  });
+
+  it("first acceptance isn't called an update", async () => {
+    bff = mockBff({ "GET /api/auth/me": me("TRAINER", null), "GET /api/legal/versions": versions });
+    const { result } = await gate();
+    await waitFor(() => expect(result.current).toMatchObject({ kind: "consent", updated: false }));
+  });
+
+  it("a failed accept shows the error and reloads the current version", async () => {
+    bff = mockBff({
+      "GET /api/auth/me": me("TRAINER", "v1"),
+      "GET /api/legal/versions": versions,
+      "POST /api/auth/me/consent": bffError(400, "VALIDATION_ERROR"),
+    });
+    const { result } = await gate();
+    await waitFor(() => expect(result.current).toMatchObject({ kind: "consent", updated: true }));
+    await act(async () => {
+      if (result.current.kind === "consent") result.current.accept();
+    });
+    await waitFor(() => expect(result.current).toMatchObject({ kind: "consent", acceptError: expect.any(String) }));
+    await waitFor(() =>
+      expect(bff.calls.filter((c) => c.route === "GET /api/legal/versions").length).toBeGreaterThan(1),
+    );
+  });
 });
+
