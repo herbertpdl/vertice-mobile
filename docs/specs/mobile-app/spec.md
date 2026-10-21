@@ -286,7 +286,10 @@ conventional style (`feat(ui): …`, `chore: …`).
 - [x] `/planos/[id]` and `/planos/novo` placeholders (PR 10); tests for the screen, `PlanCard`, `WeightChart`
 
 ### PR 10 — `feat/training-plans`
-- [ ] Detalhe do plano (week rows, rest days → add workout), Novo/Editar plano form with `DateField`, Excluir plano
+- [x] `M - Detalhe do Plano` (+ Loading): name + status badge (from dates), description + "Aluno: …" (name from the roster cache), `InfoCard` (Período with the year, Nível, Treinos), the week Monday → Sunday as `DayRow`s (workout cards → `/treinos/[id]`; rest days → "+ Adicionar treino" → `/planos/[id]/treinos/novo?dayOfWeek=`), footer "Editar plano" / "Novo treino", ⋮ → Editar / Excluir plano (confirm; 409 → "já tem treinos registrados"; success → back + invalidations)
+- [x] `M - Novo Plano` and edit mode (`/planos/novo?clientId=`, `/planos/[id]/editar`): name, description (counter), Início/Término `DateField`s with the web's rules (`trainingPlanSchema`: a new plan can't start in the past, end after start, an existing plan may keep its dates), Nível `SelectField`; create → replaces the form with the new plan; edit → back
+- [x] `trainingPlansQueryKey` / `trainingPlanQueryKey`, `fetchTrainingPlan(s)` take a signal; `DayRow`; workout-editor placeholders (PR 11)
+- [x] tests: week layout, info, navigation, refused and successful delete, form validation, create body, past-start guard, edit body
 
 ### PR 11 — `feat/workout-editor`
 - [ ] Editor (name, day select, exercise cards, set rows, notes), Adicionar exercício sheet, explicit save (POST / PATCH+PUT, 409 → per-item fallback), discard guard, Excluir treino; reducer/model unit tests
@@ -322,6 +325,7 @@ merged first. Rollback = revert the mobile PR; nothing server-side depends on it
 | 7 | `feat/home-dashboard` | [#20](https://github.com/herbertpdl/vertice-mobile/pull/20) | open (base #19) | reviewed: 2 blocking + 10 non-blocking, fixed or logged |
 | 8 | `feat/students-list` | [#21](https://github.com/herbertpdl/vertice-mobile/pull/21) | open (base #20) | reviewed: 2 blocking + 21 non-blocking, fixed or logged |
 | 9 | `feat/student-detail` | [#22](https://github.com/herbertpdl/vertice-mobile/pull/22) | open (base #21) | reviewed: 1 blocking + 14 non-blocking, fixed or logged |
+| 10 | `feat/training-plans` | [#23](https://github.com/herbertpdl/vertice-mobile/pull/23) | open (base #22) | reviewed: 1 blocking + 11 non-blocking, fixed or logged |
 
 ## Decisions log
 - 2026-10-20 — v1 is the **trainer** app because that is what the pen.dev mobile designs cover; the client app needs its own PRD + designs (audit P2-13).
@@ -378,3 +382,4 @@ merged first. Rollback = revert the mobile PR; nothing server-side depends on it
 - 2026-10-21 — Access links are generated on demand from the student page (a token is shown once; the previous link stops working, which the sheet says before generating). The design's "Ela"/"ele" copy is neutralized with the first name.
 - 2026-10-21 — After a delete or an ended relationship, the queries the still-mounted screen observes are marked stale with `refetchType: "none"`, never removed or refetched: a refetch would 403/404 and bounce the user a second time (the web's same rule). Ending a relationship returns to the roster (`router.dismissTo("/alunos")`) from wherever the student was opened. Review of #22.
 - 2026-10-21 — The Progresso chart covers the last 8 *calendar* weeks (weeks without a record have no bar); the student's Feedbacks tab lists the newest 20. The student e-mail stays `textSecondary` (the design's tertiary fails AA for text).
+- 2026-10-21 — The plan ⋮ menu has Editar / Excluir only (the design's "Link de acesso" there was copied from the student's menu). Weekday chips use the web's "SAB" (design: "SÁB").

@@ -113,6 +113,9 @@ export const sizes = {
   /** A card-row placeholder's height in list skeletons; a plan card's (M - Detalhe do Aluno (Loading)). */
   skeletonCardHeight: 72,
   skeletonPlanCardHeight: 64,
+  /** M Day Row: the 48 pt day chip and row height, gap between chip and card. */
+  dayRow: 48,
+  dayRowGap: 10,
   /** M Plan Card padding (16 vertical, 14 horizontal) and gap between its lines. */
   planCardPaddingVertical: 16,
   planCardPaddingHorizontal: 14,
