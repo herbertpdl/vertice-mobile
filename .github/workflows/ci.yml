@@ -39,6 +39,9 @@ jobs:
       # in src/theme/.web-ref (see scripts/check-tokens.mts).
       - name: Design tokens match the web
         run: npm run tokens:check
+      # Typed routes (.expo/types, git-ignored) so the typecheck also checks every href.
+      - name: Generate typed routes
+        run: npm run routes:types
       - run: npm run typecheck
       - run: npm run lint -- --max-warnings 0
       - run: npm test -- --ci
@@ -51,15 +54,9 @@ jobs:
       # remotely fetched Expo config schema (see the advisory step below).
       - name: Expo SDK version drift
         run: npx expo install --check
-      - name: Expo doctor (advisory)
-        # Advisory, not blocking: `npx expo-doctor` resolves to the latest published release, so
-        # an upstream change can break every PR with no code change here. It does today —
-        # expo-doctor >= 1.21 reports `Field: ios.icon - cannot access file at
-        # './assets/expo.icon'` because its config schema rejects an Icon Composer `.icon`
-        # directory, which is valid for SDK 57 and is what `ios.icon` correctly points at. The
-        # rest of its 21 checks are still worth seeing in every run. Make this blocking again
-        # once upstream accepts `.icon` directories.
-        continue-on-error: true
+      # Blocking again: the one check it failed (`ios.icon` pointing at an Icon Composer `.icon`
+      # directory) went away with the app's own icons (spec PR 14).
+      - name: Expo doctor
         run: npx expo-doctor
       - name: Audit production dependencies
         # TODO(P2-05): make this blocking. Today it reports high/critical transitive advisories

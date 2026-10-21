@@ -40,6 +40,12 @@ export function parseEnv(raw: Record<string, string | undefined>, { release }: {
     EXPO_PUBLIC_BFF_URL: serviceUrl("EXPO_PUBLIC_BFF_URL", "http://localhost:3000"),
     /** The web app, for pages the app links to rather than ships (`/termos`, `/privacidade`). */
     EXPO_PUBLIC_WEB_URL: serviceUrl("EXPO_PUBLIC_WEB_URL", "http://localhost:5173"),
+    /** Sentry's DSN (public by design: it only accepts events). Unset or empty: no reporting. */
+    EXPO_PUBLIC_SENTRY_DSN: z
+      .union([z.literal("").transform(() => undefined), z.url({ protocol: /^https$/, error: "EXPO_PUBLIC_SENTRY_DSN must be an https URL" })])
+      .optional(),
+    /** The build's environment, as reports name it (`eas.json` sets it per profile). */
+    EXPO_PUBLIC_APP_ENV: z.enum(["development", "preview", "production"]).default("development"),
   });
   return schema.parse(raw);
 }
@@ -49,6 +55,8 @@ export const env = parseEnv(
   {
     EXPO_PUBLIC_BFF_URL: process.env.EXPO_PUBLIC_BFF_URL,
     EXPO_PUBLIC_WEB_URL: process.env.EXPO_PUBLIC_WEB_URL,
+    EXPO_PUBLIC_SENTRY_DSN: process.env.EXPO_PUBLIC_SENTRY_DSN,
+    EXPO_PUBLIC_APP_ENV: process.env.EXPO_PUBLIC_APP_ENV,
   },
   { release: !__DEV__ },
 );

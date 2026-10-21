@@ -8,6 +8,7 @@ import { StyleSheet, View } from "react-native";
 import { ErrorState } from "@/components/ui/EmptyState";
 import { ToastProvider } from "@/components/ui/Toast";
 import { AuthProvider, useAuth } from "@/lib/auth";
+import { initMonitoring, reportError } from "@/lib/monitoring";
 import { queryClient } from "@/lib/query-client";
 import { colors } from "@/theme";
 import { useAppFonts } from "@/theme/fonts";
@@ -16,6 +17,7 @@ import { useAppFonts } from "@/theme/fonts";
 // frame renders in a fallback face or flashes the login screen at a signed-in user. Called at
 // module scope, as expo-splash-screen asks.
 void SplashScreen.preventAutoHideAsync();
+initMonitoring();
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useAppFonts();
@@ -77,7 +79,10 @@ function RootStack() {
  * design's "Algo deu errado" state with a retry that re-renders the route, rather than a red box
  * in development or a blank screen in a release build.
  */
-export function ErrorBoundary({ retry }: ErrorBoundaryProps) {
+export function ErrorBoundary({ error, retry }: ErrorBoundaryProps) {
+  useEffect(() => {
+    reportError(error);
+  }, [error]);
   useEffect(() => {
     SplashScreen.hide();
   }, []);
