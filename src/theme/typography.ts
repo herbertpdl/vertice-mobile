@@ -95,6 +95,8 @@ export const textPresets = {
   numeric: { family: "heading", weight: "semibold", size: 14 },
   /** The tracked "VERTICE" wordmark next to the logo mark. */
   wordmark: { family: "heading", weight: "bold", size: 18, letterSpacing: 5 },
+  /** The larger wordmark under the mark on the loading screen (M - Splash). */
+  wordmarkLg: { family: "heading", weight: "bold", size: 24, letterSpacing: 7 },
 } as const satisfies Record<string, TextPreset>;
 
 export type TextVariant = keyof typeof textPresets;

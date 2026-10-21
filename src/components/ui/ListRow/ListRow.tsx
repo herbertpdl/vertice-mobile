@@ -1,4 +1,4 @@
-import { ChevronRight, type LucideIcon } from "lucide-react-native";
+import { ChevronRight, ExternalLink, type LucideIcon } from "lucide-react-native";
 import { Pressable, StyleSheet, type PressableProps } from "react-native";
 
 import { colors, sizes, space } from "@/theme";
@@ -12,7 +12,10 @@ export type ListRowProps = Omit<PressableProps, "children" | "style"> & {
   danger?: boolean;
   /** Drops the bottom rule (the last row of a group). */
   last?: boolean;
-  /** `link` when the row leaves the app (legal pages); defaults to `button`. */
+  /**
+   * `link` when the row leaves the app (legal pages): read as a link, with the `external-link`
+   * glyph in place of the chevron. Defaults to `button`.
+   */
   role?: "button" | "link";
 };
 
@@ -33,7 +36,11 @@ export function ListRow({ icon: Icon, label, danger = false, last = false, role 
       <Text variant="bodyLg" color={danger ? "danger" : "textPrimary"} style={styles.label} numberOfLines={1}>
         {label}
       </Text>
-      {danger ? null : <ChevronRight size={18} color={colors.textTertiary} />}
+      {danger ? null : role === "link" ? (
+        <ExternalLink size={18} color={colors.textTertiary} />
+      ) : (
+        <ChevronRight size={18} color={colors.textTertiary} />
+      )}
     </Pressable>
   );
 }

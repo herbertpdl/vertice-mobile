@@ -51,13 +51,24 @@ function RootStack() {
 
   if (!ready) return null;
 
+  // `(app)` is declared first: when a guard blocks a route, Expo Router falls back to the first
+  // available screen — the app for a session, `login` without one.
   return (
     <Stack
       screenOptions={{
         headerShown: false,
         contentStyle: { backgroundColor: colors.bg },
       }}
-    />
+    >
+      <Stack.Protected guard={status === "signedIn"}>
+        <Stack.Screen name="(app)" />
+      </Stack.Protected>
+      <Stack.Protected guard={status === "signedOut"}>
+        <Stack.Screen name="login" />
+        <Stack.Screen name="cadastro" />
+      </Stack.Protected>
+      <Stack.Screen name="(dev)/kit" />
+    </Stack>
   );
 }
 

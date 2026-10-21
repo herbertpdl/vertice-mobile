@@ -255,9 +255,12 @@ conventional style (`feat(ui): …`, `chore: …`).
 - [ ] `eas.json` profiles per environment — with PR 14 (store readiness), which owns the build setup
 
 ### PR 6 — `feat/auth-screens`
-- [ ] route groups + `Stack.Protected` guards; splash during restore; delete the scaffold `src/app/index.tsx` (it would collide with `(app)/(tabs)/index` at `/`)
-- [ ] Login (+ error banner/field errors, 401/429 copy), Cadastro (+ terms links, `acceptedTermsVersion` from `GET /api/legal/versions`), consent gate (versions from the BFF, fail closed), non-`TRAINER` notice
-- [ ] tests (validation, submit, error mapping)
+- [x] routes: `(app)` behind `Stack.Protected` (declared first, so a blocked route falls back to `login`), `login`/`cadastro` signed-out only, `(dev)/kit`; scaffold `src/app/index.tsx` deleted; placeholder `(app)/index` until PR 7
+- [x] `(app)/_layout` gate (`useSessionGate`): `M - Splash (Carregando)` while `me` + legal versions load → non-`TRAINER` notice → `M - Termos (Consentimento)` (accept = `POST /api/auth/me/consent` with the BFF's version) / `M - Termos (Erro)` (fails closed) → app
+- [x] Login (`M - Login`, error banner + field errors, 401 "E-mail ou senha inválidos", 429 wait copy, session-expired info banner), Cadastro (`M - Cadastro`, CPF mask, password help, terms checkbox with `InlineLink`s to the web's `/termos` and `/privacidade`, `acceptedTermsVersion` from `GET /api/legal/versions`)
+- [x] `Logo`/`LogoMark` (exact pen.dev path), `FormTextField`, `EXPO_PUBLIC_WEB_URL` + `openLegalPage` (in-app browser), `ListRow role="link"` → external-link glyph
+- [x] tests: Login, Cadastro, `useSessionGate`; `src/test/{bff,render}` kit
+- [ ] visual pass on web/device (the integrated browser hung during this PR)
 
 ### PR 7 — `feat/home-dashboard`
 - [ ] `(tabs)` layout with `TabBar`; Início (dashboard + skeleton + error/retry + pull to refresh); Feedbacks list
@@ -301,6 +304,7 @@ merged first. Rollback = revert the mobile PR; nothing server-side depends on it
 | 3 | `feat/ui-kit-controls` | [#16](https://github.com/herbertpdl/vertice-mobile/pull/16) | open (base #15) | reviewed: 2 blocking + 13 non-blocking, all fixed |
 | 4 | `feat/ui-kit-layout` | [#17](https://github.com/herbertpdl/vertice-mobile/pull/17) | open (base #16) | reviewed: 1 blocking + 24 non-blocking, fixed (device-only items listed below) |
 | 5 | `feat/api-auth-foundation` | [#18](https://github.com/herbertpdl/vertice-mobile/pull/18) | open (base #17) | reviewed: 1 blocking + 12 non-blocking, fixed |
+| 6 | `feat/auth-screens` | — | open (base #18) | — |
 
 ## Decisions log
 - 2026-10-20 — v1 is the **trainer** app because that is what the pen.dev mobile designs cover; the client app needs its own PRD + designs (audit P2-13).
@@ -335,3 +339,5 @@ merged first. Rollback = revert the mobile PR; nothing server-side depends on it
 - 2026-10-21 — A Keychain read error means "no session this launch" and never deletes the entry (iOS fails reads while locked); a failed delete on sign-out is retried once and then surfaces.
 - 2026-10-21 — Resource modules take an optional `{ signal }` so React Query can abort them (`queryFn: ({ signal }) => fetchX({ signal })`); add it to each module as its first screen uses it.
 - 2026-10-21 — `expo-web-browser`, `expo-file-system` and `expo-sharing` were installed with PR 5's native deps; their first users are PR 6 (legal links) and PR 13 (data export).
+- 2026-10-21 — The Terms version line on the consent screen shows the BFF's version string ("Versão 2026-10-draft"); the design's "atualizada em …" date has no source in the contract.
+- 2026-10-21 — Screens live in `src/screens/<area>/`; route files only re-export them.
