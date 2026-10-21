@@ -8,9 +8,9 @@ describe("SearchField", () => {
     const { rerender } = await render(
       <SearchField value="" onChangeText={onChangeText} placeholder="Buscar aluno" />,
     );
-    expect(screen.queryByRole("button", { name: "Limpar busca" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Apagar o texto da busca" })).toBeNull();
     await rerender(<SearchField value="ana" onChangeText={onChangeText} placeholder="Buscar aluno" />);
-    await fireEvent.press(screen.getByRole("button", { name: "Limpar busca" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Apagar o texto da busca" }));
     expect(onChangeText).toHaveBeenCalledWith("");
     expect(screen.getByLabelText("Buscar aluno")).toBeOnTheScreen();
   });

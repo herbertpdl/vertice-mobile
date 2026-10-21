@@ -22,14 +22,14 @@ export type WeekDotsProps = {
  * the day's workout is done (M Week Dot Done), `surfaceHover` otherwise (M Week Dot). Read as one
  * sentence: "Esta semana: Segunda concluído, Terça pendente, …".
  */
+/** "Esta semana: Segunda concluído, Terça pendente" — how the dots are read. */
+export function weekSummary(days: WeekDay[]): string {
+  return `Esta semana: ${days.map((d) => `${d.name} ${d.done ? "concluído" : "pendente"}`).join(", ")}`;
+}
+
 export function WeekDots({ days, style }: WeekDotsProps) {
-  const summary = days.map((d) => `${d.name} ${d.done ? "concluído" : "pendente"}`).join(", ");
   return (
-    <View
-      style={[styles.row, style]}
-      accessible
-      accessibilityLabel={`Esta semana: ${summary}`}
-    >
+    <View style={[styles.row, style]} accessible accessibilityLabel={weekSummary(days)}>
       {days.map((day) => (
         <View key={day.name} style={[styles.dot, day.done ? styles.done : null]}>
           <Text variant="smallBold" color={day.done ? "bg" : "textSecondary"} allowFontScaling={false}>

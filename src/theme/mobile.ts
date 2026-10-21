@@ -101,6 +101,13 @@ export const sizes = {
   loadingGroupGap: 14,
   /** Logo Mark's frame (the mark is inset inside it). */
   logoMark: 34,
+  /** Gap between stacked cards in a list (M Student Card, M Plan Card). */
+  cardListGap: 10,
+  /** M - Alunos (Loading): gap inside a skeleton card. */
+  skeletonCardGap: 14,
+  /** M Student Card padding; M Link Box padding (4 around, 14 before the glyph). */
+  studentCardPadding: 14,
+  linkBoxPaddingLeft: 14,
   /** M Feedback Row / M Plan Ending Row / M Completed Workout Row vertical padding and gaps. */
   feedbackRowPaddingVertical: 16,
   planEndingRowPaddingVertical: 14,

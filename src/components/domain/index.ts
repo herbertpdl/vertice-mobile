@@ -4,3 +4,7 @@ export { CompletedWorkoutRow } from "./CompletedWorkoutRow";
 export { FeedbackRow } from "./FeedbackRow";
 export type { FeedbackRowProps } from "./FeedbackRow";
 export { ENDING_SOON_DAYS, PlanEndingRow } from "./PlanEndingRow";
+export { StudentCard } from "./StudentCard";
+export { AccessLinkPanel } from "./AccessLinkPanel";
+export type { AccessLinkPanelProps } from "./AccessLinkPanel";
+export { NewStudentSheet } from "./NewStudentSheet";
