@@ -13,6 +13,10 @@ serves both iOS and Android from one codebase, alongside the sibling repos
 (REST API), [`vertice-api`](../vertice-api) (Spring Boot / gRPC), and
 [`vertice-local`](../vertice-local) (Docker Compose for running api+bff locally).
 
+**The implementation plan for the trainer app — component library and screens, split into
+stacked PRs — is [`docs/specs/mobile-app/spec.md`](docs/specs/mobile-app/spec.md).** Read it
+before building any UI, and update its checklists, PR log and decisions log as you go.
+
 ## Commands
 
 ```bash
