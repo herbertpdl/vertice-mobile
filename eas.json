@@ -11,20 +11,31 @@
       "extends": "base",
       "distribution": "internal",
       "environment": "development",
-      "ios": { "simulator": true },
-      "env": { "EXPO_PUBLIC_APP_ENV": "development", "SENTRY_DISABLE_AUTO_UPLOAD": "true" }
+      "ios": {
+        "simulator": true
+      },
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "development",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
+      },
+      "developmentClient": true
     },
     "preview": {
       "extends": "base",
       "distribution": "internal",
       "environment": "preview",
-      "env": { "EXPO_PUBLIC_APP_ENV": "preview" }
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "preview",
+        "SENTRY_ALLOW_FAILURE": "true"
+      }
     },
     "production": {
       "extends": "base",
       "environment": "production",
       "autoIncrement": true,
-      "env": { "EXPO_PUBLIC_APP_ENV": "production" }
+      "env": {
+        "EXPO_PUBLIC_APP_ENV": "production"
+      }
     }
   },
   "submit": {

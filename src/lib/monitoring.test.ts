@@ -32,6 +32,24 @@ describe("monitoring scrubbers", () => {
     expect(scrubbed.breadcrumbs).toEqual([{ category: "http", message: undefined, data: { url: "https://bff/api/exercises" } }]);
   });
 
+  it("scrubs tags, fingerprints and values at any depth", () => {
+    const deep = { a: { b: { c: { d: { e: { f: { g: { h: "ana@vertice.fit" } } } } } } } };
+    const event = { tags: { who: "ana@vertice.fit" }, fingerprint: ["52998224725"], extra: deep } as unknown as ErrorEvent;
+    const scrubbed = scrubEvent(event);
+    expect(scrubbed.tags).toEqual({ who: "[email]" });
+    expect(scrubbed.fingerprint).toEqual(["[cpf]"]);
+    expect(JSON.stringify(scrubbed.extra)).toContain('"h":"[email]"');
+  });
+
+  it("keeps only allowlisted data of a native http breadcrumb (no http.query)", () => {
+    expect(
+      scrubBreadcrumb({
+        category: "http",
+        data: { url: "https://bff/api/exercises", method: "GET", status_code: 200, "http.query": "q=Marina", "http.fragment": "x", label: "Marina" },
+      }),
+    ).toEqual({ category: "http", message: undefined, data: { url: "https://bff/api/exercises", method: "GET", status_code: 200 } });
+  });
+
   it("drops touch and console breadcrumbs", () => {
     expect(scrubBreadcrumb({ category: "touch", message: "Supino" })).toBeNull();
     expect(scrubBreadcrumb({ category: "console", message: "x" })).toBeNull();

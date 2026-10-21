@@ -1,7 +1,8 @@
 /**
- * The route tree as files: every route in `src/app` resolves where the screens' links expect it
- * (static segments win over `[id]`, groups don't show in the URL). Screens are stubbed — this is
- * about the tree, not the screens — and so are the layouts' session gates.
+ * The route tree as files: every route in `src/app` resolves at the URL the screens link to
+ * (static segments win over `[id]`, groups don't show in the URL), and every route file has a
+ * case here. Screens and layouts are stubbed — this is about the tree, not the screens, so
+ * `Stack.Protected` and query parameters are covered by the screen tests, not here.
  */
 import { screen } from "@testing-library/react-native";
 import { Slot, usePathname, useSegments } from "expo-router";
@@ -50,7 +51,18 @@ const cases: [string, string][] = [
   ["/cadastro", "cadastro"],
 ];
 
+/** Route files no case above needs to open (the kit gallery is dev-only). */
+const UNCOVERED = new Set(["(dev)/kit"]);
+
 describe("route tree", () => {
+  it("has a case for every route file, so a new route can't go unchecked", () => {
+    const opened = new Set(cases.map(([, segments]) => segments));
+    const files = routeFiles(APP)
+      .filter((file) => !file.endsWith("_layout") && !UNCOVERED.has(file))
+      .map((file) => file.replace(/\/index$/, "").replace(/^index$/, ""));
+    expect(files.filter((file) => !opened.has(file))).toEqual([]);
+  });
+
   it.each(cases)("%s opens %s", async (url, segments) => {
     await renderRouter(routes, { initialUrl: url });
     expect(screen.getByText(`${url} -> ${segments}`)).toBeOnTheScreen();
