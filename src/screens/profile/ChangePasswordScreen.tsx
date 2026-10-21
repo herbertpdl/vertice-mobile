@@ -37,7 +37,9 @@ export function ChangePasswordScreen() {
   });
 
   const save = useMutation({
-    mutationFn: ({ currentPassword, newPassword }: ChangePasswordInput) => changePassword({ currentPassword, newPassword }),
+    mutationFn: (input: { currentPassword: string; newPassword: string }) => changePassword(input),
+    // The passwords are this mutation's variables: drop them from the cache as soon as it settles.
+    gcTime: 0,
     onSuccess: () => {
       if (router.canGoBack()) router.back();
       else router.replace("/perfil");
@@ -50,7 +52,7 @@ export function ChangePasswordScreen() {
     },
   });
   const busy = isSubmitting || save.isPending;
-  const submit = useSingleFlight(handleSubmit((values) => save.mutateAsync(values).catch(() => {})));
+  const submit = useSingleFlight(handleSubmit(({ currentPassword, newPassword }) => save.mutateAsync({ currentPassword, newPassword }).catch(() => {})));
   const failure =
     save.error instanceof ApiError && save.error.code === "INVALID_CURRENT_PASSWORD"
       ? null
@@ -70,7 +72,7 @@ export function ChangePasswordScreen() {
       footer={<Button label="Salvar nova senha" loading={busy} onPress={() => void submit()} />}
     >
       <Text variant="body" color="textSecondary">
-        Use pelo menos 8 caracteres. Após salvar, você continua conectado neste aparelho.
+        Após salvar, você continua conectado neste aparelho.
       </Text>
       {failure === null ? null : <Banner message={failure} />}
       <FormTextField

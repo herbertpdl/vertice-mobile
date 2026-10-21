@@ -117,7 +117,7 @@ export function ProfileScreen() {
         <ListRow icon={ShieldCheck} label={LEGAL_PAGE_TITLES.privacidade} role="link" onPress={() => void openLegalPage("privacidade")} />
         <ListRow
           icon={Download}
-          label={exportData.isPending ? "Exportando…" : "Exportar meus dados"}
+          label="Exportar meus dados"
           accessibilityState={{ busy: exportData.isPending }}
           last
           onPress={() => void runExport()}

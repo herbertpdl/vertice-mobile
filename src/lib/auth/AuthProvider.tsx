@@ -2,6 +2,7 @@ import { createContext, use, useEffect, useRef, useState, type ReactNode } from 
 
 import { configureApiSession } from "@/lib/api/client";
 import { clearDrafts } from "@/lib/draftStash";
+import { clearExports } from "@/lib/exportData";
 import type { AuthSession } from "@/lib/api/types";
 import { queryClient } from "@/lib/query-client";
 
@@ -51,8 +52,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signingOut.current = true;
     token.current = null;
     setSessionExpired(reason === "expired");
-    // An expired session keeps the unsaved drafts for the re-login; "Sair" means done.
+    // An expired session keeps the unsaved drafts for the re-login; "Sair" means done. An exported
+    // data file never outlives the session that made it.
     if (reason === "user") clearDrafts();
+    clearExports();
     setStatus("signedOut");
     try {
       // Stop in-flight requests before dropping the cache, so the previous user's data can't land

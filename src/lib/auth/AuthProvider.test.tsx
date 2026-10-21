@@ -3,10 +3,13 @@ import * as SecureStore from "expo-secure-store";
 import { Pressable, Text } from "react-native";
 
 import { apiFetch } from "@/lib/api/client";
+import { clearExports } from "@/lib/exportData";
 import { queryClient } from "@/lib/query-client";
 
 import { AuthProvider, useAuth } from "./AuthProvider";
 import { storeToken } from "./tokenStorage";
+
+jest.mock("@/lib/exportData", () => ({ clearExports: jest.fn() }));
 
 const fetchMock = jest.fn<Promise<Response>, Parameters<typeof fetch>>();
 const realFetch = global.fetch;
@@ -70,6 +73,8 @@ describe("AuthProvider", () => {
     expect(await screen.findByText("status:signedOut")).toBeOnTheScreen();
     expect(await SecureStore.getItemAsync("vertice.session.token")).toBeNull();
     expect(queryClient.getQueryData(["me"])).toBeUndefined();
+    // An exported data file never outlives the session.
+    expect(clearExports).toHaveBeenCalled();
   });
 
   it("a late 401 from the previous session doesn't sign out the new one", async () => {

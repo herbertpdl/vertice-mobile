@@ -5,7 +5,7 @@ import { renderScreen } from "@/test/render";
 
 import { DeleteAccountScreen } from "./DeleteAccountScreen";
 
-const mockRouter = { push: jest.fn(), back: jest.fn(), replace: jest.fn(), canGoBack: jest.fn(() => true) };
+const mockRouter = { push: jest.fn(), navigate: jest.fn(), back: jest.fn(), replace: jest.fn(), canGoBack: jest.fn(() => true) };
 jest.mock("expo-router", () => ({
   get router() {
     return mockRouter;
@@ -18,6 +18,7 @@ let bff: BffMock;
 afterEach(() => bff?.restore());
 
 async function confirm(password: string) {
+  await fireEvent.changeText(screen.getByLabelText("Digite EXCLUIR para confirmar"), "EXCLUIR");
   await fireEvent.changeText(screen.getByLabelText("Confirme sua senha"), password);
   await fireEvent.press(screen.getByRole("button", { name: "Excluir minha conta" }));
 }
@@ -27,6 +28,9 @@ describe("DeleteAccountScreen", () => {
     bff = mockBff({ "DELETE /api/auth/me": new Response(null, { status: 204 }) });
     await renderScreen(<DeleteAccountScreen />);
     expect(screen.getByRole("button", { name: "Excluir minha conta" })).toBeDisabled();
+    await fireEvent.changeText(screen.getByLabelText("Confirme sua senha"), "minha-senha");
+    expect(screen.getByRole("button", { name: "Excluir minha conta" })).toBeDisabled();
+    expect(screen.getByText("Os planos que você escreveu para seus alunos continuam com eles.")).toBeOnTheScreen();
     await confirm("minha-senha");
     await waitFor(() => expect(mockSignOut).toHaveBeenCalledWith("user"));
     expect(bff.calls[0].body).toEqual({ password: "minha-senha" });
@@ -44,6 +48,8 @@ describe("DeleteAccountScreen", () => {
     bff = mockBff({ "DELETE /api/auth/me": bffError(409, "ACTIVE_CLIENTS") });
     await renderScreen(<DeleteAccountScreen />);
     await confirm("minha-senha");
-    expect(await screen.findByText("Encerre o acompanhamento de cada aluno antes de excluir sua conta.")).toBeOnTheScreen();
+    expect(await screen.findByText("Você ainda tem alunos ativos")).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole("button", { name: "Ver alunos" }));
+    expect(mockRouter.navigate).toHaveBeenCalledWith("/alunos");
   });
 });

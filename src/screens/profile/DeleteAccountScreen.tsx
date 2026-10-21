@@ -1,4 +1,4 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { TriangleAlert } from "lucide-react-native";
 import { useState } from "react";
@@ -13,13 +13,17 @@ import { rateLimitedMessage } from "@/lib/api/rateLimit";
 import { useAuth } from "@/lib/auth";
 import { useIsOffline } from "@/lib/network";
 import { useSingleFlight } from "@/lib/useSingleFlight";
-import { colors, radius, sizes, space, TINT_ALPHA, withAlpha } from "@/theme";
+import { colors, radius, sizes, SOFT_TINT_ALPHA, space, TINT_ALPHA, withAlpha } from "@/theme";
 
+/** What deletion does (vertice-api's `AccountDeletionService`), in the web dialog's words. */
 const CONSEQUENCES = [
-  "Seus dados pessoais e de acesso serão removidos.",
-  "Planos, treinos e exercícios criados por você serão excluídos.",
-  "Seus alunos perderão acesso aos treinos.",
+  "Seus registros de treino, feedbacks e os planos feitos para você serão apagados.",
+  "Seus vínculos com treinadores e alunos serão encerrados e seus dados pessoais serão anonimizados.",
+  "Os planos que você escreveu para seus alunos continuam com eles.",
 ];
+
+/** Typed to confirm, as on the web: a password alone is one autofill away. */
+export const DELETE_CONFIRMATION_PHRASE = "EXCLUIR";
 
 /**
  * M - Excluir Conta (+ Alunos ativos): what deleting means, the password as confirmation,
@@ -30,10 +34,19 @@ export function DeleteAccountScreen() {
   const { signOut } = useAuth();
   const toast = useToast();
   const offline = useIsOffline();
+  const queryClient = useQueryClient();
+  const [phrase, setPhrase] = useState("");
   const [password, setPassword] = useState("");
+  const confirmed = phrase.trim() === DELETE_CONFIRMATION_PHRASE && password !== "";
 
   const remove = useMutation({
-    mutationFn: () => deleteAccount(password),
+    mutationFn: async () => {
+      // Nothing else in flight: once the account is gone its token 401s, and a refetch landing
+      // first would sign out as "session expired" instead of as a deliberate exit.
+      await queryClient.cancelQueries();
+      await deleteAccount(password);
+    },
+    gcTime: 0,
     onSuccess: async () => {
       await signOut("user");
       toast.show("Conta excluída.");
@@ -42,10 +55,11 @@ export function DeleteAccountScreen() {
   const submit = useSingleFlight(() => remove.mutateAsync().catch(() => {}));
   const code = remove.error instanceof ApiError ? remove.error.code : null;
   const passwordError = code === "INVALID_CURRENT_PASSWORD" ? "Senha incorreta." : undefined;
+  const activeClients = code === "ACTIVE_CLIENTS";
   const banner =
-    code === "ACTIVE_CLIENTS"
-      ? errorMessages.ACTIVE_CLIENTS!
-      : remove.isError && passwordError === undefined
+    activeClients || passwordError !== undefined
+      ? null
+      : remove.isError
         ? (rateLimitedMessage(remove.error, "Muitas tentativas com senha incorreta.") ??
           apiErrorMessage(remove.error, "Não foi possível excluir a conta. Tente novamente."))
         : null;
@@ -64,14 +78,30 @@ export function DeleteAccountScreen() {
           <Button
             label="Excluir minha conta"
             variant="danger"
-            disabled={password === ""}
+            disabled={!confirmed}
             loading={remove.isPending}
             onPress={() => void submit()}
           />
-          <TextLink label="Cancelar" style={styles.cancel} disabled={remove.isPending} onPress={() => router.back()} />
+          <TextLink
+            label="Cancelar"
+            style={styles.cancel}
+            disabled={remove.isPending}
+            onPress={() => (router.canGoBack() ? router.back() : router.replace("/perfil"))}
+          />
         </View>
       }
     >
+      {activeClients ? (
+        <View style={styles.active} accessibilityRole="alert">
+          <Text variant="bodyStrong" color="danger">
+            Você ainda tem alunos ativos
+          </Text>
+          <Text variant="body" color="textPrimary">
+            {errorMessages.ACTIVE_CLIENTS}
+          </Text>
+          <TextLink label="Ver alunos" onPress={() => router.navigate("/alunos")} />
+        </View>
+      ) : null}
       {banner === null ? null : <Banner message={banner} />}
       <View style={styles.card}>
         <View style={styles.cardHead}>
@@ -92,6 +122,14 @@ export function DeleteAccountScreen() {
         ))}
       </View>
       <TextField
+        label={`Digite ${DELETE_CONFIRMATION_PHRASE} para confirmar`}
+        value={phrase}
+        onChangeText={setPhrase}
+        autoCapitalize="characters"
+        autoCorrect={false}
+        autoComplete="off"
+      />
+      <TextField
         label="Confirme sua senha"
         value={password}
         onChangeText={(text) => {
@@ -104,7 +142,7 @@ export function DeleteAccountScreen() {
         error={passwordError}
         returnKeyType="done"
         onSubmitEditing={() => {
-          if (password !== "") void submit();
+          if (confirmed) void submit();
         }}
       />
     </Screen>
@@ -123,16 +161,24 @@ const styles = StyleSheet.create({
   },
   cardHead: { flexDirection: "row", alignItems: "center", gap: space[3] },
   icon: {
-    width: sizes.noticeIcon,
-    height: sizes.noticeIcon,
+    width: sizes.deleteNoticeIcon,
+    height: sizes.deleteNoticeIcon,
     borderRadius: radius.full,
     backgroundColor: withAlpha(colors.danger, TINT_ALPHA),
     alignItems: "center",
     justifyContent: "center",
   },
   bullet: { flexDirection: "row", alignItems: "flex-start", gap: space[3] },
-  dot: { width: sizes.bulletDot, height: sizes.bulletDot, borderRadius: radius.full, backgroundColor: colors.textTertiary, marginTop: space[2] },
+  dot: { width: sizes.deleteNoticeBullet, height: sizes.deleteNoticeBullet, borderRadius: radius.full, backgroundColor: colors.textTertiary, marginTop: space[2] },
   footer: { gap: space[2] },
   cancel: { alignSelf: "center" },
+  active: {
+    gap: space[1],
+    padding: sizes.bannerPadding,
+    borderRadius: radius.md,
+    borderWidth: 1,
+    borderColor: colors.danger,
+    backgroundColor: withAlpha(colors.danger, SOFT_TINT_ALPHA),
+  },
   flex: { flex: 1 },
 });

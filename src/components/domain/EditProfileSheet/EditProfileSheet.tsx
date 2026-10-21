@@ -1,6 +1,7 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
+import { useEffect } from "react";
+import { useForm, useWatch } from "react-hook-form";
 import { StyleSheet } from "react-native";
 
 import { FormTextField } from "@/components/form";
@@ -48,6 +49,12 @@ export function EditProfileSheet({ me, visible, onClose, onSaved }: EditProfileS
     },
   });
   const busy = isSubmitting || save.isPending;
+  // A refusal ("E-mail ou CPF já cadastrado") is about what was sent: editing clears it.
+  const values = useWatch({ control });
+  const { reset: resetSave } = save;
+  useEffect(() => {
+    resetSave();
+  }, [values, resetSave]);
   const submit = useSingleFlight(
     handleSubmit((values) => {
       const changes = profileChanges(me, values);
