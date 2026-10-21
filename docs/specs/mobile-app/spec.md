@@ -394,12 +394,13 @@ M Badge Outline "Padrão" `adZeY`. Replace the `(tabs)/exercicios.tsx` placehold
 Design: M - Perfil `TbmfV`, Editar Perfil (Sheet) `geQn7`, Alterar Senha `Y5BgRF`, Excluir Conta
 `w0xmz`, Excluir Conta (Alunos ativos) `MuTg0`; components M List Row `gYNSF` / Danger `kUKZs`.
 Replace the `(tabs)/perfil.tsx` placeholder. Web counterpart: `web:src/app/(app)/perfil/`.
-- [ ] Perfil: header from `useMe()` (name, e-mail, CREF), rows Editar perfil, Alterar senha, Termos / Privacidade (`openLegalPage`, `ListRow role="link"`), Exportar meus dados, Excluir conta (danger), Sair (`useAuth().signOut()`)
-- [ ] Editar perfil sheet: `PATCH /api/auth/me` via `updateMe` (masked CPF never sent; **a trainer's CPF can't be removed** — `cpf: null` is 400 for a TRAINER); CREF optional (`null` clears it); 409 `CONFLICT` on the e-mail field; invalidate `meQueryKey`
-- [ ] Alterar senha: `changePassword` (`POST /api/auth/password`, 204); 400 `INVALID_CURRENT_PASSWORD` on the current-password field (not a sign-out); new-password rules = `newPasswordSchema`
-- [ ] Exportar: `exportMyData()` (`apiDownload`) → write with `expo-file-system` → `expo-sharing`; 413 `TOO_LARGE`, 429 `RATE_LIMITED` (3/hour, `rateLimitedMessage`)
-- [ ] Excluir conta: password re-auth, `deleteAccount` → sign out; 400 wrong password, 409 `ACTIVE_CLIENTS` → the "Alunos ativos" state; README store-checklist items ticked
-- [ ] tests
+- [x] Perfil (`ProfileScreen`, the Perfil tab): avatar, name, e-mail, CREF; Conta (Editar perfil, Alterar senha), Privacidade (Termos / Política as `ListRow role="link"` → in-app browser, Exportar meus dados), Sair (`signOut("user")`), Excluir conta (danger), "Vertice <version>" from `expo-constants`
+- [x] `EditProfileSheet`: `profileSchema` / `profileChanges` (only changed fields; CPF only when typed, masked as typed; a cleared CREF is `null`); 409 → "E-mail ou CPF já cadastrado" in the sheet (the web's copy never says which); `setQueryData(meQueryKey)`; toast after closing
+- [x] Alterar senha (`/perfil/senha`): `changePasswordSchema` (current + `newPasswordSchema` + confirmation); 400 `INVALID_CURRENT_PASSWORD` → "Senha atual incorreta." on the field; 429 copy; back + toast
+- [x] Exportar: `exportMyData()` → `shareExport` (`src/lib/exportData.ts`: cache file under the BFF's name, `expo-sharing`); 413 / 429 copy in a toast
+- [x] Excluir conta (`/perfil/excluir-conta`): consequences card, password, `deleteAccount`; wrong password on the field; 409 `ACTIVE_CLIENTS` → banner (`errorMessages` copy); 204 → `signOut("user")` + toast; README store-checklist items ticked
+- [x] tests: the three screens + the sheet (via the profile screen), `shareExport`
+- [ ] **device checklist**: the share sheet with the JSON file (Files / Drive) on iOS and Android
 
 ### PR 14 — `chore/store-readiness`
 - [ ] App identity (name, icons, splash), `eas.json` profiles (dev/preview/production; production must pass `env.ts`'s release rules — validate at build time too), iOS privacy manifest, Android permissions audit, `expo-doctor` clean
@@ -431,6 +432,7 @@ merged first. Rollback = revert the mobile PR; nothing server-side depends on it
 | 10 | `feat/training-plans` | [#23](https://github.com/herbertpdl/vertice-mobile/pull/23) | open (base #22) | reviewed: 1 blocking + 11 non-blocking, fixed or logged |
 | 11 | `feat/workout-editor` | [#25](https://github.com/herbertpdl/vertice-mobile/pull/25) | merged | reviewed: 1 blocking + 10 non-blocking, fixed or logged |
 | 12 | `feat/exercises` | [#26](https://github.com/herbertpdl/vertice-mobile/pull/26) | merged | reviewed: 0 blocking + 13 non-blocking, fixed or logged |
+| 13 | `feat/profile-account` | _pending_ | open (base `main`) | review pending |
 
 ## Decisions log
 - 2026-10-20 — v1 is the **trainer** app because that is what the pen.dev mobile designs cover; the client app needs its own PRD + designs (audit P2-13).
@@ -496,3 +498,4 @@ merged first. Rollback = revert the mobile PR; nothing server-side depends on it
 - 2026-10-21 — Review of #25: the leave guard lets a deliberate exit through (`markLeft`/`isLeaving`) — deleting a workout with unsaved edits no longer asks to discard them. An editor unmounted mid-save stashes its draft only once that save settles, under the id it got (else a created workout would be restored as new and created twice). "Sair" clears the stash again after the signed-in screens unmount. Manual-mode engine fix: a save that an edit during it left dirty now rests instead of staying "saving". Kept as is: a stashed new-workout draft is per plan, not per weekday (opening "novo" for that plan restores it, whatever `?dayOfWeek=`); the discard dialog's confirm stays danger (M - Descartar alterações draws it red); the breadcrumb's student name comes from the roster, as on the plan detail.
 - 2026-10-21 — PR 12: the exercise description keeps the web's 255-character bound (`DESCRIPTION_MAX`; the design's counter says 2000). Video links open in the in-app browser (no embedded player); a link without a known still (anything but YouTube) shows the dumbbell placeholder in M Video Thumbnail. The catalog subtitle is the design's "N exercícios · M padrão", and the web's "N exercícios encontrados" while narrowed. The create/edit form is a screen (like the plan form), not a sheet.
 - 2026-10-21 — Review of #26: exercise query keys go through `exercisesQueryPrefix` / `workoutsQueryPrefix` and the `useExercise` / `useMuscleGroups` hooks (`src/lib/useCatalog.ts`); invalid edit ids redirect; `openVideo` never rejects (`useOpenVideo`: single-flight, toast when the browser can't open); a 403 on save/delete refreshes the catalog; the form takes the web's "URL do vídeo (opcional)" and "Criar exercício" / "Salvar alterações". Kept from the design: the search placeholder "Buscar exercício" (web: "Buscar por nome...") and the field placeholders.
+- 2026-10-21 — PR 13: copy from the web where it differs from the design — ACTIVE_CLIENTS is "Encerre o acompanhamento de cada aluno antes de excluir sua conta." (design: "Você ainda tem alunos ativos — encerre os vínculos…"), a taken e-mail or CPF is "E-mail ou CPF já cadastrado" as a banner (the web never says which field). The CPF field starts empty with "CPF cadastrado: ***. Deixe em branco para mantê-lo." (the design shows a full CPF the app never has). "Sair" signs out without a confirmation (none in the design). The export opens the share sheet (no download folder on a phone). `ComingSoonScreen` is gone with the last placeholder tab.

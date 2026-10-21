@@ -8,6 +8,8 @@ export { AuthFooter } from "./AuthFooter";
 export { CompletedWorkoutRow } from "./CompletedWorkoutRow";
 export { DayRow } from "./DayRow";
 export type { DayRowProps } from "./DayRow";
+export { EditProfileSheet } from "./EditProfileSheet";
+export type { EditProfileSheetProps } from "./EditProfileSheet";
 export { EditStudentSheet } from "./EditStudentSheet";
 export { ExerciseCard } from "./ExerciseCard";
 export type { ExerciseCardProps } from "./ExerciseCard";
