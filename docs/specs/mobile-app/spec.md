@@ -21,7 +21,7 @@
 
 ## 0. Handoff — start here (agents picking this up)
 
-**Where the work is.** PRs 1–10 are merged into `main` (2026-10-21), so start from `main`:
+**Where the work is.** The whole PR plan (PRs 1–14) is merged into `main` (2026-10-21). What's left is the owner's checklist in PR 14 (Sentry project, production URLs, `eas init`, store forms) and the device checklists of each PR; new work starts from `main`:
 
 ```bash
 git fetch origin && git checkout main && git pull
