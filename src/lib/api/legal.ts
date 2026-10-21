@@ -1,4 +1,4 @@
-import { apiClient } from "./client";
+import { apiClient, type ApiRequestInit } from "./client";
 import type { LegalVersions } from "./types";
 
 /**
@@ -6,6 +6,6 @@ import type { LegalVersions } from "./types";
  * ships no copy of the texts (it opens the web's `/termos` and `/privacidade`), so this — not an
  * embedded constant — is what consent is compared against (spec §2, "Consent").
  */
-export function fetchLegalVersions() {
-  return apiClient.get<LegalVersions>("/api/legal/versions", undefined, { auth: false });
+export function fetchLegalVersions(init?: Pick<ApiRequestInit, "signal">) {
+  return apiClient.get<LegalVersions>("/api/legal/versions", undefined, { ...init, auth: false });
 }

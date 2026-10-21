@@ -76,14 +76,26 @@ export type ApiBody<
 // to do on a 401 here, so this module stays free of React and storage.
 
 let readToken: () => string | null = () => null;
-let onUnauthorized: () => void = () => {};
+let onUnauthorized: (rejectedToken: string) => void = () => {};
 
+/**
+ * Registers the session with the client: where the bearer token comes from, and what to do when
+ * the BFF rejects one. `onUnauthorized` receives the token the failed request *carried*, so a late
+ * 401 from a request sent under an earlier session can't end the current one. Returns an
+ * unregister function (call it when the session owner unmounts).
+ */
 export function configureApiSession(options: {
   getToken: () => string | null;
-  onUnauthorized: () => void;
-}): void {
+  onUnauthorized: (rejectedToken: string) => void;
+}): () => void {
   readToken = options.getToken;
   onUnauthorized = options.onUnauthorized;
+  return () => {
+    if (readToken === options.getToken) {
+      readToken = () => null;
+      onUnauthorized = () => {};
+    }
+  };
 }
 
 export type ApiRequestInit = Omit<RequestInit, "body" | "headers"> & {
@@ -118,14 +130,14 @@ function parseJson(text: string): unknown {
   }
 }
 
-type RawResponse = { response: Response; text: string };
+type RawResponse = { response: Response; text: string; sentToken: string | null };
 
 async function send(path: string, init: ApiRequestInit = {}): Promise<RawResponse> {
   const { body, query, auth = true, headers: extraHeaders, signal, ...rest } = init;
   const headers: Record<string, string> = { Accept: "application/json", ...extraHeaders };
   if (body !== undefined) headers["Content-Type"] = "application/json";
-  const token = auth ? readToken() : null;
-  if (token !== null) headers.Authorization = `Bearer ${token}`;
+  const sentToken = auth ? readToken() : null;
+  if (sentToken !== null) headers.Authorization = `Bearer ${sentToken}`;
 
   // One controller for both the timeout and a caller's signal (React Query cancels queries).
   const controller = new AbortController();
@@ -135,7 +147,8 @@ async function send(path: string, init: ApiRequestInit = {}): Promise<RawRespons
     controller.abort();
   }, REQUEST_TIMEOUT_MS);
   const forwardAbort = () => controller.abort();
-  signal?.addEventListener("abort", forwardAbort);
+  if (signal?.aborted) controller.abort();
+  else signal?.addEventListener("abort", forwardAbort, { once: true });
 
   try {
     const response = await fetch(`${env.EXPO_PUBLIC_BFF_URL}${withQuery(path, query)}`, {
@@ -145,7 +158,7 @@ async function send(path: string, init: ApiRequestInit = {}): Promise<RawRespons
       signal: controller.signal,
     });
     const text = await response.text();
-    return { response, text };
+    return { response, text, sentToken };
   } catch (error) {
     if (timedOut) throw new ApiError({ code: "TIMEOUT", message: "Request timed out" }, 0);
     // A caller's own abort is not a failure to report: rethrow it as is.
@@ -160,14 +173,22 @@ async function send(path: string, init: ApiRequestInit = {}): Promise<RawRespons
   }
 }
 
-function failure({ response, text }: RawResponse, auth: boolean): ApiError {
-  const body = parseJson(text) as ApiErrorBody | undefined;
+/** The BFF's `{ error: { code, message } }`, or null for anything else (a proxy's HTML or `{"error":"Bad Gateway"}`). */
+function bffErrorBody(data: unknown): ApiErrorBody["error"] | null {
+  const error = (data as { error?: unknown } | undefined)?.error;
+  if (typeof error !== "object" || error === null) return null;
+  const { code, message } = error as { code?: unknown; message?: unknown };
+  return typeof code === "string" && typeof message === "string" ? (error as ApiErrorBody["error"]) : null;
+}
+
+function failure({ response, text, sentToken }: RawResponse): ApiError {
   const error = new ApiError(
-    body?.error ?? { code: "UNKNOWN_ERROR", message: response.statusText || "Request failed" },
+    bffErrorBody(parseJson(text)) ?? { code: "UNKNOWN_ERROR", message: response.statusText || "Request failed" },
     response.status,
     parseRetryAfter(response.headers.get("Retry-After")),
   );
-  if (response.status === 401 && auth) onUnauthorized();
+  // Only a token the BFF rejected ends a session — and only the session that sent it.
+  if (response.status === 401 && sentToken !== null) onUnauthorized(sentToken);
   return error;
 }
 
@@ -179,7 +200,7 @@ function failure({ response, text }: RawResponse, auth: boolean): ApiError {
  */
 export async function apiFetch<T>(path: string, init: ApiRequestInit = {}): Promise<T> {
   const raw = await send(path, init);
-  if (!raw.response.ok) throw failure(raw, init.auth ?? true);
+  if (!raw.response.ok) throw failure(raw);
   if (raw.response.status === 204 || raw.text === "") return undefined as T;
   const data = parseJson(raw.text);
   if (data === undefined) {
@@ -208,7 +229,7 @@ export async function apiDownload(
   fallbackName: string,
 ): Promise<{ text: string; filename: string }> {
   const raw = await send(path, { method: "GET" });
-  if (!raw.response.ok) throw failure(raw, true);
+  if (!raw.response.ok) throw failure(raw);
   return {
     text: raw.text,
     filename: attachmentFilename(raw.response.headers.get("Content-Disposition")) ?? fallbackName,

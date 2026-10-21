@@ -300,7 +300,7 @@ merged first. Rollback = revert the mobile PR; nothing server-side depends on it
 | 2 | `feat/theme-foundation` | [#15](https://github.com/herbertpdl/vertice-mobile/pull/15) | open (base #14) | reviewed: 2 blocking + 12 non-blocking, all fixed |
 | 3 | `feat/ui-kit-controls` | [#16](https://github.com/herbertpdl/vertice-mobile/pull/16) | open (base #15) | reviewed: 2 blocking + 13 non-blocking, all fixed |
 | 4 | `feat/ui-kit-layout` | [#17](https://github.com/herbertpdl/vertice-mobile/pull/17) | open (base #16) | reviewed: 1 blocking + 24 non-blocking, fixed (device-only items listed below) |
-| 5 | `feat/api-auth-foundation` | — | open (base #17) | — |
+| 5 | `feat/api-auth-foundation` | [#18](https://github.com/herbertpdl/vertice-mobile/pull/18) | open (base #17) | reviewed: 1 blocking + 12 non-blocking, fixed |
 
 ## Decisions log
 - 2026-10-20 — v1 is the **trainer** app because that is what the pen.dev mobile designs cover; the client app needs its own PRD + designs (audit P2-13).
@@ -331,3 +331,7 @@ merged first. Rollback = revert the mobile PR; nothing server-side depends on it
 - 2026-10-20 — Tab labels cap font scaling at 1.2× so the floating capsule keeps the height `tabBarInset` assumes (measuring it at runtime was judged not worth a context for v1).
 - 2026-10-20 — `ApiError` takes the web's constructor shape (`{ code, message, details }, status, retryAfter`) so error handling and its tests port unchanged; this app adds `NETWORK_ERROR`/`TIMEOUT`.
 - 2026-10-20 — Only the token is persisted; the user (role, consent) always comes from `GET /api/auth/me`, so nothing about the user can be stale after an upstream change.
+- 2026-10-21 — A 401 ends a session only if the rejected request carried the *current* token (`onUnauthorized(sentToken)`); requests sent without a token never sign out. Review of #18.
+- 2026-10-21 — A Keychain read error means "no session this launch" and never deletes the entry (iOS fails reads while locked); a failed delete on sign-out is retried once and then surfaces.
+- 2026-10-21 — Resource modules take an optional `{ signal }` so React Query can abort them (`queryFn: ({ signal }) => fetchX({ signal })`); add it to each module as its first screen uses it.
+- 2026-10-21 — `expo-web-browser`, `expo-file-system` and `expo-sharing` were installed with PR 5's native deps; their first users are PR 6 (legal links) and PR 13 (data export).

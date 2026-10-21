@@ -1,4 +1,4 @@
-import { apiClient, apiDownload } from "./client";
+import { apiClient, apiDownload, type ApiRequestInit } from "./client";
 import type { components } from "./schema";
 import { isMaskedCpf } from "./students";
 import type { AuthSession, Consent, Me } from "./types";
@@ -28,8 +28,9 @@ export async function setupPassword(input: Schemas["PasswordSetupRequest"]) {
   await apiClient.post<void>("/api/auth/password/setup", input, { auth: false });
 }
 
-export function fetchMe() {
-  return apiClient.get<Me>("/api/auth/me");
+/** Pass React Query's `signal` (`queryFn: ({ signal }) => fetchMe({ signal })`) so a cancelled query aborts the request. */
+export function fetchMe(init?: Pick<ApiRequestInit, "signal">) {
+  return apiClient.get<Me>("/api/auth/me", undefined, init);
 }
 
 /** Records the caller's own consent (self only: no user id). Returns the new consent state. */

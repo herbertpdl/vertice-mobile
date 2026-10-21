@@ -3,6 +3,7 @@ import * as SecureStore from "expo-secure-store";
 import { Pressable, Text } from "react-native";
 
 import { apiFetch } from "@/lib/api/client";
+import { queryClient } from "@/lib/query-client";
 
 import { AuthProvider, useAuth } from "./AuthProvider";
 import { storeToken } from "./tokenStorage";
@@ -64,9 +65,37 @@ describe("AuthProvider", () => {
     await fireEvent.press(screen.getByRole("button", { name: "in" }));
     expect(await screen.findByText("status:signedIn")).toBeOnTheScreen();
     expect(await SecureStore.getItemAsync("vertice.session.token")).toBe("new-token");
+    queryClient.setQueryData(["me"], { name: "Ana" });
     await fireEvent.press(screen.getByRole("button", { name: "out" }));
     expect(await screen.findByText("status:signedOut")).toBeOnTheScreen();
     expect(await SecureStore.getItemAsync("vertice.session.token")).toBeNull();
+    expect(queryClient.getQueryData(["me"])).toBeUndefined();
+  });
+
+  it("a late 401 from the previous session doesn't sign out the new one", async () => {
+    await storeToken("old-token");
+    await mount();
+    await screen.findByText("status:signedIn");
+    let answerLate!: (r: Response) => void;
+    // Mocks answer in call order: the late request is sent first and stays pending.
+    fetchMock
+      .mockImplementationOnce(() => new Promise<Response>((r) => (answerLate = r)))
+      .mockResolvedValueOnce(Response.json({ error: { code: "UNAUTHORIZED", message: "x" } }, { status: 401 }))
+      .mockResolvedValueOnce(Response.json({ error: { code: "UNAUTHORIZED", message: "x" } }, { status: 401 }));
+    // Two requests 401 together, a third (sent with the old token) is still in flight.
+    const late = apiFetch("/api/feedback").catch(() => {});
+    await act(async () => {
+      await Promise.all([apiFetch("/api/clients").catch(() => {}), apiFetch("/api/dashboard").catch(() => {})]);
+    });
+    expect(await screen.findByText("status:signedOut:expired")).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole("button", { name: "in" }));
+    expect(await screen.findByText("status:signedIn")).toBeOnTheScreen();
+    await act(async () => {
+      answerLate(Response.json({ error: { code: "UNAUTHORIZED", message: "x" } }, { status: 401 }));
+      await late;
+    });
+    expect(screen.getByText("status:signedIn")).toBeOnTheScreen();
+    expect(await SecureStore.getItemAsync("vertice.session.token")).toBe("new-token");
   });
 
   it("a 401 on an authenticated call signs out as expired", async () => {

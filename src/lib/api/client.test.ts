@@ -81,10 +81,43 @@ describe("apiFetch", () => {
     await expect(pending).resolves.toMatchObject({ code: "TIMEOUT", status: 0 });
   });
 
-  it("signs out on a 401 from an authenticated call", async () => {
+  it("reports a 401 with the token the request carried", async () => {
     fetchMock.mockResolvedValue(Response.json({ error: { code: "UNAUTHORIZED", message: "x" } }, { status: 401 }));
     await expect(apiFetch("/api/auth/me")).rejects.toMatchObject({ status: 401 });
-    expect(onUnauthorized).toHaveBeenCalledTimes(1);
+    expect(onUnauthorized).toHaveBeenCalledWith("tok-123");
+  });
+
+  it("doesn't report a 401 for a request sent without a token", async () => {
+    configureApiSession({ getToken: () => null, onUnauthorized });
+    fetchMock.mockResolvedValue(Response.json({ error: { code: "UNAUTHORIZED", message: "x" } }, { status: 401 }));
+    await expect(apiFetch("/api/auth/me")).rejects.toMatchObject({ status: 401 });
+    expect(onUnauthorized).not.toHaveBeenCalled();
+  });
+
+  it("treats an error body that isn't the BFF's shape as UNKNOWN_ERROR", async () => {
+    fetchMock.mockResolvedValue(Response.json({ error: "Bad Gateway" }, { status: 502, statusText: "Bad Gateway" }));
+    await expect(apiFetch("/api/clients")).rejects.toMatchObject({ code: "UNKNOWN_ERROR", status: 502 });
+  });
+
+  it("rethrows a caller's abort as is, including one that happened before the call", async () => {
+    fetchMock.mockImplementation(
+      (_url, init) =>
+        new Promise((_resolve, reject) => {
+          if (init!.signal!.aborted) reject(new Error("AbortError"));
+          init!.signal!.addEventListener("abort", () => reject(new Error("AbortError")));
+        }),
+    );
+    const controller = new AbortController();
+    controller.abort();
+    await expect(apiFetch("/api/clients", { signal: controller.signal })).rejects.toThrow("AbortError");
+  });
+
+  it("unregisters a session", async () => {
+    const unregister = configureApiSession({ getToken: () => "x", onUnauthorized });
+    unregister();
+    fetchMock.mockResolvedValue(Response.json({}));
+    await apiFetch("/api/auth/me");
+    expect(sentHeaders().Authorization).toBeUndefined();
   });
 
   it("public calls send no token and a 401 there doesn't sign out", async () => {

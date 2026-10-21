@@ -29,8 +29,9 @@ export function useAuth(): AuthApi {
 
 /**
  * Owns the session: restores the stored token at launch (the splash stays up meanwhile —
- * `status === "restoring"`), hands it to `apiFetch` as the bearer token, and signs out on any 401
- * from an authenticated call. The token is the only thing persisted; who the user is comes from
+ * `status === "restoring"`), hands it to `apiFetch` as the bearer token, and signs out when the
+ * BFF rejects *the current* token (a late 401 from a request sent under an earlier session is
+ * ignored). The token is the only thing persisted; who the user is comes from
  * `GET /api/auth/me` (`useMe`), so a role or consent change upstream is never served stale.
  *
  * Tokens last 8 h and there is no refresh token (audit P2-05 step 3, a BFF decision): when one
@@ -39,16 +40,26 @@ export function useAuth(): AuthApi {
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [status, setStatus] = useState<SessionStatus>("restoring");
   const [sessionExpired, setSessionExpired] = useState(false);
-  // Read synchronously by `apiFetch` on every request, so a ref rather than state.
+  // Read synchronously by `apiFetch` on every request, so refs rather than state.
   const token = useRef<string | null>(null);
+  const signingOut = useRef(false);
 
   const signOut = async (reason: "user" | "expired" = "user") => {
-    if (token.current === null && status === "signedOut") return;
+    // Many requests can 401 at once: the first sign-out wins, the rest are no-ops.
+    if (signingOut.current || token.current === null) return;
+    signingOut.current = true;
     token.current = null;
     setSessionExpired(reason === "expired");
     setStatus("signedOut");
-    queryClient.clear();
-    await clearStoredToken();
+    try {
+      // Stop in-flight requests before dropping the cache, so the previous user's data can't land
+      // in a query a still-mounted screen observes.
+      await queryClient.cancelQueries();
+      queryClient.clear();
+      await clearStoredToken();
+    } finally {
+      signingOut.current = false;
+    }
   };
 
   const signIn = async (session: AuthSession) => {
@@ -58,14 +69,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setStatus("signedIn");
   };
 
+  // The API session is registered once; it reaches the latest `signOut` through a ref.
+  const signOutRef = useRef(signOut);
   useEffect(() => {
-    configureApiSession({
-      getToken: () => token.current,
-      onUnauthorized: () => {
-        if (token.current !== null) void signOut("expired");
-      },
-    });
+    signOutRef.current = signOut;
   });
+  useEffect(
+    () =>
+      configureApiSession({
+        getToken: () => token.current,
+        onUnauthorized: (rejectedToken) => {
+          if (rejectedToken === token.current) void signOutRef.current("expired");
+        },
+      }),
+    [],
+  );
 
   useEffect(() => {
     let cancelled = false;

@@ -11,13 +11,16 @@ const OPTIONS: SecureStore.SecureStoreOptions = {
   keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
 };
 
+/**
+ * The stored token, or null. A read error is treated as "no session for this launch" without
+ * deleting anything: on iOS a read while the device is locked (a background launch) fails
+ * transiently, and wiping the entry then would sign out a valid session.
+ */
 export async function readStoredToken(): Promise<string | null> {
   try {
     return await SecureStore.getItemAsync(KEY, OPTIONS);
-  } catch {
-    // A keychain that can't be read (restored backup, changed device lock) is a signed-out state,
-    // not a crash: drop the unreadable entry so the next launch starts clean.
-    await clearStoredToken();
+  } catch (error) {
+    if (__DEV__) console.warn("Could not read the stored session.", error);
     return null;
   }
 }
@@ -26,10 +29,14 @@ export async function storeToken(token: string): Promise<void> {
   await SecureStore.setItemAsync(KEY, token, OPTIONS);
 }
 
+/**
+ * Deletes the stored token, retrying once: a sign-out whose delete silently failed would restore
+ * the session on the next launch. A second failure is thrown to the caller.
+ */
 export async function clearStoredToken(): Promise<void> {
   try {
     await SecureStore.deleteItemAsync(KEY, OPTIONS);
   } catch {
-    // Nothing stored, or already unreadable: either way there's no token left.
+    await SecureStore.deleteItemAsync(KEY, OPTIONS);
   }
 }

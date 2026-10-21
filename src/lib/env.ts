@@ -1,6 +1,22 @@
 import { z } from "zod";
 
-const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "0.0.0.0", "10.0.2.2", "::1", "[::1]"]);
+/**
+ * Hosts a release build must never call: loopback, the emulator alias, private networks and mDNS
+ * names — any of them means a development URL leaked into a store build.
+ */
+export function isLocalHost(hostname: string): boolean {
+  const host = hostname.toLowerCase().replace(/\.$/, "").replace(/^\[|\]$/g, "");
+  if (host === "localhost" || host.endsWith(".localhost") || host.endsWith(".local")) return true;
+  if (host === "::1" || host === "::" || host.startsWith("fc") || host.startsWith("fd") || host.startsWith("fe80:")) {
+    return host.includes(":");
+  }
+  const octets = host.split(".").map(Number);
+  if (octets.length !== 4 || octets.some((o) => !Number.isInteger(o) || o < 0 || o > 255)) return false;
+  const [a, b] = octets;
+  return (
+    a === 127 || a === 10 || a === 0 || (a === 169 && b === 254) || (a === 192 && b === 168) || (a === 172 && b >= 16 && b <= 31)
+  );
+}
 
 /**
  * The app's environment, validated once. `EXPO_PUBLIC_*` values are inlined into the bundle at
@@ -17,7 +33,7 @@ export function parseEnv(raw: Record<string, string | undefined>, { release }: {
       .refine((url) => !release || new URL(url).protocol === "https:", {
         error: "EXPO_PUBLIC_BFF_URL must use https in a release build",
       })
-      .refine((url) => !release || !LOCAL_HOSTS.has(new URL(url).hostname), {
+      .refine((url) => !release || !isLocalHost(new URL(url).hostname), {
         error: "EXPO_PUBLIC_BFF_URL must not point at a local address in a release build",
       }),
   });
