@@ -54,5 +54,9 @@ describe("WorkoutSetRow", () => {
     expect(style.height).toBeUndefined();
     expect(style.minHeight).toBe(68);
     expect(screen.getByLabelText("Carga da série 3, em quilos").props.maxFontSizeMultiplier).toBe(1.3);
+    expect(screen.getByText("kg").props.maxFontSizeMultiplier).toBe(1.3);
+    const box = StyleSheet.flatten(screen.getByTestId("set-weight").props.style);
+    expect(box.width).toBeUndefined();
+    expect(box.minWidth).toBe(84);
   });
 });

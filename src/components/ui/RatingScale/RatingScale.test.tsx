@@ -32,5 +32,7 @@ describe("RatingScale", () => {
       expect(style.width).toBeUndefined();
       expect(style).toMatchObject({ flex: 1, maxWidth: 68 });
     }
+    // "Muito difícil" wraps instead of truncating on narrow screens.
+    expect(screen.getByText("Muito difícil").props.numberOfLines).toBe(2);
   });
 });

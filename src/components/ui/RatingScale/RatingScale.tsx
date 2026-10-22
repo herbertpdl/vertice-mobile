@@ -35,7 +35,7 @@ export function RatingScale({ value, onChange, style }: RatingScaleProps) {
             <View style={selected ? null : styles.faded}>
               <RatingEmoji rating={rating} />
             </View>
-            <Text variant="tiny" color={selected ? "primary" : "textSecondary"} align="center" numberOfLines={1}>
+            <Text variant="tiny" color={selected ? "primary" : "textSecondary"} align="center" numberOfLines={2}>
               {RATINGS[rating]}
             </Text>
           </Pressable>
@@ -46,7 +46,7 @@ export function RatingScale({ value, onChange, style }: RatingScaleProps) {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", gap: space[1] },
+  row: { flexDirection: "row", justifyContent: "space-between", alignItems: "stretch", gap: space[1] },
   option: {
     flex: 1,
     maxWidth: sizes.ratingOptionWidth,

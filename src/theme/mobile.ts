@@ -227,6 +227,8 @@ export const sizes = {
   ratingChipPaddingRight: 10,
   /** M Workout Set weight box horizontal padding. */
   workoutSetWeightPadding: 10,
+  /** M Workout Set weight input's minimum width ("—"/"0" still right-aligned in the box). */
+  workoutSetWeightInput: 24,
 } as const;
 
 /** Horizontal padding of a screen's content (pen.dev mobile screens use 20 on a 390 frame). */

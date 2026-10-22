@@ -98,7 +98,10 @@ export function WorkoutSetRow({
           )}
         </Pressable>
       )}
-      <View style={[styles.weight, timed === undefined ? null : styles.weightTimed, done ? styles.weightDone : null]}>
+      <View
+        testID={testID === undefined ? undefined : `${testID}-weight`}
+        style={[styles.weight, timed === undefined ? null : styles.weightTimed, done ? styles.weightDone : null]}
+      >
         <TextInput
           value={weight}
           onChangeText={onWeightChange}
@@ -111,7 +114,7 @@ export function WorkoutSetRow({
           accessibilityLabel={`Carga da série ${number}, em quilos`}
           style={styles.weightInput}
         />
-        <Text variant="caption" color="textTertiary" accessible={false}>
+        <Text variant="caption" color="textTertiary" accessible={false} maxFontSizeMultiplier={WEIGHT_INPUT_MAX_SCALE}>
           kg
         </Text>
       </View>
@@ -165,7 +168,7 @@ const styles = StyleSheet.create({
   },
   holdRunning: { backgroundColor: colors.primary },
   weight: {
-    width: sizes.workoutSetWeight,
+    minWidth: sizes.workoutSetWeight,
     height: sizes.workoutSetWeightHeight,
     flexDirection: "row",
     alignItems: "center",
@@ -177,9 +180,10 @@ const styles = StyleSheet.create({
     borderColor: colors.border,
     backgroundColor: colors.bg,
   },
-  weightTimed: { width: sizes.workoutSetWeightTimed },
+  weightTimed: { minWidth: sizes.workoutSetWeightTimed },
   weightDone: { backgroundColor: "transparent" },
-  weightInput: { ...textStyle("bodyLgStrong"), flex: 1, padding: 0, textAlign: "right", color: colors.textPrimary },
+  // Grows with the number ("999,99" is wider than the 84 pt box allows), taking room from the info column.
+  weightInput: { ...textStyle("bodyLgStrong"), minWidth: sizes.workoutSetWeightInput, padding: 0, textAlign: "right", color: colors.textPrimary },
   check: {
     width: sizes.workoutSetCheck,
     height: sizes.workoutSetCheck,
