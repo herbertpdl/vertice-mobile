@@ -46,6 +46,7 @@ describe("WorkoutSetRow", () => {
     expect(screen.getByText("0:18")).toBeOnTheScreen();
     expect(screen.getByText("0:18").props.numberOfLines).toBe(1);
     expect(screen.getByText("0:18").props.maxFontSizeMultiplier).toBe(1.3);
+    expect(screen.getByText("0:18").props.adjustsFontSizeToFit).toBe(true);
     expect(screen.queryByText("Isometria")).toBeNull();
     expect(screen.getByRole("button", { name: "Parar a série 3" })).toBeOnTheScreen();
   });

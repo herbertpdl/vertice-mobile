@@ -73,13 +73,15 @@ export function WorkoutSetRow({
             variant="titleSm"
             color="primary"
             numberOfLines={1}
+            adjustsFontSizeToFit
+            minimumFontScale={0.7}
             maxFontSizeMultiplier={WEIGHT_INPUT_MAX_SCALE}
             accessibilityLabel={`Segurando, faltam ${timed.remaining}`}
           >
             {timed.remaining}
           </Text>
         ) : (
-          <Text variant="bodyMdStrong" numberOfLines={2}>
+          <Text variant="bodyMdStrong" numberOfLines={2} adjustsFontSizeToFit minimumFontScale={0.8}>
             {target}
           </Text>
         )}
