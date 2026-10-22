@@ -20,8 +20,9 @@
 
 ## 0. Handoff — start here
 
-**State:** nothing is implemented. PR 15 (this spec) is the first PR. The backend work in §2 can
-start in parallel with mobile PRs 16–17, which only use endpoints that already exist.
+**State (2026-10-22):** PRs 15 (spec) and 16 (kit) are merged. **Next: PR 17** (`feat/client-shell`,
+routing + Início + Planos + Perfil on existing endpoints). After it, the backend work in §2
+(vertice-api A1–A7, then vertice-bff B1–B10, then a `.bff-ref` bump here) unblocks PRs 18–21.
 
 **Per-PR loop:** the same as in the trainer spec's §0. Read the pen.dev nodes for the PR (values
 from `Get(id, {depth: 5})`, never from screenshots). Implement and test. Run every CI command
@@ -440,6 +441,7 @@ PRs are stacked as in the trainer spec. Every PR keeps all CI commands green (`t
 | PR | Branch | GitHub | Status | Review |
 |---|---|---|---|---|
 | 15 | `docs/client-workout-spec` | [#33](https://github.com/herbertpdl/vertice-mobile/pull/33) | merged | docs only; CI green |
+| 16 | `feat/client-kit` | [#34](https://github.com/herbertpdl/vertice-mobile/pull/34) | merged | 5 review rounds: 3 blocking (narrow-screen fit, fixed-height rows, clipped weight) + 4 non-blocking, all fixed; approved |
 
 ## Decisions log
 
