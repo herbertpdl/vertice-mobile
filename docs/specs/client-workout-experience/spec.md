@@ -436,7 +436,7 @@ PRs are stacked as in the trainer spec. Every PR keeps all CI commands green (`t
 
 | PR | Branch | GitHub | Status | Review |
 |---|---|---|---|---|
-| 15 | `docs/client-workout-spec` | — | not opened | — |
+| 15 | `docs/client-workout-spec` | [#33](https://github.com/herbertpdl/vertice-mobile/pull/33) | merged | docs only; CI green |
 
 ## Decisions log
 
