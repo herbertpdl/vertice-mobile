@@ -55,7 +55,16 @@ import {
   TextField,
   TextLink,
   WeekDots,
+  ExerciseStepRow,
+  RatingChip,
+  RatingScale,
+  RestTimer,
+  Switch,
+  WeekStrip,
+  WorkoutPickRow,
+  WorkoutSetRow,
 } from "@/components/ui";
+import type { FeedbackRating } from "@/lib/labels";
 import { colors, screenPaddingHorizontal, space } from "@/theme";
 
 /**
@@ -73,6 +82,11 @@ export default function KitScreen() {
   const [date, setDate] = useState<string | null>("2026-10-24");
   const [overlay, setOverlay] = useState<"sheet" | "actions" | "confirm" | null>(null);
   const toast = useToast();
+  const [weights, setWeights] = useState(["42,5", "45", "45", ""]);
+  const [ticked, setTicked] = useState([true, true, false, false]);
+  const [holding, setHolding] = useState(false);
+  const [rating, setRating] = useState<FeedbackRating | null>("HARD");
+  const [shown, setShown] = useState(true);
 
   if (!__DEV__) return <Redirect href="/" />;
 
@@ -262,6 +276,65 @@ export default function KitScreen() {
             ]}
           />
           <DateField label="Início" value={date} onChange={setDate} />
+        </Section>
+
+        <Section title="Client app — week & workout">
+          <WeekStrip
+            days={[
+              { label: "SEG", dayNumber: "20", name: "Segunda", state: "done" },
+              { label: "TER", dayNumber: "21", name: "Terça", state: "rest" },
+              { label: "QUA", dayNumber: "22", name: "Quarta", state: "today" },
+              { label: "QUI", dayNumber: "23", name: "Quinta", state: "pending" },
+              { label: "SEX", dayNumber: "24", name: "Sexta", state: "pending" },
+              { label: "SÁB", dayNumber: "25", name: "Sábado", state: "rest" },
+              { label: "DOM", dayNumber: "26", name: "Domingo", state: "rest" },
+            ]}
+          />
+          {["12 reps · Direta", "10 reps · Direta", "10 reps · Direta", "Até a falha · Falha"].map((target, i) => (
+            <WorkoutSetRow
+              key={i}
+              number={i + 1}
+              target={target}
+              hint={i === 3 ? "Segure 1 s embaixo" : "Última vez: 45 kg"}
+              weight={weights[i] ?? ""}
+              onWeightChange={(text) => setWeights((w) => w.map((v, j) => (j === i ? text : v)))}
+              done={ticked[i] ?? false}
+              onToggle={() => setTicked((t) => t.map((v, j) => (j === i ? !v : v)))}
+              current={ticked.indexOf(false) === i}
+            />
+          ))}
+          <WorkoutSetRow
+            number={2}
+            target="Isometria"
+            hint={holding ? "de 30 s" : "Segurar 30 s"}
+            weight=""
+            onWeightChange={() => {}}
+            done={false}
+            onToggle={() => {}}
+            timed={{ holding, remaining: "0:18", onHoldPress: () => setHolding((h) => !h) }}
+          />
+          <RestTimer remaining="0:47" progress={0.22} caption="Próxima: série 4 · até a falha" />
+          <ExerciseStepRow index={1} name="Remada curvada com barra" meta="4 de 4 séries" state="done" onPress={() => {}} />
+          <ExerciseStepRow index={2} name="Puxada frontal aberta" meta="Em andamento · 2 de 4 séries" state="current" onPress={() => {}} />
+          <ExerciseStepRow index={3} name="Remada baixa no cabo" meta="0 de 3 séries" state="pending" onPress={() => {}} />
+          <WorkoutPickRow day="SEG" dayName="Segunda" name="Treino A — Peito/Tríceps" meta="Feito esta semana" state="done" onPress={() => {}} />
+          <WorkoutPickRow day="QUA" dayName="Quarta" name="Treino B — Inferior" meta="7 exercícios" state="today" onPress={() => {}} />
+          <WorkoutPickRow day="QUI" dayName="Quinta" name="Treino C — Costas e Bíceps" meta="6 exercícios" state="default" onPress={() => {}} />
+          <WorkoutPickRow day="SÁB" dayName="Sábado" name="Treino E — Mobilidade" meta="Sem exercícios" state="unavailable" onPress={() => {}} />
+        </Section>
+
+        <Section title="Client app — rating & switch">
+          <RatingScale value={rating} onChange={setRating} />
+          <Row>
+            <RatingChip rating="VERY_HARD" />
+            <RatingChip rating="JUST_RIGHT" />
+            <RatingChip rating="VERY_EASY" />
+          </Row>
+          <Row>
+            <Switch value={shown} onValueChange={setShown} accessibilityLabel="Mostrar e-mail" />
+            <Switch value={!shown} onValueChange={(v) => setShown(!v)} accessibilityLabel="Mostrar Instagram" />
+            <Switch value disabled onValueChange={() => {}} accessibilityLabel="Desabilitado" />
+          </Row>
         </Section>
 
         <Section title="Overlays">

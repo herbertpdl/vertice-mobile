@@ -8,6 +8,7 @@ export {
   screenPaddingHorizontal,
   sizes,
   TAB_LABEL_MAX_SCALE,
+  WEIGHT_INPUT_MAX_SCALE,
   tabBarInset,
 } from "./mobile";
 export { fontFamilies, fontFamily, textPresets, textStyle } from "./typography";

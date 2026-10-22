@@ -95,3 +95,21 @@ export const ROLES: Record<Role, string> = {
   TRAINER: "Treinador(a)",
   CLIENT: "Aluno(a)",
 };
+
+/**
+ * How a client rates a finished workout (the client app's feedback step). Local until vertice-bff
+ * ships the rating enum on feedback; then this becomes `components["schemas"]["FeedbackRating"]`
+ * and the map below keeps compiling only if the members match.
+ */
+export type FeedbackRating = "VERY_HARD" | "HARD" | "JUST_RIGHT" | "EASY" | "VERY_EASY";
+
+/** Hardest first, as the scale is shown. */
+export const RATING_ORDER: FeedbackRating[] = ["VERY_HARD", "HARD", "JUST_RIGHT", "EASY", "VERY_EASY"];
+
+export const RATINGS: Record<FeedbackRating, string> = {
+  VERY_HARD: "Muito difícil",
+  HARD: "Difícil",
+  JUST_RIGHT: "Na medida",
+  EASY: "Fácil",
+  VERY_EASY: "Muito fácil",
+};

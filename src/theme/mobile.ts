@@ -192,6 +192,43 @@ export const sizes = {
   /** M - Excluir Conta's warning card: the icon disc and the bullet dots. */
   deleteNoticeIcon: 36,
   deleteNoticeBullet: 6,
+  /** M Week Day (client home): column width, the day circle, label ↔ circle gap. */
+  weekDayWidth: 40,
+  weekDayCircle: 36,
+  weekDayGap: 6,
+  /** M Workout Set: row height, number disc, weight box (84; 64 on a timed set), its height, check, hold button. */
+  workoutSetHeight: 68,
+  workoutSetDisc: 28,
+  workoutSetWeight: 84,
+  workoutSetWeightTimed: 64,
+  workoutSetWeightHeight: 44,
+  workoutSetCheck: 36,
+  workoutSetHold: 36,
+  /** M Rest Timer icon disc. */
+  restTimerIcon: 44,
+  /** M Exercise Step Row height and index disc. */
+  stepRowHeight: 64,
+  stepRowIndex: 28,
+  /** M Workout Pick Row day chip (52 × 60) and card height. */
+  pickChipWidth: 52,
+  pickRowHeight: 60,
+  /** M Switch track and knob. */
+  switchWidth: 51,
+  switchHeight: 31,
+  switchKnob: 27,
+  /** M Rating Option width, emoji size (48; 20 in M Rating Chip), unselected emoji opacity. */
+  ratingOptionWidth: 68,
+  ratingEmoji: 48,
+  ratingChipEmoji: 20,
+  ratingOptionPaddingVertical: 10,
+  /** M Rating Chip: gap, vertical padding, right padding (4 on the left, around the face). */
+  ratingChipGap: 6,
+  ratingChipPaddingVertical: 3,
+  ratingChipPaddingRight: 10,
+  /** M Workout Set weight box horizontal padding. */
+  workoutSetWeightPadding: 10,
+  /** M Workout Set weight input's minimum width ("—"/"0" still right-aligned in the box). */
+  workoutSetWeightInput: 24,
 } as const;
 
 /** Horizontal padding of a screen's content (pen.dev mobile screens use 20 on a 390 frame). */
@@ -205,10 +242,20 @@ export const screenPaddingHorizontal = 20;
 export const disabledOpacity = {
   secondaryButton: 0.45,
   field: 0.6,
+  /** M Workout Pick Row Unavailable (a workout with no exercises). */
+  pickRow: 0.45,
+  /** M Rating Option's emoji while not selected. */
+  ratingOption: 0.55,
 } as const;
 
 /** Opacity of `M Button - Loading`. */
 export const loadingOpacity = 0.75;
+
+/**
+ * The largest font scale the workout set's weight (and a timed set's countdown) follows, so the
+ * weight stays inside its 44 pt box and the countdown on one line.
+ */
+export const WEIGHT_INPUT_MAX_SCALE = 1.3;
 
 /** The largest font scale tab labels follow, so the floating capsule keeps its height. */
 export const TAB_LABEL_MAX_SCALE = 1.2;
