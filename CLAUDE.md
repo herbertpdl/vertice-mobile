@@ -17,7 +17,9 @@ serves both iOS and Android from one codebase, alongside the sibling repos
 **The implementation plan for the trainer app — component library and screens, split into
 stacked PRs — is [`docs/specs/mobile-app/spec.md`](docs/specs/mobile-app/spec.md).** Read it
 before building any UI — start at its **§0 Handoff** — and update its checklists, PR
-log and decisions log as you go.
+log and decisions log as you go. The **client app** (the aluno's workout experience) has its own
+plan, built on the same rules: [`docs/specs/client-workout-experience/spec.md`](docs/specs/client-workout-experience/spec.md)
+(from the PRD in `docs/prds/client-workout-experience/prd.md`).
 
 ## Commands
 
