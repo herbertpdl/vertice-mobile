@@ -25,4 +25,9 @@ describe("WorkoutPickRow", () => {
     await fireEvent.press(row);
     expect(onPress).not.toHaveBeenCalled();
   });
+
+  it("says which workout is today's", async () => {
+    await render(<WorkoutPickRow {...base} day="QUA" dayName="Quarta" name="Treino B" meta="7 exercícios" state="today" onPress={() => {}} />);
+    expect(screen.getByRole("button", { name: "Quarta (hoje): Treino B. 7 exercícios" })).toBeOnTheScreen();
+  });
 });

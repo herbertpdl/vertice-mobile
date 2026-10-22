@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
+import { StyleSheet } from "react-native";
 
 import { WorkoutSetRow } from "./WorkoutSetRow";
 
@@ -45,5 +46,13 @@ describe("WorkoutSetRow", () => {
     expect(screen.getByText("0:18")).toBeOnTheScreen();
     expect(screen.queryByText("Isometria")).toBeNull();
     expect(screen.getByRole("button", { name: "Parar a série 3" })).toBeOnTheScreen();
+  });
+
+  it("grows with large text instead of fixing its height, and caps the weight's scaling", async () => {
+    await render(<WorkoutSetRow {...base} done={false} testID="set" />);
+    const style = StyleSheet.flatten(screen.getByTestId("set").props.style);
+    expect(style.height).toBeUndefined();
+    expect(style.minHeight).toBe(68);
+    expect(screen.getByLabelText("Carga da série 3, em quilos").props.maxFontSizeMultiplier).toBe(1.3);
   });
 });

@@ -1,7 +1,7 @@
 import { ChevronRight } from "lucide-react-native";
 import { Pressable, StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 
-import { colors, disabledOpacity, radius, sizes, TINT_ALPHA, withAlpha } from "@/theme";
+import { colors, disabledOpacity, radius, sizes, space, TINT_ALPHA, withAlpha } from "@/theme";
 
 import { Badge } from "../Badge";
 import { Text } from "../Text";
@@ -32,7 +32,7 @@ export function WorkoutPickRow({ day, dayName, name, meta, state, onPress, style
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${dayName}: ${name}. ${meta}`}
+      accessibilityLabel={`${dayName}${state === "today" ? " (hoje)" : ""}: ${name}. ${meta}`}
       accessibilityState={{ disabled: unavailable }}
       disabled={unavailable}
       onPress={onPress}
@@ -68,23 +68,24 @@ export function WorkoutPickRow({ day, dayName, name, meta, state, onPress, style
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: "row", alignItems: "center", gap: sizes.dayRowGap },
+  row: { flexDirection: "row", alignItems: "stretch", gap: sizes.dayRowGap },
   unavailable: { opacity: disabledOpacity.pickRow },
   pressed: { backgroundColor: colors.surfaceHover },
   chip: {
     width: sizes.pickChipWidth,
-    height: sizes.pickRowHeight,
+    minHeight: sizes.pickRowHeight,
     borderRadius: radius.md,
     alignItems: "center",
     justifyContent: "center",
   },
   card: {
     flex: 1,
-    height: sizes.pickRowHeight,
+    minHeight: sizes.pickRowHeight,
     flexDirection: "row",
     alignItems: "center",
     gap: sizes.dayRowGap,
     paddingHorizontal: sizes.studentCardPadding,
+    paddingVertical: space[2],
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,

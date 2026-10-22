@@ -1,7 +1,7 @@
 import { Check, Play, Square } from "lucide-react-native";
 import { Pressable, StyleSheet, TextInput, View, type StyleProp, type ViewStyle } from "react-native";
 
-import { colors, controls, radius, sizes, space, textStyle, TINT_ALPHA, withAlpha } from "@/theme";
+import { colors, controls, radius, sizes, space, textStyle, TINT_ALPHA, WEIGHT_INPUT_MAX_SCALE, withAlpha } from "@/theme";
 
 import { Text } from "../Text";
 
@@ -36,6 +36,7 @@ export type WorkoutSetRowProps = {
   /** A set prescribed by duration (M Workout Set Timed / Holding). */
   timed?: WorkoutSetTimed;
   style?: StyleProp<ViewStyle>;
+  testID?: string;
 };
 
 /**
@@ -55,11 +56,12 @@ export function WorkoutSetRow({
   current = false,
   timed,
   style,
+  testID,
 }: WorkoutSetRowProps) {
   const holding = timed?.holding === true;
   const ringed = !done && (current || holding);
   return (
-    <View style={[styles.row, done ? styles.rowDone : ringed ? styles.rowCurrent : null, style]}>
+    <View testID={testID} style={[styles.row, done ? styles.rowDone : ringed ? styles.rowCurrent : null, style]}>
       <View style={[styles.disc, done ? styles.discDone : ringed ? styles.discCurrent : null]}>
         <Text variant="label" weight="bold" color={done ? "bg" : ringed ? "primaryText" : "textSecondary"} allowFontScaling={false}>
           {number}
@@ -105,6 +107,7 @@ export function WorkoutSetRow({
           keyboardType="decimal-pad"
           maxLength={6}
           selectTextOnFocus
+          maxFontSizeMultiplier={WEIGHT_INPUT_MAX_SCALE}
           accessibilityLabel={`Carga da série ${number}, em quilos`}
           style={styles.weightInput}
         />
@@ -128,11 +131,12 @@ export function WorkoutSetRow({
 
 const styles = StyleSheet.create({
   row: {
-    height: sizes.workoutSetHeight,
+    minHeight: sizes.workoutSetHeight,
     flexDirection: "row",
     alignItems: "center",
     gap: space[3],
     paddingHorizontal: space[3],
+    paddingVertical: space[2],
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,

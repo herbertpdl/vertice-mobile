@@ -58,11 +58,12 @@ export function ExerciseStepRow({ index, name, meta, state, onPress, style }: Ex
 
 const styles = StyleSheet.create({
   row: {
-    height: sizes.stepRowHeight,
+    minHeight: sizes.stepRowHeight,
     flexDirection: "row",
     alignItems: "center",
     gap: space[3],
     paddingHorizontal: sizes.studentCardPadding,
+    paddingVertical: space[2],
     borderRadius: radius.md,
     borderWidth: 1,
     borderColor: colors.border,

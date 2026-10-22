@@ -15,7 +15,8 @@ export type RatingScaleProps = {
 /**
  * M Rating Scale: the five M Rating Options, hardest first. A selected option gets the
  * `surfaceActive` card with a primary ring and label (M Rating Option Selected); the others show
- * their face faded. Read as a radio group ("Como foi o treino?" is the screen's question).
+ * their face faded. The options share the row (up to 68 pt each), so the scale fits a 320 pt
+ * content width. Read as a radio group ("Como foi o treino?" is the screen's question).
  */
 export function RatingScale({ value, onChange, style }: RatingScaleProps) {
   return (
@@ -45,9 +46,10 @@ export function RatingScale({ value, onChange, style }: RatingScaleProps) {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end" },
+  row: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", gap: space[1] },
   option: {
-    width: sizes.ratingOptionWidth,
+    flex: 1,
+    maxWidth: sizes.ratingOptionWidth,
     alignItems: "center",
     gap: space[2],
     paddingVertical: sizes.ratingOptionPaddingVertical,
