@@ -10,7 +10,7 @@ import { deleteAccount } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { apiErrorMessage, errorMessages } from "@/lib/api/errorMessages";
 import { rateLimitedMessage } from "@/lib/api/rateLimit";
-import { useAuth, useMe } from "@/lib/auth";
+import { useAuth, useMe, useProfileHome } from "@/lib/auth";
 import { useIsOffline } from "@/lib/network";
 import { useSingleFlight } from "@/lib/useSingleFlight";
 import { colors, radius, sizes, SOFT_TINT_ALPHA, space, TINT_ALPHA, withAlpha } from "@/theme";
@@ -38,6 +38,7 @@ export const DELETE_CONFIRMATION_PHRASE = "EXCLUIR";
 export function DeleteAccountScreen() {
   const { signOut } = useAuth();
   const { data: me } = useMe();
+  const profileHome = useProfileHome();
   const toast = useToast();
   const offline = useIsOffline();
   const queryClient = useQueryClient();
@@ -92,7 +93,7 @@ export function DeleteAccountScreen() {
             label="Cancelar"
             style={styles.cancel}
             disabled={remove.isPending}
-            onPress={() => (router.canGoBack() ? router.back() : router.replace("/perfil"))}
+            onPress={() => (router.canGoBack() ? router.back() : router.replace(profileHome))}
           />
         </View>
       }

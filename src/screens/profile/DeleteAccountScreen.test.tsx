@@ -12,7 +12,7 @@ jest.mock("expo-router", () => ({
   },
 }));
 const mockSignOut = jest.fn(async () => {});
-jest.mock("@/lib/auth", () => ({ useAuth: () => ({ signOut: mockSignOut }), useMe: () => ({ data: { role: "TRAINER" } }) }));
+jest.mock("@/lib/auth", () => ({ useAuth: () => ({ signOut: mockSignOut }), useMe: () => ({ data: { role: "TRAINER" } }), useProfileHome: () => "/perfil" }));
 
 let bff: BffMock;
 afterEach(() => bff?.restore());

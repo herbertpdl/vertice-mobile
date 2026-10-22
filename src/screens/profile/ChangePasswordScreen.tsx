@@ -11,6 +11,7 @@ import { changePassword } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { apiErrorMessage } from "@/lib/api/errorMessages";
 import { rateLimitedMessage } from "@/lib/api/rateLimit";
+import { useProfileHome } from "@/lib/auth";
 import { useIsOffline } from "@/lib/network";
 import { useSingleFlight } from "@/lib/useSingleFlight";
 import { PASSWORD_HELP_TEXT } from "@/lib/validation/auth";
@@ -25,6 +26,7 @@ import { space } from "@/theme";
 export function ChangePasswordScreen() {
   const toast = useToast();
   const offline = useIsOffline();
+  const profileHome = useProfileHome();
   const {
     control,
     handleSubmit,
@@ -42,7 +44,7 @@ export function ChangePasswordScreen() {
     gcTime: 0,
     onSuccess: () => {
       if (router.canGoBack()) router.back();
-      else router.replace("/perfil");
+      else router.replace(profileHome);
       toast.show("Senha alterada.");
     },
     onError: (error) => {

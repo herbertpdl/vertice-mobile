@@ -204,9 +204,12 @@ export function ClientHomeScreen() {
   const pull = usePullToRefresh(refetchAll);
   const retry = { label: "Tentar", onPress: () => void refetchAll() };
   const failed = plans.isError || (active !== undefined && (plan.isError || logs.isError));
+  // The banner is for a failed refresh over content on screen; with nothing to show yet, the body's
+  // ErrorState says it alone.
+  const hasContent = plans.data !== undefined && (active === undefined || (plan.data !== undefined && logs.data !== undefined));
   const banner = offline ? (
     <StatusBanner kind="offline" action={retry} />
-  ) : failed && plans.data !== undefined ? (
+  ) : failed && hasContent ? (
     <StatusBanner kind="error" action={retry} />
   ) : undefined;
 
