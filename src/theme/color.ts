@@ -42,4 +42,6 @@ export const shadows = {
   toast: { shadowColor: overlay.shadow, shadowOpacity: 0.4, shadowOffset: { width: 0, height: 8 }, shadowRadius: 12, elevation: 10 },
   /** M Confirm Dialog: #00000080, y 16, blur 40. */
   dialog: { shadowColor: overlay.shadow, shadowOpacity: 0.5, shadowOffset: { width: 0, height: 16 }, shadowRadius: 20, elevation: 16 },
+  /** M Rest Timer, docked over the workout footer: #00000080, y -8, blur 24. */
+  restTimer: { shadowColor: overlay.shadow, shadowOpacity: 0.5, shadowOffset: { width: 0, height: -8 }, shadowRadius: 12, elevation: 10 },
 } as const;

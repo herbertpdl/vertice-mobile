@@ -57,6 +57,12 @@ export const textPresets = {
   titleSm: { family: "heading", weight: "bold", size: 20 },
   /** "Feedbacks recentes" — section header. */
   section: { family: "heading", weight: "semibold", size: 18 },
+  /** M Rest Timer's countdown ("0:47"). */
+  timer: { family: "heading", weight: "bold", size: 34 },
+  /** "DESCANSO", "PLANO ATIVO", "TREINO DE HOJE" — 11 bold tracked eyebrows of the client app. */
+  eyebrow: { family: "base", weight: "bold", size: 11, letterSpacing: 1 },
+  /** M Week Day label ("QUA") and M Rating Option label. */
+  tiny: { family: "base", weight: "semibold", size: 11 },
   /** M Confirm Dialog title ("Esta ação é permanente"); `weight="semibold"` for the calendar month. */
   headingSm: { family: "heading", weight: "bold", size: 17 },
   /** Centered nav bar title; empty-state title ("Nenhum aluno encontrado"). */
