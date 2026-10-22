@@ -69,11 +69,17 @@ export function WorkoutSetRow({
       </View>
       <View style={styles.info}>
         {holding && timed?.remaining !== undefined ? (
-          <Text variant="titleSm" color="primary" accessibilityLabel={`Segurando, faltam ${timed.remaining}`}>
+          <Text
+            variant="titleSm"
+            color="primary"
+            numberOfLines={1}
+            maxFontSizeMultiplier={WEIGHT_INPUT_MAX_SCALE}
+            accessibilityLabel={`Segurando, faltam ${timed.remaining}`}
+          >
             {timed.remaining}
           </Text>
         ) : (
-          <Text variant="bodyMdStrong" numberOfLines={1}>
+          <Text variant="bodyMdStrong" numberOfLines={2}>
             {target}
           </Text>
         )}

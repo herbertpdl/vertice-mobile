@@ -251,7 +251,10 @@ export const disabledOpacity = {
 /** Opacity of `M Button - Loading`. */
 export const loadingOpacity = 0.75;
 
-/** The largest font scale the workout set's weight follows, so it stays inside its 44 pt box. */
+/**
+ * The largest font scale the workout set's weight (and a timed set's countdown) follows, so the
+ * weight stays inside its 44 pt box and the countdown on one line.
+ */
 export const WEIGHT_INPUT_MAX_SCALE = 1.3;
 
 /** The largest font scale tab labels follow, so the floating capsule keeps its height. */
