@@ -1,4 +1,4 @@
-import { planStatus, planStatusLabels, sortPlans } from "./plans";
+import { planStatus, planStatusLabels, sortPlans, activePlan } from "./plans";
 
 /** 22:00 on Sunday 2026-10-18 in São Paulo (-03:00), which is already Monday in UTC. */
 const SUNDAY_EVENING = new Date("2026-10-19T01:00:00Z");
@@ -51,3 +51,17 @@ describe("sortPlans", () => {
   });
 });
 
+describe("activePlan", () => {
+  const plan = (id: number, startDate: string, endDate: string) => ({ id, startDate, endDate });
+
+  it("is the plan whose dates include today, the latest started on overlap", () => {
+    const plans = [plan(1, "2026-09-01", "2026-11-30"), plan(2, "2026-10-01", "2026-12-31"), plan(3, "2026-12-01", "2027-02-28")];
+    expect(activePlan(plans, "2026-10-22")?.id).toBe(2);
+    expect(activePlan(plans, "2026-09-15")?.id).toBe(1);
+  });
+
+  it("includes both ends and is undefined between plans", () => {
+    expect(activePlan([plan(1, "2026-10-22", "2026-10-22")], "2026-10-22")?.id).toBe(1);
+    expect(activePlan([plan(1, "2026-09-01", "2026-09-30")], "2026-10-22")).toBeUndefined();
+  });
+});

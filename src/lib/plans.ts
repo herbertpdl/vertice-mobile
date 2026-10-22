@@ -55,3 +55,12 @@ export function sortPlans<P extends DatedPlan>(plans: P[], today: string = today
   });
 }
 
+/**
+ * A client's current plan (PRD R1, R2): the one whose dates include today; when several do, the one
+ * that started last. `undefined` when none runs today.
+ */
+export function activePlan<P extends DatedPlan>(plans: P[], today: string = todayLocalIso()): P | undefined {
+  return plans
+    .filter((plan) => planStatus(plan.startDate, plan.endDate, today) === "active")
+    .reduce<P | undefined>((latest, plan) => (latest === undefined || plan.startDate > latest.startDate ? plan : latest), undefined);
+}

@@ -5,16 +5,16 @@ import { Button, EmptyState } from "@/components/ui";
 import { colors, screenPaddingHorizontal } from "@/theme";
 
 /**
- * v1 of the app is for trainers (spec §1). A student (or an admin) who signs in gets this notice
- * and a way out, built from M Empty State — the student app needs its own PRD and designs.
+ * The app serves trainers and their clients. An admin who signs in gets this notice and a way
+ * out, built from M Empty State.
  */
 export function RoleNoticeScreen({ onSignOut }: { onSignOut: () => void }) {
   return (
     <View style={styles.root}>
       <EmptyState
         icon={Smartphone}
-        title="O app do aluno está a caminho"
-        message="Este aplicativo é para treinadores. Enquanto isso, fale com seu treinador para acompanhar seus treinos."
+        title="Este app é para treinadores e alunos"
+        message="Contas de administração não têm acesso pelo aplicativo."
       />
       <Button label="Sair" variant="secondary" onPress={onSignOut} />
     </View>

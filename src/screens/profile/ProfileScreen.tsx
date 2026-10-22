@@ -28,9 +28,10 @@ export function exportErrorMessage(error: unknown): string {
 }
 
 /**
- * M - Perfil: who is signed in (avatar, name, e-mail, CREF), Conta (Editar perfil, Alterar
- * senha), Privacidade (Termos, Política, Exportar meus dados), Sair and Excluir conta, and the
- * app version.
+ * M - Perfil / A - Perfil: who is signed in (avatar, name, e-mail, CREF), Conta (Editar perfil,
+ * Alterar senha), Privacidade (Termos, Política, Exportar meus dados), Sair and Excluir conta, and
+ * the app version. A client's has no "Editar perfil" (PRD R73: their account is set up by their
+ * trainer).
  */
 export function ProfileScreen() {
   const { signOut } = useAuth();
@@ -100,6 +101,7 @@ export function ProfileScreen() {
       )}
 
       <Group title="CONTA">
+        {data?.role === "CLIENT" ? null : (
         <ListRow
           icon={UserPen}
           label="Editar perfil"
@@ -109,6 +111,7 @@ export function ProfileScreen() {
             setEditing(true);
           }}
         />
+        )}
         <ListRow icon={KeyRound} label="Alterar senha" last onPress={() => router.push("/perfil/senha")} />
       </Group>
 

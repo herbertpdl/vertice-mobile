@@ -20,9 +20,11 @@
 
 ## 0. Handoff — start here
 
-**State (2026-10-22):** PRs 15 (spec) and 16 (kit) are merged. **Next: PR 17** (`feat/client-shell`,
-routing + Início + Planos + Perfil on existing endpoints). After it, the backend work in §2
-(vertice-api A1–A7, then vertice-bff B1–B10, then a `.bff-ref` bump here) unblocks PRs 18–21.
+**State (2026-10-22):** PRs 15 (spec), 16 (kit) and 17 (shell: routing, Início, Planos, Perfil)
+are merged. A CLIENT session now gets the client app at `/aluno`; "Começar treino" opens a
+placeholder. **Next: the backend in §2** — vertice-api A1–A4 (session lifecycle + feedback rating,
+branch `feat/workout-session-lifecycle` in vertice-api), then A5–A7, then vertice-bff B1–B10, then
+bump `.bff-ref` here — which unblocks PRs 18–21.
 
 **Per-PR loop:** the same as in the trainer spec's §0. Read the pen.dev nodes for the PR (values
 from `Get(id, {depth: 5})`, never from screenshots). Implement and test. Run every CI command
@@ -371,15 +373,25 @@ PRs are stacked as in the trainer spec. Every PR keeps all CI commands green (`t
   union until B7's enum lands; the swap is a one-line change in PR 20.
 
 ### PR 17 — `feat/client-shell`: routing, Início, Planos, Perfil (existing endpoints)
-- [ ] `useSessionGate` + `(app)/_layout` role groups (§3.1); `ADMIN` keeps the notice; tests for
-  every role
-- [ ] `activePlan`, `weekStartOf`, `dayOfWeekOf`, `weekStrip` with unit and hostile-tz tests
-- [ ] `ClientHomeScreen`: every state except the in-progress one (that arrives with PR 18's local
-  store), plus skeleton, error, offline and pull-to-refresh (§0.1 of the trainer spec)
-- [ ] `ClientPlansScreen`, `ClientPlanScreen`, `ClientWorkoutViewScreen` (read-only, `/full`)
-- [ ] `ClientProfileScreen` without the trainer card (that comes in PR 21); reuse password,
-  export and delete-account
-- [ ] "Começar treino" opens a placeholder route until PR 18
+- [x] `useSessionGate` + `(app)/_layout` role groups (§3.1): `TRAINER` → `(tabs)` and every trainer
+  route, `CLIENT` → `aluno` (`/aluno`), `perfil/senha` and `perfil/excluir-conta` open to both,
+  `ADMIN` keeps the notice (new copy); `src/test/roleRouting.test.tsx` renders the real layout
+  per role (homes, deep-link fallbacks)
+- [x] `activePlan` (`plans.ts`), `weekStartOf` / `dayOfWeekOf` (`calendar.ts`, hostile-tz tested),
+  `clientWeek` / `homeAction` (`src/lib/clientWeek.ts`), `formatWeekdayDate`, and
+  `src/lib/workoutText.ts` (set/exercise copy, reused by PR 18)
+- [x] `ClientHomeScreen` with `ActivePlanCard` and `WorkoutPickerSheet`: start / continue (from the
+  week's server logs) / done → "Treinar outro treino" / no workout today → picker with notice /
+  several today → picker / no workouts → disabled; no active plan → empty state; skeleton, error,
+  offline and pull-to-refresh. Exercise counts come from each workout's `/full` (the plan detail
+  has none; at most seven cached requests)
+- [x] `ClientPlansScreen` (grouped Em andamento / Próximos / Encerrados), `ClientPlanScreen`
+  (read-only notice; `DayRow` without "+ Adicionar treino"), `ClientWorkoutViewScreen` (`/full`)
+- [x] Perfil reuses `ProfileScreen` (no "Editar perfil" for a client) and the trainer's password and
+  delete-account screens (`consequencesFor` drops the trainer-only line); the trainer card waits
+  for PR 21
+- [x] "Começar treino" opens `/aluno/treino/[workoutId]`, a placeholder until PR 18
+- [x] `Button` variant `ghostDanger` (A - Início's "Descartar treino", wired in PR 18)
 
 ### PR 18 — `feat/client-workout`: the session (needs B1–B6 merged and `.bff-ref` bumped)
 - [ ] `src/lib/api/workoutSessions.ts`; engine (§3.3) with unit tests for every rule it covers
@@ -441,6 +453,7 @@ PRs are stacked as in the trainer spec. Every PR keeps all CI commands green (`t
 | PR | Branch | GitHub | Status | Review |
 |---|---|---|---|---|
 | 15 | `docs/client-workout-spec` | [#33](https://github.com/herbertpdl/vertice-mobile/pull/33) | merged | docs only; CI green |
+| 17 | `feat/client-shell` | [#35](https://github.com/herbertpdl/vertice-mobile/pull/35) | merged | 3 review rounds: 1 blocking (refresh without a plan) + 5 non-blocking (trainer routes guarded, routing test, copy, banner, profile fallback), all fixed; approved |
 | 16 | `feat/client-kit` | [#34](https://github.com/herbertpdl/vertice-mobile/pull/34) | merged | 5 review rounds: 3 blocking (narrow-screen fit, fixed-height rows, clipped weight) + 4 non-blocking, all fixed; approved |
 
 ## Decisions log
@@ -488,3 +501,13 @@ PRs are stacked as in the trainer spec. Every PR keeps all CI commands green (`t
 - 2026-10-22 — `WorkoutSetRow`'s weight is a bare `TextInput` inside the M Workout Set box rather
   than the kit `TextField`: the design has no label or help row, and the field must stay 84 pt wide
   inside a 68 pt row. Its spoken label is "Carga da série N, em quilos".
+- 2026-10-22 — The client's Início reads the week's logs from `GET /api/workout-logs` and counts
+  exercises from each workout's `GET /api/workouts/{id}/full`, because the plan detail carries no
+  counts. A plan has at most seven workouts and the trees are cached. A `workoutCount` field on the
+  plan's workouts in the BFF would remove the requests if this ever matters.
+- 2026-10-22 — Every trainer route sits under the TRAINER `Stack.Protected` guard (not just
+  `(tabs)`), so a client's stale or deep link to one falls back to `/aluno`; `perfil/senha` and
+  `perfil/excluir-conta` stay shared and fall back to the role's own Perfil (`useProfileHome`).
+- 2026-10-22 — The client's screens can't be checked on react-native-web after sign-in:
+  `expo-secure-store` has no web implementation, so login fails there. The kit gallery is the web
+  check; the screens are covered by tests and by the device checklists.

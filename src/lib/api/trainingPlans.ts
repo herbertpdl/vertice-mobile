@@ -9,6 +9,9 @@ export function trainingPlansQueryKey(clientId: number) {
   return ["trainingPlans", { clientId }] as const;
 }
 
+/** The signed-in client's own plans (the client app; the BFF answers a CLIENT with theirs). */
+export const myPlansQueryKey = ["trainingPlans", "mine"] as const;
+
 /** One plan with its workouts (the web's key too). */
 export function trainingPlanQueryKey(id: number) {
   return ["trainingPlan", id] as const;

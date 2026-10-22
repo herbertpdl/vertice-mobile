@@ -2,6 +2,8 @@
 export { AccessLinkPanel } from "./AccessLinkPanel";
 export type { AccessLinkPanelProps } from "./AccessLinkPanel";
 export { AccessLinkSheet } from "./AccessLinkSheet";
+export { ActivePlanCard } from "./ActivePlanCard";
+export type { ActivePlanCardProps, TodayTone } from "./ActivePlanCard";
 export { AddExerciseSheet } from "./AddExerciseSheet";
 export type { AddExerciseSheetProps } from "./AddExerciseSheet";
 export { AuthFooter } from "./AuthFooter";
@@ -26,3 +28,5 @@ export { SetHeader, SetRow } from "./SetRow";
 export type { SetRowProps } from "./SetRow";
 export { StudentCard } from "./StudentCard";
 export { CHART_WEEKS, recentWeeks, WeightChart } from "./WeightChart";
+export { pickRow, WorkoutPickerSheet } from "./WorkoutPickerSheet";
+export type { WorkoutPickerSheetProps } from "./WorkoutPickerSheet";

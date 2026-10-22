@@ -11,8 +11,8 @@ export type DayRowProps = {
   /** The day's workouts (a plan may hold more than one per day); empty is a rest day. */
   workouts: Workout[];
   onOpenWorkout: (workout: Workout) => void;
-  /** "+ Adicionar treino" on a rest day. */
-  onAddWorkout: () => void;
+  /** "+ Adicionar treino" on a rest day; without it (the client's read-only plan) the day is just "Descanso". */
+  onAddWorkout?: () => void;
 };
 
 /**
@@ -29,7 +29,18 @@ export function DayRow({ day, workouts, onOpenWorkout, onAddWorkout }: DayRowPro
         </Text>
       </View>
       <View style={styles.cards}>
-        {rest ? (
+        {rest && onAddWorkout === undefined ? (
+          <View
+            accessible
+            accessibilityLabel={`${DAY_NAMES[day]}: descanso`}
+            style={[styles.card, styles.restCard]}
+          >
+            <Moon size={14} color={colors.textSecondary} />
+            <Text variant="caption" color="textSecondary" style={styles.flex}>
+              Descanso
+            </Text>
+          </View>
+        ) : rest ? (
           <Pressable
             onPress={onAddWorkout}
             accessibilityRole="button"

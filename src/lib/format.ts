@@ -50,6 +50,13 @@ const shortDateFormatter = new Intl.DateTimeFormat("pt-BR", {
   month: "short",
 });
 
+const weekdayDateFormatter = new Intl.DateTimeFormat("pt-BR", {
+  timeZone: "UTC",
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+});
+
 const longDateFormatter = new Intl.DateTimeFormat("pt-BR", {
   timeZone: "UTC",
   day: "2-digit",
@@ -138,6 +145,12 @@ export function formatDateShort(isoDate: string): string {
 /** A business date with its year, e.g. "31 de out de 2026". */
 export function formatDateLong(isoDate: string): string {
   return longDateFormatter.format(civilDay(isoDate)).replace(".", "");
+}
+
+/** A business date with its weekday, as the client's Início greets: "Quinta-feira, 22 de outubro". */
+export function formatWeekdayDate(isoDate: string): string {
+  const text = weekdayDateFormatter.format(civilDay(isoDate));
+  return text.charAt(0).toLocaleUpperCase("pt-BR") + text.slice(1);
 }
 
 /** A business date all in digits, e.g. "31/10/2026". */

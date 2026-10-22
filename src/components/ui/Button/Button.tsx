@@ -13,7 +13,7 @@ import { colors, controls, disabledOpacity, loadingOpacity, radius, sizes, space
 import { Spinner } from "../Spinner";
 import { Text } from "../Text";
 
-export type ButtonVariant = "primary" | "secondary" | "danger" | "ghost";
+export type ButtonVariant = "primary" | "secondary" | "danger" | "ghost" | "ghostDanger";
 
 export type ButtonProps = Omit<PressableProps, "children" | "style"> & {
   label: string;
@@ -41,6 +41,8 @@ const looks: Record<ButtonVariant, Look> = {
   },
   danger: { fill: colors.danger, pressedFill: colors.dangerHover, label: "bg" },
   ghost: { fill: "transparent", pressedFill: colors.surfaceHover, label: "primary" },
+  /** M Button Ghost with a danger label ("Descartar treino" on the client's Início). */
+  ghostDanger: { fill: "transparent", pressedFill: colors.surfaceHover, label: "danger" },
 };
 
 /** The fill a button shows for a state, per its M Button variant (exported for tests). */

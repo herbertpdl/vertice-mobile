@@ -1,4 +1,5 @@
 import {
+  formatWeekdayDate,
   BUSINESS_TIME_ZONE,
   daysLeftLabel,
   daysUntil,
@@ -255,3 +256,9 @@ describe("formatWeight", () => {
   });
 });
 
+describe("formatWeekdayDate", () => {
+  it("writes the weekday and the date, capitalized", () => {
+    expect(formatWeekdayDate("2026-10-22")).toBe("Quinta-feira, 22 de outubro");
+    expect(formatWeekdayDate("2026-11-01")).toBe("Domingo, 1 de novembro");
+  });
+});
