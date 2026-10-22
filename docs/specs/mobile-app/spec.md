@@ -99,6 +99,8 @@ and account (edit, password, export, delete), consent gate.
   P2-13 recommends mobile be the client app; the design file only has trainer screens today. It
   needs a PRD (`prd-creator`) and designs first. Until then any non-`TRAINER` session
   (`CLIENT`, `ADMIN`) sees an "app do aluno em breve" notice and can sign out (see PR 6).
+  **Now planned:** PRD `docs/prds/client-workout-experience/prd.md`, spec
+  [`docs/specs/client-workout-experience/spec.md`](../client-workout-experience/spec.md) (PRs 15–21).
 - Password reset ("Esqueceu a senha?") — **no BFF endpoint exists**; the link is removed from the
   design.
 - Push notifications, offline editing, biometrics, tablets/landscape (portrait phone only).
