@@ -371,15 +371,23 @@ PRs are stacked as in the trainer spec. Every PR keeps all CI commands green (`t
   union until B7's enum lands; the swap is a one-line change in PR 20.
 
 ### PR 17 — `feat/client-shell`: routing, Início, Planos, Perfil (existing endpoints)
-- [ ] `useSessionGate` + `(app)/_layout` role groups (§3.1); `ADMIN` keeps the notice; tests for
-  every role
-- [ ] `activePlan`, `weekStartOf`, `dayOfWeekOf`, `weekStrip` with unit and hostile-tz tests
-- [ ] `ClientHomeScreen`: every state except the in-progress one (that arrives with PR 18's local
-  store), plus skeleton, error, offline and pull-to-refresh (§0.1 of the trainer spec)
-- [ ] `ClientPlansScreen`, `ClientPlanScreen`, `ClientWorkoutViewScreen` (read-only, `/full`)
-- [ ] `ClientProfileScreen` without the trainer card (that comes in PR 21); reuse password,
-  export and delete-account
-- [ ] "Começar treino" opens a placeholder route until PR 18
+- [x] `useSessionGate` + `(app)/_layout` role groups (§3.1): `TRAINER` → `(tabs)`, `CLIENT` →
+  `aluno` (`/aluno`), `ADMIN` keeps the notice (new copy); tests for every role
+- [x] `activePlan` (`plans.ts`), `weekStartOf` / `dayOfWeekOf` (`calendar.ts`, hostile-tz tested),
+  `clientWeek` / `homeAction` (`src/lib/clientWeek.ts`), `formatWeekdayDate`, and
+  `src/lib/workoutText.ts` (set/exercise copy, reused by PR 18)
+- [x] `ClientHomeScreen` with `ActivePlanCard` and `WorkoutPickerSheet`: start / continue (from the
+  week's server logs) / done → "Treinar outro treino" / no workout today → picker with notice /
+  several today → picker / no workouts → disabled; no active plan → empty state; skeleton, error,
+  offline and pull-to-refresh. Exercise counts come from each workout's `/full` (the plan detail
+  has none; at most seven cached requests)
+- [x] `ClientPlansScreen` (grouped Em andamento / Próximos / Encerrados), `ClientPlanScreen`
+  (read-only notice; `DayRow` without "+ Adicionar treino"), `ClientWorkoutViewScreen` (`/full`)
+- [x] Perfil reuses `ProfileScreen` (no "Editar perfil" for a client) and the trainer's password and
+  delete-account screens (`consequencesFor` drops the trainer-only line); the trainer card waits
+  for PR 21
+- [x] "Começar treino" opens `/aluno/treino/[workoutId]`, a placeholder until PR 18
+- [x] `Button` variant `ghostDanger` (A - Início's "Descartar treino", wired in PR 18)
 
 ### PR 18 — `feat/client-workout`: the session (needs B1–B6 merged and `.bff-ref` bumped)
 - [ ] `src/lib/api/workoutSessions.ts`; engine (§3.3) with unit tests for every rule it covers
@@ -488,3 +496,10 @@ PRs are stacked as in the trainer spec. Every PR keeps all CI commands green (`t
 - 2026-10-22 — `WorkoutSetRow`'s weight is a bare `TextInput` inside the M Workout Set box rather
   than the kit `TextField`: the design has no label or help row, and the field must stay 84 pt wide
   inside a 68 pt row. Its spoken label is "Carga da série N, em quilos".
+- 2026-10-22 — The client's Início reads the week's logs from `GET /api/workout-logs` and counts
+  exercises from each workout's `GET /api/workouts/{id}/full`, because the plan detail carries no
+  counts. A plan has at most seven workouts and the trees are cached. A `workoutCount` field on the
+  plan's workouts in the BFF would remove the requests if this ever matters.
+- 2026-10-22 — The client's screens can't be checked on react-native-web after sign-in:
+  `expo-secure-store` has no web implementation, so login fails there. The kit gallery is the web
+  check; the screens are covered by tests and by the device checklists.

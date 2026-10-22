@@ -54,8 +54,14 @@ describe("useSessionGate", () => {
     expect(bff.calls.find((c) => c.route === "POST /api/auth/me/consent")?.body).toEqual({ type: "TERMS", version: "v2" });
   });
 
-  it("shows the notice to a student", async () => {
+  it("is ready for a client (the client app)", async () => {
     bff = mockBff({ "GET /api/auth/me": me("CLIENT"), "GET /api/legal/versions": versions });
+    const { result } = await gate();
+    await waitFor(() => expect(result.current.kind).toBe("ready"));
+  });
+
+  it("shows the notice to an admin", async () => {
+    bff = mockBff({ "GET /api/auth/me": me("ADMIN"), "GET /api/legal/versions": versions });
     const { result } = await gate();
     await waitFor(() => expect(result.current.kind).toBe("wrongRole"));
   });

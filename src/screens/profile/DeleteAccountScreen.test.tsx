@@ -3,7 +3,7 @@ import { fireEvent, screen, waitFor } from "@testing-library/react-native";
 import { bffError, mockBff, type BffMock } from "@/test/bff";
 import { renderScreen } from "@/test/render";
 
-import { DeleteAccountScreen } from "./DeleteAccountScreen";
+import { consequencesFor, DeleteAccountScreen } from "./DeleteAccountScreen";
 
 const mockRouter = { push: jest.fn(), navigate: jest.fn(), back: jest.fn(), replace: jest.fn(), canGoBack: jest.fn(() => true) };
 jest.mock("expo-router", () => ({
@@ -12,7 +12,7 @@ jest.mock("expo-router", () => ({
   },
 }));
 const mockSignOut = jest.fn(async () => {});
-jest.mock("@/lib/auth", () => ({ useAuth: () => ({ signOut: mockSignOut }) }));
+jest.mock("@/lib/auth", () => ({ useAuth: () => ({ signOut: mockSignOut }), useMe: () => ({ data: { role: "TRAINER" } }) }));
 
 let bff: BffMock;
 afterEach(() => bff?.restore());
@@ -51,5 +51,13 @@ describe("DeleteAccountScreen", () => {
     expect(await screen.findByText("Você ainda tem alunos ativos")).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole("button", { name: "Ver alunos" }));
     expect(mockRouter.navigate).toHaveBeenCalledWith("/alunos");
+  });
+});
+
+describe("consequencesFor", () => {
+  it("leaves the trainer-only line out for a client", () => {
+    expect(consequencesFor("TRAINER")).toHaveLength(3);
+    expect(consequencesFor("CLIENT")).toHaveLength(2);
+    expect(consequencesFor("CLIENT").join(" ")).not.toMatch(/escreveu para seus alunos/);
   });
 });

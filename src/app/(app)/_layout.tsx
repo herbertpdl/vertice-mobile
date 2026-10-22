@@ -7,7 +7,11 @@ import { RoleNoticeScreen } from "@/screens/session/RoleNoticeScreen";
 import { SessionErrorScreen } from "@/screens/session/SessionErrorScreen";
 import { colors } from "@/theme";
 
-/** Everything behind the session, gated on the account: loading → role → Terms consent → app. */
+/**
+ * Everything behind the session, gated on the account: loading → role → Terms consent → app. The
+ * trainer app (`(tabs)` at `/`) and the client app (`aluno`, at `/aluno`) are role-guarded groups:
+ * a blocked group falls back to the first available screen, so each role lands on its own home.
+ */
 export default function AppLayout() {
   const { signOut } = useAuth();
   const gate = useSessionGate();
@@ -32,6 +36,15 @@ export default function AppLayout() {
         />
       );
     case "ready":
-      return <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }} />;
+      return (
+        <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
+          <Stack.Protected guard={gate.me.role === "TRAINER"}>
+            <Stack.Screen name="(tabs)" />
+          </Stack.Protected>
+          <Stack.Protected guard={gate.me.role === "CLIENT"}>
+            <Stack.Screen name="aluno" />
+          </Stack.Protected>
+        </Stack>
+      );
   }
 }

@@ -89,4 +89,15 @@ describe("ProfileScreen", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Salvar" }));
     expect(await screen.findByText("E-mail ou CPF já cadastrado")).toBeOnTheScreen();
   });
+
+  it("has no profile editing for a client (their account comes from their trainer)", async () => {
+    Object.assign(me, { role: "CLIENT", cref: "" });
+    try {
+      await renderScreen(<ProfileScreen />);
+      expect(screen.queryByRole("button", { name: "Editar perfil" })).toBeNull();
+      expect(screen.getByRole("button", { name: "Alterar senha" })).toBeOnTheScreen();
+    } finally {
+      Object.assign(me, { role: "TRAINER", cref: "012345-G/SP" });
+    }
+  });
 });

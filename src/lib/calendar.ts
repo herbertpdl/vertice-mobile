@@ -9,6 +9,7 @@
  * UTC-10. Formatting a business date for display stays in `format.ts`, the one place for it;
  * this module only does the arithmetic and the parse.
  */
+import type { DayOfWeek } from "@/lib/api/types";
 
 /** A month of the calendar, with no day in it. */
 export interface CalendarMonth {
@@ -195,4 +196,28 @@ export function caretAfterDigits(masked: string, digits: number): number {
 /** Digits in `text` before `caret` — the position that survives a re-mask. */
 export function countDigitsBefore(text: string, caret: number): number {
   return (text.slice(0, caret).match(/\d/g) ?? []).length;
+}
+
+const WEEKDAYS_FROM_SUNDAY: readonly DayOfWeek[] = [
+  "SUNDAY",
+  "MONDAY",
+  "TUESDAY",
+  "WEDNESDAY",
+  "THURSDAY",
+  "FRIDAY",
+  "SATURDAY",
+];
+
+/** The weekday of a business date, as the contract names it. */
+export function dayOfWeekOf(isoDate: string): DayOfWeek {
+  return WEEKDAYS_FROM_SUNDAY[civilDay(isoDate).getUTCDay()];
+}
+
+/**
+ * The Monday that starts a business date's week — the week workout logs are counted in (the BFF's
+ * `weekStartDate`, a Monday in America/Sao_Paulo).
+ */
+export function weekStartOf(isoDate: string): string {
+  const sinceMonday = (civilDay(isoDate).getUTCDay() + 6) % DAYS_PER_WEEK;
+  return addDays(isoDate, -sinceMonday);
 }

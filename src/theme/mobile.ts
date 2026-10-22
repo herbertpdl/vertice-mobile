@@ -220,6 +220,10 @@ export const sizes = {
   ratingOptionWidth: 68,
   ratingEmoji: 48,
   ratingChipEmoji: 20,
+  /** A - Início's active plan card: gap between its head, divider, today block and button. */
+  activePlanGap: 18,
+  /** A - Início (Loading): the active plan card's placeholder height. */
+  skeletonHomeCardHeight: 300,
   ratingOptionPaddingVertical: 10,
   /** M Rating Chip: gap, vertical padding, right padding (4 on the left, around the face). */
   ratingChipGap: 6,

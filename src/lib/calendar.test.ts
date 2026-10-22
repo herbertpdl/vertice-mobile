@@ -1,5 +1,7 @@
 import { CALENDAR_DAY_ORDER } from "./labels";
 import {
+  dayOfWeekOf,
+  weekStartOf,
   CALENDAR_ROWS,
   addDays,
   clampDate,
@@ -277,5 +279,21 @@ describe("caret tracking", () => {
     const before = "31/10/2026";
     const digits = countDigitsBefore(before, 2) - 1;
     expect(caretAfterDigits(maskBrDate("3/10/2026"), digits)).toBe(1);
+  });
+});
+
+describe("dayOfWeekOf / weekStartOf", () => {
+  it("names the weekday of a business date", () => {
+    expect(dayOfWeekOf("2026-10-19")).toBe("MONDAY");
+    expect(dayOfWeekOf("2026-10-22")).toBe("THURSDAY");
+    expect(dayOfWeekOf("2026-10-25")).toBe("SUNDAY");
+  });
+
+  it("finds the Monday of the week, Sunday included, across months and years", () => {
+    expect(weekStartOf("2026-10-22")).toBe("2026-10-19");
+    expect(weekStartOf("2026-10-19")).toBe("2026-10-19");
+    expect(weekStartOf("2026-10-25")).toBe("2026-10-19");
+    expect(weekStartOf("2026-11-01")).toBe("2026-10-26");
+    expect(weekStartOf("2027-01-02")).toBe("2026-12-28");
   });
 });

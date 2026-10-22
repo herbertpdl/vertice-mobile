@@ -47,6 +47,12 @@ const cases: [string, string][] = [
   ["/perfil/senha", "(app)/perfil/senha"],
   ["/perfil/excluir-conta", "(app)/perfil/excluir-conta"],
   ["/feedbacks", "(app)/feedbacks"],
+  ["/aluno", "(app)/aluno/(tabs)"],
+  ["/aluno/planos", "(app)/aluno/(tabs)/planos"],
+  ["/aluno/perfil", "(app)/aluno/(tabs)/perfil"],
+  ["/aluno/planos/3", "(app)/aluno/planos/[id]"],
+  ["/aluno/treinos/5", "(app)/aluno/treinos/[id]"],
+  ["/aluno/treino/5", "(app)/aluno/treino/[workoutId]"],
   ["/login", "login"],
   ["/cadastro", "cadastro"],
 ];

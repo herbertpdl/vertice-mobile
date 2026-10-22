@@ -9,7 +9,7 @@ import { ApiError } from "@/lib/api/client";
  * `FORBIDDEN` — a deleted student, someone else's plan), like the web's `useRedirectOnError`:
  * back where the user came from (or `fallback` without history), with a toast saying why.
  */
-export function useRedirectOnError(error: unknown, message: string, fallback: "/alunos" | "/exercicios" | "/"): void {
+export function useRedirectOnError(error: unknown, message: string, fallback: "/alunos" | "/exercicios" | "/" | "/aluno" | "/aluno/planos"): void {
   const toast = useToast();
   const gone = error instanceof ApiError && (error.code === "NOT_FOUND" || error.code === "FORBIDDEN");
   useEffect(() => {

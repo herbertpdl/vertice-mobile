@@ -11,7 +11,7 @@ export type SessionGate =
   | { kind: "loading" }
   /** Fails closed: without the account or the current versions, the app stays behind the gate. */
   | { kind: "error"; retry: () => void; retrying: boolean }
-  /** v1 is the trainer app: any other role gets a notice. */
+  /** The app serves trainers and clients; an admin gets a notice. */
   | { kind: "wrongRole" }
   | {
       kind: "consent";
@@ -60,7 +60,7 @@ export function useSessionGate(): SessionGate {
     };
   }
   if (me.data === undefined || versions.data === undefined) return { kind: "loading" };
-  if (me.data.role !== "TRAINER") return { kind: "wrongRole" };
+  if (me.data.role !== "TRAINER" && me.data.role !== "CLIENT") return { kind: "wrongRole" };
 
   const current = versions.data.terms;
   const accepted = me.data.consent.termsVersion;

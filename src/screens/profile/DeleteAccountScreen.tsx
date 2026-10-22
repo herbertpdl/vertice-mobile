@@ -10,7 +10,7 @@ import { deleteAccount } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
 import { apiErrorMessage, errorMessages } from "@/lib/api/errorMessages";
 import { rateLimitedMessage } from "@/lib/api/rateLimit";
-import { useAuth } from "@/lib/auth";
+import { useAuth, useMe } from "@/lib/auth";
 import { useIsOffline } from "@/lib/network";
 import { useSingleFlight } from "@/lib/useSingleFlight";
 import { colors, radius, sizes, SOFT_TINT_ALPHA, space, TINT_ALPHA, withAlpha } from "@/theme";
@@ -22,6 +22,11 @@ const CONSEQUENCES = [
   "Os planos que você escreveu para seus alunos continuam com eles.",
 ];
 
+/** The lines that apply to an account: a client wrote no plans for anyone. */
+export function consequencesFor(role: string | undefined): string[] {
+  return role === "CLIENT" ? CONSEQUENCES.slice(0, 2) : CONSEQUENCES;
+}
+
 /** Typed to confirm, as on the web: a password alone is one autofill away. */
 export const DELETE_CONFIRMATION_PHRASE = "EXCLUIR";
 
@@ -32,6 +37,7 @@ export const DELETE_CONFIRMATION_PHRASE = "EXCLUIR";
  */
 export function DeleteAccountScreen() {
   const { signOut } = useAuth();
+  const { data: me } = useMe();
   const toast = useToast();
   const offline = useIsOffline();
   const queryClient = useQueryClient();
@@ -112,7 +118,7 @@ export function DeleteAccountScreen() {
             Esta ação é permanente
           </Text>
         </View>
-        {CONSEQUENCES.map((line) => (
+        {consequencesFor(me?.role).map((line) => (
           <View key={line} style={styles.bullet}>
             <View style={styles.dot} />
             <Text variant="body" color="textSecondary" style={styles.flex}>

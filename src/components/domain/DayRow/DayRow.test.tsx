@@ -19,4 +19,11 @@ describe("DayRow", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Domingo: descanso. Adicionar treino" }));
     expect(onAdd).toHaveBeenCalled();
   });
+
+  it("is just a rest day when it can't add a workout (the client's read-only plan)", async () => {
+    await render(<DayRow day="SUNDAY" workouts={[]} onOpenWorkout={() => {}} />);
+    expect(screen.getByLabelText("Domingo: descanso")).toBeOnTheScreen();
+    expect(screen.queryByRole("button")).toBeNull();
+    expect(screen.queryByText("Adicionar treino")).toBeNull();
+  });
 });
