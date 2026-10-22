@@ -20,9 +20,11 @@
 
 ## 0. Handoff — start here
 
-**State (2026-10-22):** PRs 15 (spec) and 16 (kit) are merged. **Next: PR 17** (`feat/client-shell`,
-routing + Início + Planos + Perfil on existing endpoints). After it, the backend work in §2
-(vertice-api A1–A7, then vertice-bff B1–B10, then a `.bff-ref` bump here) unblocks PRs 18–21.
+**State (2026-10-22):** PRs 15 (spec), 16 (kit) and 17 (shell: routing, Início, Planos, Perfil)
+are merged. A CLIENT session now gets the client app at `/aluno`; "Começar treino" opens a
+placeholder. **Next: the backend in §2** — vertice-api A1–A4 (session lifecycle + feedback rating,
+branch `feat/workout-session-lifecycle` in vertice-api), then A5–A7, then vertice-bff B1–B10, then
+bump `.bff-ref` here — which unblocks PRs 18–21.
 
 **Per-PR loop:** the same as in the trainer spec's §0. Read the pen.dev nodes for the PR (values
 from `Get(id, {depth: 5})`, never from screenshots). Implement and test. Run every CI command
@@ -451,6 +453,7 @@ PRs are stacked as in the trainer spec. Every PR keeps all CI commands green (`t
 | PR | Branch | GitHub | Status | Review |
 |---|---|---|---|---|
 | 15 | `docs/client-workout-spec` | [#33](https://github.com/herbertpdl/vertice-mobile/pull/33) | merged | docs only; CI green |
+| 17 | `feat/client-shell` | [#35](https://github.com/herbertpdl/vertice-mobile/pull/35) | merged | 3 review rounds: 1 blocking (refresh without a plan) + 5 non-blocking (trainer routes guarded, routing test, copy, banner, profile fallback), all fixed; approved |
 | 16 | `feat/client-kit` | [#34](https://github.com/herbertpdl/vertice-mobile/pull/34) | merged | 5 review rounds: 3 blocking (narrow-screen fit, fixed-height rows, clipped weight) + 4 non-blocking, all fixed; approved |
 
 ## Decisions log
@@ -502,6 +505,9 @@ PRs are stacked as in the trainer spec. Every PR keeps all CI commands green (`t
   exercises from each workout's `GET /api/workouts/{id}/full`, because the plan detail carries no
   counts. A plan has at most seven workouts and the trees are cached. A `workoutCount` field on the
   plan's workouts in the BFF would remove the requests if this ever matters.
+- 2026-10-22 — Every trainer route sits under the TRAINER `Stack.Protected` guard (not just
+  `(tabs)`), so a client's stale or deep link to one falls back to `/aluno`; `perfil/senha` and
+  `perfil/excluir-conta` stay shared and fall back to the role's own Perfil (`useProfileHome`).
 - 2026-10-22 — The client's screens can't be checked on react-native-web after sign-in:
   `expo-secure-store` has no web implementation, so login fails there. The kit gallery is the web
   check; the screens are covered by tests and by the device checklists.
