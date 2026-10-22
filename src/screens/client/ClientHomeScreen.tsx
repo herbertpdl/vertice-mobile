@@ -106,6 +106,26 @@ export function todayCard(
           action: { label: "Começar treino", onPress: () => ctx.openPicker({ workouts: action.today }) },
         };
       }
+      if (action.today.length === 1) {
+        // Today's only workout has no exercises yet (R17): say so, and offer the others.
+        return {
+          today: {
+            tone: "neutral",
+            icon: ClipboardX,
+            eyebrow: `TREINO DE HOJE · ${DAY_ABBR[weekday]}`,
+            title: action.today[0].name,
+            detail: "Sem exercícios ainda — escolha outro treino do plano.",
+          },
+          action: {
+            label: "Começar treino",
+            onPress: () =>
+              ctx.openPicker({
+                workouts: ctx.workouts,
+                notice: "O treino de hoje ainda não tem exercícios. Escolha outro treino do plano.",
+              }),
+          },
+        };
+      }
       return {
         today: {
           tone: "neutral",
@@ -119,10 +139,7 @@ export function todayCard(
           onPress: () =>
             ctx.openPicker({
               workouts: ctx.workouts,
-              notice:
-                action.today.length === 0
-                  ? `Hoje (${DAY_NAMES[weekday].toLowerCase()}) não tem treino no seu plano. Escolha qual quer fazer.`
-                  : undefined,
+              notice: `Hoje (${DAY_NAMES[weekday].toLowerCase()}) não tem treino no seu plano. Escolha qual quer fazer.`,
             }),
         },
       };
@@ -177,11 +194,16 @@ export function ClientHomeScreen() {
   });
   const counts = new Map([...fulls].map(([id, full]) => [id, full.exercises.length]));
 
+  // Only the queries that can run: without an active plan, the plan and week queries are disabled
+  // (a manual refetch would run them anyway, with no plan id).
   const refetchAll = () =>
-    Promise.all([plans.refetch(), plan.refetch(), logs.refetch(), ...fullQueries.map((q) => q.refetch())]);
+    Promise.all([
+      plans.refetch(),
+      ...(active === undefined ? [] : [plan.refetch(), logs.refetch(), ...fullQueries.map((q) => q.refetch())]),
+    ]);
   const pull = usePullToRefresh(refetchAll);
   const retry = { label: "Tentar", onPress: () => void refetchAll() };
-  const failed = plans.isError || plan.isError || logs.isError;
+  const failed = plans.isError || (active !== undefined && (plan.isError || logs.isError));
   const banner = offline ? (
     <StatusBanner kind="offline" action={retry} />
   ) : failed && plans.data !== undefined ? (

@@ -371,8 +371,10 @@ PRs are stacked as in the trainer spec. Every PR keeps all CI commands green (`t
   union until B7's enum lands; the swap is a one-line change in PR 20.
 
 ### PR 17 — `feat/client-shell`: routing, Início, Planos, Perfil (existing endpoints)
-- [x] `useSessionGate` + `(app)/_layout` role groups (§3.1): `TRAINER` → `(tabs)`, `CLIENT` →
-  `aluno` (`/aluno`), `ADMIN` keeps the notice (new copy); tests for every role
+- [x] `useSessionGate` + `(app)/_layout` role groups (§3.1): `TRAINER` → `(tabs)` and every trainer
+  route, `CLIENT` → `aluno` (`/aluno`), `perfil/senha` and `perfil/excluir-conta` open to both,
+  `ADMIN` keeps the notice (new copy); `src/test/roleRouting.test.tsx` renders the real layout
+  per role (homes, deep-link fallbacks)
 - [x] `activePlan` (`plans.ts`), `weekStartOf` / `dayOfWeekOf` (`calendar.ts`, hostile-tz tested),
   `clientWeek` / `homeAction` (`src/lib/clientWeek.ts`), `formatWeekdayDate`, and
   `src/lib/workoutText.ts` (set/exercise copy, reused by PR 18)

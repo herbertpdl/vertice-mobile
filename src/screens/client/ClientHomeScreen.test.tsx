@@ -14,6 +14,13 @@ jest.mock("expo-router", () => ({
     navigate: (...args: unknown[]) => mockNavigate(...args),
   },
 }));
+let mockRefresh: () => Promise<unknown> = async () => {};
+jest.mock("@/lib/usePullToRefresh", () => ({
+  usePullToRefresh: (refresh: () => Promise<unknown>) => {
+    mockRefresh = refresh;
+    return { refreshing: false, onRefresh: refresh };
+  },
+}));
 jest.mock("@/lib/auth", () => ({ useMe: () => ({ data: { name: "Marina Costa", role: "CLIENT" } }) }));
 jest.mock("@/lib/format", () => ({
   ...jest.requireActual("@/lib/format"),
@@ -111,5 +118,25 @@ describe("ClientHomeScreen", () => {
     await act(async () => {});
     await fireEvent.press(await screen.findByRole("button", { name: "Ver outros planos" }));
     expect(mockNavigate).toHaveBeenCalledWith("/aluno/planos");
+  });
+
+  it("refreshes the empty state without asking for a plan it doesn't have", async () => {
+    bff = mockBff({ "GET /api/training-plans": [{ ...plan, startDate: "2026-11-01", endDate: "2026-12-31" }] });
+    await renderScreen(<ClientHomeScreen />);
+    expect(await screen.findByText("Nenhum plano em andamento")).toBeOnTheScreen();
+    await act(async () => {
+      await mockRefresh();
+    });
+    expect(bff.calls.map((c) => c.route)).toEqual(["GET /api/training-plans", "GET /api/training-plans"]);
+    expect(screen.queryByText(/Não foi possível atualizar|Algo deu errado/)).toBeNull();
+  });
+
+  it("says today's only workout has no exercises yet, instead of 'no workout today'", async () => {
+    bff = mockBff({ ...routes([monday, wednesday], []), "GET /api/workouts/12/full": full(wednesday, 0) });
+    await renderScreen(<ClientHomeScreen />);
+    expect(await screen.findByText("Sem exercícios ainda — escolha outro treino do plano.")).toBeOnTheScreen();
+    expect(screen.queryByText("Sem treino programado hoje")).toBeNull();
+    await fireEvent.press(screen.getByRole("button", { name: "Começar treino" }));
+    expect(await screen.findByText("O treino de hoje ainda não tem exercícios. Escolha outro treino do plano.")).toBeOnTheScreen();
   });
 });
