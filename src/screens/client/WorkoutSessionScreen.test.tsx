@@ -10,7 +10,8 @@ import type { WorkoutSession } from "@/lib/api/types";
 import { session, set, setLog } from "@/lib/workoutSession/fixtures";
 import { bffError, mockBff, type BffMock } from "@/test/bff";
 import { renderScreen } from "@/test/render";
-import { clearWorkoutData, openOutbox } from "@/lib/workoutSession/outbox";
+import { initSession } from "@/lib/workoutSession/engine";
+import { clearWorkoutData, enqueue, openOutbox, readLocalSession, saveLocalSession } from "@/lib/workoutSession/outbox";
 
 import { setHint, WorkoutSessionScreen } from "./WorkoutSessionScreen";
 
@@ -274,6 +275,46 @@ describe("WorkoutSessionScreen", () => {
     await renderScreen(<WorkoutSessionScreen />);
     expect(await screen.findByRole("checkbox", { name: "Série 1 feita" })).toBeChecked();
     expect(screen.getByLabelText("Carga da série 1, em quilos").props.value).toBe("45");
+  });
+
+  it("never resumes a session kept from an earlier week (the rollover closed it)", async () => {
+    const old = workout();
+    old.workoutLog = { ...old.workoutLog, weekStartDate: "2020-01-06" };
+    saveLocalSession({ workoutId: 12, logId: 500, state: initSession(old), sent: {} });
+    bff = mockBff({ "GET /api/workouts/12/session": workout() });
+    onlineManager.setOnline(false);
+    await renderScreen(<WorkoutSessionScreen />);
+    expect(await screen.findByText("Sem conexão")).toBeOnTheScreen();
+    expect(readLocalSession()).toBeNull();
+  });
+
+  it("drops the kept session when the server's is another one", async () => {
+    saveLocalSession({ workoutId: 12, logId: 499, state: initSession({ ...workout(), workoutLog: { ...workout().workoutLog, id: 499 } }), sent: {} });
+    bff = mockBff({ "GET /api/workouts/12/session": workout() });
+    await renderScreen(<WorkoutSessionScreen />);
+    expect(await screen.findByRole("header", { name: "Remada" })).toBeOnTheScreen();
+    await waitFor(() => expect(readLocalSession()?.logId).not.toBe(499));
+  });
+
+  it("doesn't open the kept session when the server refuses it (a 404: the workout is gone)", async () => {
+    saveLocalSession({ workoutId: 12, logId: 500, state: initSession(workout()), sent: {} });
+    bff = mockBff({ "GET /api/workouts/12/session": bffError(404, "NOT_FOUND") });
+    await renderScreen(<WorkoutSessionScreen />);
+    expect(await screen.findByRole("button", { name: /Tentar/ })).toBeOnTheScreen();
+    expect(screen.queryByRole("header", { name: "Remada" })).toBeNull();
+    expect(readLocalSession()).toBeNull();
+  });
+
+  it("waits for a finish of the same workout still in the queue before opening it again", async () => {
+    jest.useFakeTimers();
+    bff = mockBff({ "POST /api/workout-sessions/500/complete": bffError(503, "UNAVAILABLE"), "GET /api/workouts/12/session": workout() });
+    enqueue({ kind: "complete", logId: 500, workoutId: 12 });
+    await renderScreen(<WorkoutSessionScreen />);
+    await act(async () => {
+      await jest.advanceTimersByTimeAsync(6_000);
+    });
+    expect(screen.getByText("Enviando seu último treino")).toBeOnTheScreen();
+    expect(bff.calls.some((c) => c.route === "GET /api/workouts/12/session")).toBe(false);
   });
 
   it("can't open a workout never opened on this device without a connection (R55, E28)", async () => {

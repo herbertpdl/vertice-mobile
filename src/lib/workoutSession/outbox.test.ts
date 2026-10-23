@@ -125,6 +125,27 @@ describe("outbox", () => {
     expect(pendingOperations()).toEqual([]);
   });
 
+  it("never re-sends a feedback whose answer timed out (it may have landed: no duplicate)", async () => {
+    jest.useFakeTimers();
+    bff = mockBff({ "POST /api/workout-sessions/500/sets": {} });
+    const answered = global.fetch;
+    const feedbackPosts: string[] = [];
+    // The feedback's answer never comes: the request is aborted at the client's timeout.
+    global.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
+      if (!String(input).endsWith("/feedback")) return answered(input, init);
+      feedbackPosts.push(String(input));
+      return new Promise<Response>((_, reject) => init?.signal?.addEventListener("abort", () => reject(new Error("aborted"))));
+    }) as typeof fetch;
+    openOutbox(7, drained);
+    const feedback = enqueue({ kind: "feedback", logId: 500, rating: "EASY", text: "" });
+    const next = enqueue(tick(11));
+    await jest.advanceTimersByTimeAsync(16_000);
+    await expect(feedback).resolves.toBeNull();
+    await next;
+    expect(feedbackPosts).toHaveLength(1);
+    expect(bff.calls.map((c) => c.route)).toEqual(["POST /api/workout-sessions/500/sets"]);
+  });
+
   it("stops on a 401 and keeps the queue for this user's next session", async () => {
     bff = mockBff({ "POST /api/workout-sessions/500/sets": bffError(401, "UNAUTHORIZED") });
     openOutbox(7, drained);

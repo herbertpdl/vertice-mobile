@@ -28,8 +28,9 @@ import { store } from "./store";
 export type OutboxOp =
   | { kind: "recordSet"; logId: number; exerciseSetId: number; weight: string; reps: number }
   | { kind: "deleteSet"; logId: number; exerciseSetId: number }
-  | { kind: "complete"; logId: number }
-  | { kind: "discard"; logId: number }
+  // `workoutId`: opening that workout again waits for these to be sent.
+  | { kind: "complete"; logId: number; workoutId?: number }
+  | { kind: "discard"; logId: number; workoutId?: number }
   | { kind: "feedback"; logId: number; rating: FeedbackRating; text: string };
 
 type Entry = { id: string; op: OutboxOp };
@@ -128,6 +129,13 @@ async function pump(): Promise<void> {
         if (generation !== owner) return;
         const status = error instanceof ApiError ? error.status : 0;
         if (status === 401) return; // Signed out: the queue waits for this user's next session.
+        if (entry.op.kind === "feedback" && error instanceof ApiError && error.code === "TIMEOUT") {
+          // The request may have reached the server, and each feedback sent is a new one: a retry
+          // could give the trainer the same feedback twice. Taken as sent.
+          failures = 0;
+          settle(entry, { value: null });
+          continue;
+        }
         if (status === 429) return retryIn(((error as ApiError).retryAfter ?? 5) * 1000);
         if (status === 0 || status >= 500) {
           failures += 1;

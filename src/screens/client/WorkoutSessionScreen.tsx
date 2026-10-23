@@ -30,15 +30,17 @@ import {
   workoutSessionQueryKey,
 } from "@/lib/api/workoutSessions";
 import { useMe } from "@/lib/auth";
-import { dayOfWeekOf } from "@/lib/calendar";
+import { dayOfWeekOf, weekStartOf } from "@/lib/calendar";
 import { todayLocalIso } from "@/lib/format";
 import { useIsOffline } from "@/lib/network";
+import { shouldRetry } from "@/lib/query-client";
 import { youtubeVideoId } from "@/lib/video";
 import { dismissRestNotifications, useRestAlert, useRestNotification } from "@/lib/workoutSession/alerts";
 import {
   clearLocalSession,
   enqueue,
   readLocalSession,
+  pendingOperations,
   saveLocalSession,
   sendNow,
   whenDrained,
@@ -104,15 +106,29 @@ export function WorkoutSessionScreen() {
   // what the client did that the server may not have yet.
   const [local] = useState(() => {
     const stored = readLocalSession();
-    return stored?.workoutId === workoutId ? stored : null;
+    if (stored?.workoutId !== workoutId) return null;
+    // An earlier week's session was closed by the rollover: never resumed (its writes would all
+    // be refused).
+    if (stored.state.snapshot.workoutLog.weekStartDate !== weekStartOf(todayLocalIso())) {
+      clearLocalSession(stored.logId);
+      return null;
+    }
+    return stored;
   });
   const session = useQuery({
     queryKey: workoutSessionQueryKey(workoutId),
     queryFn: async ({ signal }) => {
       // What's still queued (a discard before a switch, the last ticks) lands before the snapshot.
-      await whenDrained(OPEN_DRAIN_MS);
+      const drained = await whenDrained(OPEN_DRAIN_MS);
+      // A finish or discard of this workout still waiting: the server's session is about to close,
+      // so opening it now would queue new ticks behind it.
+      const closing = pendingOperations().some(
+        (op) => (op.kind === "complete" || op.kind === "discard") && op.workoutId === workoutId,
+      );
+      if (!drained && closing) throw new SyncPendingError();
       return fetchWorkoutSession(workoutId, { signal });
     },
+    retry: (count, error) => !(error instanceof SyncPendingError) && shouldRetry(count, error),
     // One snapshot per opening (R29): never refetched under the client, dropped when they leave.
     staleTime: Infinity,
     gcTime: 0,
@@ -127,20 +143,33 @@ export function WorkoutSessionScreen() {
 
   const header = <NavBar title="Treino" />;
   const offline = session.fetchStatus === "paused";
-  if (redo === null && local !== null) {
-    // The local session is the one in progress unless the server says this week's is another one,
-    // or done (finished elsewhere, the rollover): then the server's wins.
-    const server = session.data;
-    const resume =
-      server === undefined
-        ? session.isError || offline
-        : server.workoutLog.id === local.logId && server.workoutLog.status === "IN_PROGRESS";
-    if (resume) return <SessionView key={local.logId} snapshot={local.state.snapshot} restored={local} />;
-  }
+  // The local session is the one in progress unless the server says this week's is another one, or
+  // done (finished elsewhere), or refuses it (a 4xx: the workout or the trainer is gone). Without
+  // an answer — offline, a network error, a 5xx — the local one goes on.
+  const unreachable = session.isError && isUnreachable(session.error);
+  const server = session.data;
+  const resume =
+    redo === null &&
+    local !== null &&
+    (server === undefined
+      ? offline || unreachable
+      : server.workoutLog.id === local.logId && server.workoutLog.status === "IN_PROGRESS");
+  const superseded = local !== null && !resume && (server !== undefined || (session.isError && !unreachable));
+  useEffect(() => {
+    if (superseded) clearLocalSession(local.logId);
+  }, [superseded, local]);
+  if (resume && local !== null) return <SessionView key={local.logId} snapshot={local.state.snapshot} restored={local} />;
   if (session.data === undefined) {
     return (
       <Screen header={header}>
-        {offline ? (
+        {session.error instanceof SyncPendingError ? (
+          <ErrorState
+            title="Enviando seu último treino"
+            message="O treino que você finalizou ainda está sendo enviado. Tente de novo em instantes."
+            onRetry={() => void session.refetch()}
+            retrying={session.isFetching}
+          />
+        ) : offline ? (
           // A workout never opened on this device needs the connection once (R55, E28).
           <ErrorState
             title="Sem conexão"
@@ -355,7 +384,7 @@ function SessionView({ snapshot, restored }: { snapshot: WorkoutSession; restore
       // session takes no more sets).
       flushWeights();
       // Offline it's sent later (R56): the feedback step comes now either way.
-      return sendNow<WorkoutLog>({ kind: "complete", logId }, FINISH_WAIT_MS);
+      return sendNow<WorkoutLog>({ kind: "complete", logId, workoutId: snapshot.id }, FINISH_WAIT_MS);
     },
     onError: (error) => {
       // With sets left the dialog shows the error; finishing with all ticked has no dialog.
@@ -377,7 +406,7 @@ function SessionView({ snapshot, restored }: { snapshot: WorkoutSession; restore
   });
   const discard = useMutation({
     // Queued like every write; a switch's next session is opened after it's sent (`whenDrained`).
-    mutationFn: async () => void enqueue({ kind: "discard", logId }),
+    mutationFn: async () => void enqueue({ kind: "discard", logId, workoutId: snapshot.id }),
     onSuccess: () => {
       ended.current = true;
       clearLocalSession(logId);
@@ -663,6 +692,15 @@ function SessionView({ snapshot, restored }: { snapshot: WorkoutSession; restore
       />
     </>
   );
+}
+
+/** Opening waits on a queued finish or discard of the same workout that couldn't be sent yet. */
+class SyncPendingError extends Error {}
+
+/** No answer from the server (offline, a timeout, a 5xx): not a refusal of the session. */
+function isUnreachable(error: unknown): boolean {
+  if (error instanceof SyncPendingError) return false;
+  return !(error instanceof ApiError) || error.status === 0 || error.status >= 500;
 }
 
 function finishErrorMessage(error: unknown): string {

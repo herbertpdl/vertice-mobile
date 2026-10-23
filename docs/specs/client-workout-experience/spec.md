@@ -571,3 +571,17 @@ The feedback screen shipped with the session once B7 merged.
 - 2026-10-23 — On the web, the outbox keeps its queue in memory (`store.web.ts`): expo-sqlite's web
   build needs a WASM setup, and the client screens can't be used on the web anyway (no
   SecureStore).
+- 2026-10-23 — A kept session is resumed only if it's from the current week, and, when the
+  server answers, only if the server's session is the same log and still in progress. An earlier
+  week's copy is never used: the rollover closed it, so every write would be refused. A 4xx (the
+  workout or the trainer is gone) clears the kept copy instead of resuming it. A finish or discard
+  of the same workout that's still queued holds the next opening ("Enviando seu último treino").
+- 2026-10-23 — A feedback whose answer times out is taken as sent, never retried. It may have
+  reached the server, and each feedback sent is a new one, so a retry could duplicate it for the
+  trainer. The proper fix is an idempotency key on `POST …/feedback` (BFF field, API unique
+  `(workout_log_id, client_key)`); it's a follow-up, not built.
+- 2026-10-23 — The device copy holds feedback text, which may be health data, so it stays out of
+  OS backups: `android.allowBackup: false`. On iOS the kv-store's SQLite file is in the app's
+  Documents and goes into iCloud device backups. Excluding it (`NSURLIsExcludedFromBackupKey`)
+  needs native code and is a follow-up. Until then a backup can hold the queue, which is cleared
+  on "Sair" on the device.

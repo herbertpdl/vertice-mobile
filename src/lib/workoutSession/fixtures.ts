@@ -1,4 +1,6 @@
 import type { SetLog, WorkoutSession, WorkoutSessionSet } from "@/lib/api/types";
+import { weekStartOf } from "@/lib/calendar";
+import { todayLocalIso } from "@/lib/format";
 
 /** A workout session as the BFF answers it, for the session's tests. */
 export function setLog(exerciseSetId: number, weight: string): SetLog {
@@ -43,7 +45,8 @@ export function session(exercises: { id: number; order: number; name: string; se
       id: 500,
       workoutId: 12,
       clientId: 7,
-      weekStartDate: "2026-10-19",
+      // This week, whenever the tests run: a session from an earlier week is never resumed.
+      weekStartDate: weekStartOf(todayLocalIso()),
       startedAt: "2026-10-21T10:00:00Z",
       completedAt: "",
       status: "IN_PROGRESS",
