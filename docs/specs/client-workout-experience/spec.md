@@ -20,11 +20,22 @@
 
 ## 0. Handoff — start here
 
-**State (2026-10-23):** PRs 15–18 and 21 are merged on mobile (PR 20 was folded into 18). The
-backend is merged too: vertice-api #73 (session lifecycle, rating) and #74 (trainer contacts,
-YouTube-only videos), and vertice-bff #50 (B1–B10). PR 19 (the offline outbox) is in review on
-`feat/client-offline`. **Next:** vertice-web-react's §2.4 items. The device checklists for PRs 18,
-19 and 21 still need a native rebuild and a phone.
+**State (2026-10-23): implemented.**
+
+- **Mobile:** every PR in §4 is merged: 15–19 and 21; PR 20 was folded into 18.
+- **Backend:** vertice-api #73 and #74, and vertice-bff #50 (B1–B10).
+- **Web:** the §2.4 items are merged in vertice-web-react #57, after #58 bumped Next to 16.4.3 for a
+  critical advisory that was failing CI. Its PRD is
+  `docs/prds/client-workout-trainer-side/prd.md`, and its design is pen.dev frame `YICJ0`, approved
+  by the owner.
+
+**Left:**
+- The device checklists for PRs 18, 19 and 21. They need a native rebuild (`npm run ios` /
+  `npm run android`) and a phone.
+- The follow-ups in the decisions log:
+  - An idempotency key on feedback.
+  - Excluding the kv-store from iCloud backups on iOS.
+  - Optionally, a `workoutCount` on the plan's workouts.
 
 **Per-PR loop:** the same as in the trainer spec's §0. Read the pen.dev nodes for the PR (values
 from `Get(id, {depth: 5})`, never from screenshots). Implement and test. Run every CI command
@@ -39,7 +50,7 @@ PRD as the spec). Fix the blocking findings, and log the rest here.
 
 **Out of scope:** the PRD's §6 list. Also out:
 - Web *designs*. PRD §10.4 lists them as not drawn yet. The web spec draws them first, following
-  row L.
+  row L. (They were since drawn as pen.dev frame `YICJ0` and shipped in vertice-web-react #57.)
 - Push notifications from the server. Only on-device local notifications are used (R50).
 
 ## 2. Cross-repo contract changes
@@ -124,7 +135,7 @@ code follows whatever the BFF merges.
 
 ### 2.4 vertice-web-react
 
-These follow the mobile trainer designs (row L) until web frames exist:
+Done in vertice-web-react #57 (merged), following the web frame `YICJ0` (drawn from the mobile row L):
 - The rating chip and the "Sessão substituída" tag on every feedback view (R71, R72, R24).
 - WhatsApp and Instagram fields, plus "mostrar aos alunos" switches, in profile edit (R77, R78).
 - YouTube-only validation in the exercise form (R61).
@@ -473,6 +484,7 @@ The feedback screen shipped with the session once B7 merged.
 |---|---|---|---|---|
 | 15 | `docs/client-workout-spec` | [#33](https://github.com/herbertpdl/vertice-mobile/pull/33) | merged | docs only; CI green |
 | 17 | `feat/client-shell` | [#35](https://github.com/herbertpdl/vertice-mobile/pull/35) | merged | 3 review rounds: 1 blocking (refresh without a plan) + 5 non-blocking (trainer routes guarded, routing test, copy, banner, profile fallback), all fixed; approved |
+| 19 | `feat/client-offline` | [#39](https://github.com/herbertpdl/vertice-mobile/pull/39) | merged | 3 review rounds: 1 blocking (a kept session from an earlier week resumed offline), 2 should-fix (resuming on a 4xx, duplicate feedback after a timeout) and 4 considers (a queued finish holding the next opening, from Início too; no resume of a closing session; Android backups), all fixed; approved |
 | 21 | `feat/trainer-client-facing` | [#37](https://github.com/herbertpdl/vertice-mobile/pull/37) | merged | 2 review rounds: 1 should-fix (a pasted +55 WhatsApp stored wrong) + 1 consider (the trainer card kept after a later 404), both fixed; approved |
 | 18 (+20) | `feat/client-workout` | [#36](https://github.com/herbertpdl/vertice-mobile/pull/36) | merged | 6 review rounds: 3 blocking in round 1 (finish racing set saves, a stale alert after the background, iOS sheet → dialog) and 1 per round after (a silent failed finish, then old failed saves replayed over newer ones, twice), plus non-blocking fixes (hold-toast loop, untick/re-tick ordering, video locked to the embed, alert tests, Referer, a 4xx not blocking the finish); approved |
 | 16 | `feat/client-kit` | [#34](https://github.com/herbertpdl/vertice-mobile/pull/34) | merged | 5 review rounds: 3 blocking (narrow-screen fit, fixed-height rows, clipped weight) + 4 non-blocking, all fixed; approved |
