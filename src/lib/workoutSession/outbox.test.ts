@@ -128,12 +128,14 @@ describe("outbox", () => {
   it("re-sends a feedback whose answer timed out with the same key (no duplicate upstream)", async () => {
     jest.useFakeTimers();
     let answered = false;
+    let firstKey: string | undefined;
     bff = mockBff({ "POST /api/workout-logs/500/feedback": {} });
     const routed = global.fetch;
     // The first answer never comes: the request is aborted at the client's timeout.
     global.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
       if (answered || !String(input).endsWith("/feedback")) return routed(input, init);
       answered = true;
+      firstKey = (JSON.parse(String(init?.body)) as { clientKey: string }).clientKey;
       return new Promise<Response>((_, reject) => init?.signal?.addEventListener("abort", () => reject(new Error("aborted"))));
     }) as typeof fetch;
     openOutbox(7, drained);
@@ -142,7 +144,8 @@ describe("outbox", () => {
     await feedback;
     const sent = bff.calls.filter((c) => c.route === "POST /api/workout-logs/500/feedback");
     expect(sent).toHaveLength(1);
-    expect((sent[0].body as { clientKey: string }).clientKey).toMatch(/^[A-Za-z0-9_-]{1,64}$/);
+    expect(firstKey).toMatch(/^[A-Za-z0-9_-]{1,64}$/);
+    expect((sent[0].body as { clientKey: string }).clientKey).toBe(firstKey);
   });
 
   it("stops on a 401 and keeps the queue for this user's next session", async () => {
