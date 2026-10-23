@@ -41,6 +41,27 @@ describe("clientWeek", () => {
     expect(clientWeek(workouts, [log(2, "2026-10-21T11:00:00Z")], "2026-10-19", "2026-10-21")[2].state).toBe("done");
   });
 
+  it("marks the day the workout was done on, not the weekday it belongs to", () => {
+    // Monday's workout, done on Friday (São Paulo) — Friday is done, Monday isn't.
+    const week = clientWeek(workouts, [log(1, "2026-10-23T21:00:00Z", "2026-10-23T20:00:00Z")], "2026-10-19", "2026-10-23");
+    expect(week[0].state).toBe("pending");
+    expect(week[4].state).toBe("done");
+    // Wednesday's workout, done on Saturday — a rest day turns done.
+    expect(clientWeek(workouts, [log(2, "2026-10-24T13:00:00Z")], "2026-10-19", "2026-10-25")[5].state).toBe("done");
+  });
+
+  it("dates a finish by São Paulo's calendar", () => {
+    // 01:30 UTC on Tuesday is still Monday 22:30 in São Paulo.
+    const week = clientWeek(workouts, [log(1, "2026-10-20T01:30:00Z")], "2026-10-19", "2026-10-21");
+    expect(week[0].state).toBe("done");
+    expect(week[1].state).toBe("rest");
+  });
+
+  it("dates a rollover-closed session by the day it was started", () => {
+    const auto: WorkoutLog = { ...log(3, "2026-10-26T03:00:00Z", "2026-10-22T10:00:00Z"), completionKind: "AUTO" };
+    expect(clientWeek(workouts, [auto], "2026-10-19", "2026-10-25")[3].state).toBe("done");
+  });
+
   it("ignores logs that were started and not finished", () => {
     expect(clientWeek(workouts, [log(3)], "2026-10-19", "2026-10-21")[3].state).toBe("pending");
     expect(finishedCount(workouts, [log(3), log(1, "2026-10-19T11:00:00Z")])).toBe(1);

@@ -210,8 +210,10 @@ New API modules (one per resource, query keys exported there, every `queryFn` ta
   `planStatus` is `"active"`, picking the latest `startDate` on ties. The same helper drives Início
   and the "Em andamento" group in Planos.
 - **Week status** (R6). A pure `weekStrip(workouts, logs, weekStart, today)` returns one of `done`,
-  `today`, `pending` or `rest` per day. A day is done when a log for a workout on that weekday has
-  `completedAt`. This works today; with B5, logs leave out superseded ones.
+  `today`, `pending` or `rest` per day. A day is done when a finished log's `completedAt` falls on
+  that date in São Paulo (`startedAt` for one the rollover closed, `AUTO`), whichever weekday the
+  workout belongs to: Monday's workout done on Friday marks Friday. With B5, logs leave out
+  superseded ones.
 - **In progress** (R8). This is a log with `startedAt` and no `completedAt` in this week's list, or
   the local session store (§3.4) when it holds one, so it also works offline. When both exist, the
   local store wins.

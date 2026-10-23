@@ -1,4 +1,5 @@
 import { addDays, dayOfWeekOf } from "@/lib/calendar";
+import { businessDateOf } from "@/lib/format";
 import { DAY_ORDER } from "@/lib/labels";
 import type { DayOfWeek, Workout, WorkoutLog } from "@/lib/api/types";
 
@@ -23,16 +24,24 @@ function finishedIds(logs: WorkoutLog[]): Set<number> {
 }
 
 /**
- * Monday → Sunday. A day is done when one of that weekday's workouts was finished this week (the
- * day the workout belongs to, not the day it was done on); today is "today" unless done; a day
- * with workouts is pending, one without is rest.
+ * The business date the client trained on: the day they finished it, or — closed by the weekly
+ * rollover (`AUTO`), not by them — the day they started it.
+ */
+function trainedOn(log: WorkoutLog): string {
+  return businessDateOf(log.completionKind === "AUTO" ? log.startedAt : log.completedAt);
+}
+
+/**
+ * Monday → Sunday. A day is done when a workout — any of the plan's, whichever weekday it belongs
+ * to — was finished on that date; today is "today" unless done; a day with workouts is pending,
+ * one without is rest.
  */
 export function clientWeek(workouts: Workout[], logs: WorkoutLog[], weekStart: string, today: string): ClientWeekDay[] {
-  const finished = finishedIds(logs);
+  const trained = new Set(logs.filter(isFinished).map(trainedOn));
   return DAY_ORDER.map((day, i) => {
     const date = addDays(weekStart, i);
     const ofDay = workouts.filter((w) => w.dayOfWeek === day);
-    const done = ofDay.some((w) => finished.has(w.id));
+    const done = trained.has(date);
     const state: ClientDayState = done ? "done" : date === today ? "today" : ofDay.length > 0 ? "pending" : "rest";
     return { day, date, state };
   });

@@ -102,8 +102,9 @@ product promises them.
   Sunday.
 - R5. Início shows only the active plan card (name, level, period), the week strip, the main
   button and a "Ver outros planos" link to Planos.
-- R6. The week strip marks each day as done (a workout for that weekday was finished this week),
-  today, pending (a workout exists, not finished), or rest (no workout that weekday).
+- R6. The week strip marks each day as done (the client finished a workout on that date, whichever
+  weekday the workout belongs to — Monday's workout done on Friday marks Friday), today, pending
+  (a workout exists, nothing finished that day), or rest (no workout that weekday).
 - R7. When the active plan has no workouts, "Começar treino" is disabled and a message says the
   trainer has not added workouts yet.
 - R8. When a session is in progress this week, the main button reads "Continuar treino" and opens

@@ -117,6 +117,11 @@ export function todayLocalIso(now: Date = new Date()): string {
   return `${value("year")}-${value("month")}-${value("day")}`;
 }
 
+/** The business date an instant (ISO-8601, UTC) falls on in São Paulo, `yyyy-MM-dd`. */
+export function businessDateOf(isoInstant: string): string {
+  return todayLocalIso(new Date(isoInstant));
+}
+
 /**
  * A business date as the same civil date at UTC midnight, for the `timeZone: "UTC"` formatters
  * above and for calendar arithmetic. Going through `Date.UTC` keeps it a pure civil-date

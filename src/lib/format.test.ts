@@ -19,6 +19,7 @@ import {
   formatRelativeTime,
   formatTimeOfDay,
   todayLocalIso,
+  businessDateOf,
 } from "./format";
 
 /**
@@ -49,6 +50,13 @@ function at(instant: Date) {
   jest.useFakeTimers();
   jest.setSystemTime(instant);
 }
+
+describe("businessDateOf", () => {
+  it("is the São Paulo day an instant falls on", () => {
+    expect(businessDateOf("2026-10-24T02:59:59Z")).toBe("2026-10-23");
+    expect(businessDateOf("2026-10-24T03:00:00Z")).toBe("2026-10-24");
+  });
+});
 
 describe("todayLocalIso", () => {
   it("is the business day, not the UTC one, late on a Sunday evening", () => {
