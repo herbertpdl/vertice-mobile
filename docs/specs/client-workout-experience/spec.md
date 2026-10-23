@@ -50,7 +50,7 @@ PRD as the spec). Fix the blocking findings, and log the rest here.
 
 **Out of scope:** the PRD's §6 list. Also out:
 - Web *designs*. PRD §10.4 lists them as not drawn yet. The web spec draws them first, following
-  row L.
+  row L. (They were since drawn as pen.dev frame `YICJ0` and shipped in vertice-web-react #57.)
 - Push notifications from the server. Only on-device local notifications are used (R50).
 
 ## 2. Cross-repo contract changes
