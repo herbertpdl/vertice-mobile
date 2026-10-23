@@ -20,6 +20,11 @@ const me: Me = {
   cpf: "***.***.***-25",
   cref: "012345-G/SP",
   role: "TRAINER",
+  whatsapp: "",
+  instagram: "",
+  showEmail: false,
+  showWhatsapp: false,
+  showInstagram: false,
   consent: { termsVersion: "2026-01", termsAcceptedAt: "2026-01-01T00:00:00Z", healthDataVersion: null, healthDataConsentAt: null },
 };
 jest.mock("@/lib/auth", () => ({

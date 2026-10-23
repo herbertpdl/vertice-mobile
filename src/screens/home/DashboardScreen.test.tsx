@@ -26,6 +26,8 @@ const data: DashboardData = {
       trainingPlanId: 1,
       clientId: 7,
       text: "Senti o joelho no agachamento.",
+      rating: null,
+      replaced: false,
       createdAt: "2026-10-01T10:40:00Z",
       clientName: "Marina Costa",
       workoutName: "Treino B — Inferior",

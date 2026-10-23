@@ -32,3 +32,27 @@ jest.mock("@react-native-community/netinfo", () =>
 );
 
 jest.mock("expo-clipboard", () => ({ setStringAsync: jest.fn(async () => true) }));
+
+// The workout session's rest alerts (client spec §3.5): no native notification, haptic or audio
+// module under Jest. Each call is a jest.fn a test can inspect.
+jest.mock("expo-notifications", () => ({
+  SchedulableTriggerInputTypes: { TIME_INTERVAL: "timeInterval" },
+  setNotificationHandler: jest.fn(),
+  getPermissionsAsync: jest.fn(async () => ({ status: "granted", canAskAgain: true })),
+  requestPermissionsAsync: jest.fn(async () => ({ status: "granted", canAskAgain: true })),
+  scheduleNotificationAsync: jest.fn(async () => "notification-id"),
+  cancelScheduledNotificationAsync: jest.fn(async () => undefined),
+  dismissAllNotificationsAsync: jest.fn(async () => undefined),
+}));
+jest.mock("expo-haptics", () => ({
+  NotificationFeedbackType: { Success: "success" },
+  notificationAsync: jest.fn(async () => undefined),
+}));
+jest.mock("expo-audio", () => {
+  const player = { play: jest.fn(), seekTo: jest.fn(async () => undefined) };
+  return { useAudioPlayer: jest.fn(() => player), setAudioModeAsync: jest.fn(async () => undefined), __player: player };
+});
+jest.mock("react-native-webview", () => {
+  const { View } = require("react-native");
+  return { WebView: (props: object) => require("react").createElement(View, { ...props, testID: "webview" }) };
+});

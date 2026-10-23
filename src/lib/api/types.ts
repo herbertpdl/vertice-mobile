@@ -111,6 +111,20 @@ export type WorkoutExerciseEntry = Schemas["WorkoutExerciseEntry"];
 
 export type WorkoutLog = Schemas["WorkoutLog"];
 
+/** The "do a workout" aggregate: the workout tree, the week's session, last time and this time per set. */
+export type WorkoutSession = Schemas["WorkoutSession"];
+
+export type WorkoutSessionExercise = WorkoutSession["exercises"][number];
+
+export type WorkoutSessionSet = WorkoutSessionExercise["sets"][number];
+
+export type SetLog = Schemas["SetLog"];
+
+export type FeedbackRating = Schemas["FeedbackRating"];
+
+/** A client's trainer card (`GET /api/auth/me/trainer`). */
+export type ClientTrainer = Schemas["ClientTrainer"];
+
 export type WorkoutFeedback = Schemas["WorkoutFeedback"];
 
 export type EnrichedFeedback = Schemas["EnrichedFeedback"];

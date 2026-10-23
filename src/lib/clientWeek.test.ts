@@ -10,6 +10,8 @@ const log = (workoutId: number, completedAt = "", startedAt = "2026-10-19T10:00:
   weekStartDate: "2026-10-19",
   startedAt,
   completedAt,
+  status: completedAt === "" ? "IN_PROGRESS" : "COMPLETED",
+  completionKind: completedAt === "" ? "" : "CLIENT",
 });
 
 const workouts = [w(1, "MONDAY"), w(2, "WEDNESDAY"), w(3, "THURSDAY"), w(4, "FRIDAY")];

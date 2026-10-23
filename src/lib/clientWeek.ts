@@ -12,9 +12,9 @@ export type ClientDayState = "done" | "today" | "pending" | "rest";
 
 export type ClientWeekDay = { day: DayOfWeek; date: string; state: ClientDayState };
 
-/** A log is finished once it has `completedAt` (`""` until then). */
+/** A finished session (the week list never carries a superseded one). */
 export function isFinished(log: WorkoutLog): boolean {
-  return log.completedAt !== "";
+  return log.status === "COMPLETED";
 }
 
 /** The workouts finished this week, by id. */
@@ -47,7 +47,7 @@ export function finishedCount(workouts: Workout[], logs: WorkoutLog[]): number {
 /** The week's session that was started and not finished, if any (the most recently started). */
 export function inProgressLog(logs: WorkoutLog[]): WorkoutLog | undefined {
   return logs
-    .filter((log) => !isFinished(log))
+    .filter((log) => log.status === "IN_PROGRESS")
     .reduce<WorkoutLog | undefined>((latest, log) => (latest === undefined || log.startedAt > latest.startedAt ? log : latest), undefined);
 }
 

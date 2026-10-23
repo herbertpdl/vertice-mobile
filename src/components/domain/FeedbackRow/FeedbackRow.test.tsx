@@ -9,6 +9,8 @@ const feedback = {
   trainingPlanId: 1,
   clientId: 7,
   text: "Consegui subir 2,5 kg no supino!",
+    rating: null,
+    replaced: false,
   createdAt: "2026-10-01T10:00:00Z",
   clientName: "Rafael Lima",
   workoutName: "Treino A — Peito e Tríceps",

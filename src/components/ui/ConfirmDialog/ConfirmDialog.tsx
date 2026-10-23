@@ -24,8 +24,13 @@ export type ConfirmDialogProps = {
   error?: string;
   /** The glyph in the icon disc (M - Excluir Treino: trash). */
   icon?: LucideIcon;
-  /** The disc's color: `warning` for a non-destructive loss (M - Descartar alterações). */
-  tone?: "danger" | "warning";
+  /**
+   * The disc's color: `warning` for a non-destructive loss (M - Descartar alterações), `info` for a
+   * neutral choice (A - Refazer treino concluído).
+   */
+  tone?: "danger" | "warning" | "info";
+  /** The confirm button: `danger` (default, a deletion) or `primary` (A - Finalizar com séries pendentes). */
+  confirmVariant?: "danger" | "primary";
   /** The dismiss button's label ("Continuar editando"). */
   cancelLabel?: string;
 };
@@ -46,6 +51,7 @@ export function ConfirmDialog({
   error,
   icon: Icon = TriangleAlert,
   tone = "danger",
+  confirmVariant = "danger",
   cancelLabel = "Cancelar",
 }: ConfirmDialogProps) {
   useAnnounceOnIos(error);
@@ -91,7 +97,7 @@ export function ConfirmDialog({
             </View>
           )}
           <View style={styles.buttons}>
-            <Button variant="danger" label={confirmLabel} loading={loading} onPress={confirm} />
+            <Button variant={confirmVariant} label={confirmLabel} loading={loading} onPress={confirm} />
             <Button variant="secondary" label={cancelLabel} disabled={loading} onPress={cancel} />
           </View>
         </Animated.View>

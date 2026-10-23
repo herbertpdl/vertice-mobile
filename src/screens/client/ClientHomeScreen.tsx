@@ -1,4 +1,4 @@
-import { useQueries, useQuery } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import { CalendarX, CircleCheck, ClipboardList, ClipboardX, Coffee, Dumbbell, Timer } from "lucide-react-native";
 import { useState } from "react";
@@ -6,11 +6,12 @@ import { StyleSheet, View } from "react-native";
 
 import { ActivePlanCard, WorkoutPickerSheet, type ActivePlanCardProps } from "@/components/domain";
 import { Screen } from "@/components/layout";
-import { EmptyState, ErrorState, ListRow, SectionHeader, Skeleton, StatusBanner, Text, WeekStrip } from "@/components/ui";
+import { ConfirmDialog, EmptyState, ErrorState, ListRow, SectionHeader, Skeleton, StatusBanner, Text, useToast, WeekStrip } from "@/components/ui";
+import { apiErrorMessage } from "@/lib/api/errorMessages";
 import { fetchTrainingPlan, fetchTrainingPlans, myPlansQueryKey, trainingPlanQueryKey } from "@/lib/api/trainingPlans";
 import type { FullWorkout, TrainingPlanDetail, Workout, WorkoutLog } from "@/lib/api/types";
 import { fetchFullWorkout, fullWorkoutQueryKey } from "@/lib/api/workouts";
-import { fetchWorkoutLogs, workoutLogsQueryKey } from "@/lib/api/workoutSessions";
+import { discardWorkoutLog, fetchWorkoutLogs, workoutLogsQueryKey, workoutLogsQueryPrefix } from "@/lib/api/workoutSessions";
 import { useMe } from "@/lib/auth";
 import { dayOfWeekOf, weekStartOf } from "@/lib/calendar";
 import { clientWeek, finishedCount, homeAction, isFinished, type HomeAction } from "@/lib/clientWeek";
@@ -48,8 +49,10 @@ export function todayCard(
     logs: WorkoutLog[];
     fulls: ReadonlyMap<number, FullWorkout>;
     openPicker: (picker: NonNullable<Picker>) => void;
+    /** Discards the session in progress (after a confirmation, R26). */
+    discard?: () => void;
   },
-): Pick<ActivePlanCardProps, "today" | "action"> {
+): Pick<ActivePlanCardProps, "today" | "action" | "secondary"> {
   const weekday = dayOfWeekOf(ctx.today);
   switch (action.kind) {
     case "continue": {
@@ -63,6 +66,7 @@ export function todayCard(
           detail: "Continue de onde parou.",
         },
         action: { label: "Continuar treino", onPress: () => openSession({ id: action.log.workoutId }) },
+        secondary: ctx.discard === undefined ? undefined : { label: "Descartar treino", onPress: ctx.discard },
       };
     }
     case "start":
@@ -168,6 +172,17 @@ export function ClientHomeScreen() {
   const today = todayLocalIso();
   const weekStart = weekStartOf(today);
   const [picker, setPicker] = useState<Picker>(null);
+  const [discarding, setDiscarding] = useState<number | null>(null);
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  const discard = useMutation({
+    mutationFn: (logId: number) => discardWorkoutLog(logId),
+    onSuccess: () => {
+      setDiscarding(null);
+      void queryClient.invalidateQueries({ queryKey: workoutLogsQueryPrefix });
+      toast.show("Treino descartado.");
+    },
+  });
 
   const plans = useQuery({ queryKey: myPlansQueryKey, queryFn: ({ signal }) => fetchTrainingPlans(undefined, { signal }) });
   const active = plans.data === undefined ? undefined : activePlan(plans.data, today);
@@ -254,6 +269,7 @@ export function ClientHomeScreen() {
         fulls={fulls}
         counts={counts}
         openPicker={setPicker}
+        onDiscard={setDiscarding}
       />
     );
   }
@@ -264,6 +280,19 @@ export function ClientHomeScreen() {
         {greeting}
         {body}
       </Screen>
+      <ConfirmDialog
+        visible={discarding !== null}
+        title="Descartar treino?"
+        message="As séries marcadas e as cargas registradas neste treino serão apagadas. Essa ação não pode ser desfeita."
+        confirmLabel="Descartar treino"
+        loading={discard.isPending}
+        error={discard.isError ? apiErrorMessage(discard.error, "Não foi possível descartar. Tente novamente.") : undefined}
+        onConfirm={() => (discarding === null ? undefined : discard.mutateAsync(discarding).catch(() => {}))}
+        onCancel={() => {
+          setDiscarding(null);
+          discard.reset();
+        }}
+      />
       <WorkoutPickerSheet
         visible={picker !== null}
         onClose={() => setPicker(null)}
@@ -289,6 +318,7 @@ function HomeContent({
   fulls,
   counts,
   openPicker,
+  onDiscard,
 }: {
   plan: TrainingPlanDetail;
   logs: WorkoutLog[];
@@ -297,9 +327,17 @@ function HomeContent({
   fulls: ReadonlyMap<number, FullWorkout>;
   counts: ReadonlyMap<number, number>;
   openPicker: (picker: NonNullable<Picker>) => void;
+  onDiscard: (logId: number) => void;
 }) {
   const action = homeAction(plan.workouts, logs, today, counts);
-  const card = todayCard(action, { today, workouts: plan.workouts, logs, fulls, openPicker });
+  const card = todayCard(action, {
+    today,
+    workouts: plan.workouts,
+    logs,
+    fulls,
+    openPicker,
+    discard: action.kind === "continue" ? () => onDiscard(action.log.id) : undefined,
+  });
   const week = clientWeek(plan.workouts, logs, weekStart, today);
   const total = plan.workouts.length;
   const done = finishedCount(plan.workouts, logs);

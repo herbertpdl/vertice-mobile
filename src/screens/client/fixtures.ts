@@ -55,4 +55,6 @@ export const log = (workoutId: number, completedAt = "", startedAt = "2026-10-21
   weekStartDate: "2026-10-19",
   startedAt,
   completedAt,
+  status: completedAt === "" ? "IN_PROGRESS" : "COMPLETED",
+  completionKind: completedAt === "" ? "" : "CLIENT",
 });

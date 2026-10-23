@@ -1,3 +1,3 @@
-import { WorkoutSessionPlaceholderScreen } from "@/screens/client/WorkoutSessionPlaceholderScreen";
+import { WorkoutSessionScreen } from "@/screens/client/WorkoutSessionScreen";
 
-export default WorkoutSessionPlaceholderScreen;
+export default WorkoutSessionScreen;
