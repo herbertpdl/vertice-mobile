@@ -46,10 +46,12 @@ Other open PRs concern separate work (exercise catalog, dashboard-field removal 
   contact links.
   - The iOS dev build compiles and runs on the simulator (`npm run ios`). Android hasn't been built
     since the new native modules arrived.
+- Android debug compilation now passes with the new native modules (arm64, JDK 17). No physical
+  Android device was attached; the phone checklists remain open.
 - Before shipping a build with #41: vertice-api #75 and vertice-bff #51 in production (§5, step 5).
 - Optional, from the decisions log: a `workoutCount` on the plan's workouts.
 - Outside this spec: Dependabot's npm-minor-and-patch group PR (#38) fails CI.
-  - #44 supersedes it with the four non-Expo updates; Expo-pinned dependencies stay unchanged.
+  - #44 merged with the four non-Expo updates; #38 is closed. Expo-pinned dependencies stay unchanged.
   - Its Expo-SDK-pinned packages (react/react-dom, @types/react, react-native-reanimated, -screens,
     -safe-area-context, -svg, -web) go through `npx expo install --fix`.
   - The rest (@tanstack/react-query, zod, react-hook-form, lucide-react-native) can be bumped
@@ -514,6 +516,9 @@ The feedback screen shipped with the session once B7 merged.
 
 ## Decisions log
 
+- 2026-10-23 — Android's inherited permission blocklist removed `VIBRATE`, suppressing the
+  rest alert's `Haptics.notificationAsync` (R49). Remove that entry so expo-haptics can add its
+  required normal permission. This needs a native rebuild; no runtime permission prompt is added.
 - 2026-10-22 — Client routes live under `/aluno` with role-guarded `Stack.Protected` groups, not
   under the trainer's `(tabs)`. Two groups can't both own `/`, and keeping the trainer's URLs
   unchanged avoids touching every trainer test.
