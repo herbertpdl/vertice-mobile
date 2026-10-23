@@ -288,6 +288,16 @@ describe("WorkoutSessionScreen", () => {
     expect(readLocalSession()).toBeNull();
   });
 
+  it("never resumes offline a kept session whose finish is still queued", async () => {
+    saveLocalSession({ workoutId: 12, logId: 500, state: initSession(workout()), sent: {} });
+    bff = mockBff({ "GET /api/workouts/12/session": workout() });
+    onlineManager.setOnline(false);
+    enqueue({ kind: "complete", logId: 500, workoutId: 12 });
+    await renderScreen(<WorkoutSessionScreen />);
+    expect(await screen.findByText("Sem conexão")).toBeOnTheScreen();
+    expect(readLocalSession()).toBeNull();
+  });
+
   it("drops the kept session when the server's is another one", async () => {
     saveLocalSession({ workoutId: 12, logId: 499, state: initSession({ ...workout(), workoutLog: { ...workout().workoutLog, id: 499 } }), sent: {} });
     bff = mockBff({ "GET /api/workouts/12/session": workout() });

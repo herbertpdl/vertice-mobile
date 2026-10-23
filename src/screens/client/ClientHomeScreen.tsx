@@ -176,14 +176,15 @@ export function ClientHomeScreen() {
   const today = todayLocalIso();
   const weekStart = weekStartOf(today);
   const [picker, setPicker] = useState<Picker>(null);
-  const [discarding, setDiscarding] = useState<number | null>(null);
+  const [discarding, setDiscarding] = useState<WorkoutLog | null>(null);
   const queryClient = useQueryClient();
   const toast = useToast();
   const discard = useMutation({
     // Through the outbox, behind the session's own queued writes (§3.4).
-    mutationFn: (logId: number) => {
-      clearLocalSession(logId);
-      return sendNow({ kind: "discard", logId }, DISCARD_WAIT_MS);
+    mutationFn: (log: WorkoutLog) => {
+      clearLocalSession(log.id);
+      // With its workout, so opening that workout again waits for the discard to be sent.
+      return sendNow({ kind: "discard", logId: log.id, workoutId: log.workoutId }, DISCARD_WAIT_MS);
     },
     onSuccess: () => {
       setDiscarding(null);
@@ -335,7 +336,7 @@ function HomeContent({
   fulls: ReadonlyMap<number, FullWorkout>;
   counts: ReadonlyMap<number, number>;
   openPicker: (picker: NonNullable<Picker>) => void;
-  onDiscard: (logId: number) => void;
+  onDiscard: (log: WorkoutLog) => void;
 }) {
   const action = homeAction(plan.workouts, logs, today, counts);
   const card = todayCard(action, {
@@ -344,7 +345,7 @@ function HomeContent({
     logs,
     fulls,
     openPicker,
-    discard: action.kind === "continue" ? () => onDiscard(action.log.id) : undefined,
+    discard: action.kind === "continue" ? () => onDiscard(action.log) : undefined,
   });
   const week = clientWeek(plan.workouts, logs, weekStart, today);
   const total = plan.workouts.length;

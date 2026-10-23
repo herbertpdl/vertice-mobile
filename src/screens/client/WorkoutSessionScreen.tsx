@@ -107,6 +107,15 @@ export function WorkoutSessionScreen() {
   const [local] = useState(() => {
     const stored = readLocalSession();
     if (stored?.workoutId !== workoutId) return null;
+    // Finished or discarded already, the answer still queued (the app closed while waiting): the
+    // session is closing, and it's never resumed.
+    const closing = pendingOperations().some(
+      (op) => (op.kind === "complete" || op.kind === "discard") && op.logId === stored.logId,
+    );
+    if (closing) {
+      clearLocalSession(stored.logId);
+      return null;
+    }
     // An earlier week's session was closed by the rollover: never resumed (its writes would all
     // be refused).
     if (stored.state.snapshot.workoutLog.weekStartDate !== weekStartOf(todayLocalIso())) {
