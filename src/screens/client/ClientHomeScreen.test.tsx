@@ -2,6 +2,7 @@ import { act, fireEvent, screen } from "@testing-library/react-native";
 
 import { mockBff, type BffMock } from "@/test/bff";
 import { renderScreen } from "@/test/render";
+import { clearWorkoutData, openOutbox } from "@/lib/workoutSession/outbox";
 
 import { ClientHomeScreen, workoutSummary } from "./ClientHomeScreen";
 import { full, log, plan, planDetail, workout } from "./fixtures";
@@ -42,6 +43,9 @@ function routes(workouts = [monday, wednesday, friday], logs = [log(11, "2026-10
 }
 
 let bff: BffMock;
+// The client app's layout opens the signed-in client's outbox (§3.4); the screens are tested without it.
+beforeEach(() => openOutbox(7, () => {}));
+afterEach(() => clearWorkoutData());
 afterEach(() => {
   bff?.restore();
   jest.clearAllMocks();

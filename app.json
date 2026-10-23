@@ -94,7 +94,8 @@
           "color": "#00E5FF"
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "expo-sqlite"
     ],
     "experiments": {
       "typedRoutes": true,

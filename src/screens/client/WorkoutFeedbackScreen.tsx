@@ -7,12 +7,14 @@ import { StyleSheet, View } from "react-native";
 import { Screen } from "@/components/layout";
 import { Banner, Button, RatingScale, Text, TextArea, useToast } from "@/components/ui";
 import { apiErrorMessage } from "@/lib/api/errorMessages";
-import { submitFeedback } from "@/lib/api/feedback";
 import type { FeedbackRating } from "@/lib/api/types";
 import { workoutLogsQueryPrefix } from "@/lib/api/workoutSessions";
 import { useSingleFlight } from "@/lib/useSingleFlight";
+import { sendNow } from "@/lib/workoutSession/outbox";
 import { colors, radius, sizes, space, TINT_ALPHA, withAlpha } from "@/theme";
 
+/** Online, how long sending waits for the answer before going home anyway (it's sent later). */
+const SEND_WAIT_MS = 10_000;
 /** The comment's bound (vertice-api `VARCHAR(2000)`). */
 const MAX_TEXT = 2000;
 
@@ -30,11 +32,13 @@ export function WorkoutFeedbackScreen() {
   const [text, setText] = useState("");
 
   const send = useMutation({
-    mutationFn: () => submitFeedback(logId, { rating: rating!, text: text.trim() }),
-    onSuccess: () => {
+    // Through the outbox, after the session's finish (§3.4): offline it goes when the connection
+    // returns (R56–R58).
+    mutationFn: () => sendNow({ kind: "feedback", logId, rating: rating!, text: text.trim() }, SEND_WAIT_MS),
+    onSuccess: (answer) => {
       void queryClient.invalidateQueries({ queryKey: workoutLogsQueryPrefix });
       router.replace("/aluno");
-      toast.show("Feedback enviado ao seu treinador.");
+      toast.show(answer === null ? "Seu feedback será enviado quando a conexão voltar." : "Feedback enviado ao seu treinador.");
     },
   });
   const submit = useSingleFlight(() => send.mutateAsync().catch(() => {}));

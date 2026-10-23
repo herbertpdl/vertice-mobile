@@ -1,12 +1,16 @@
+import { onlineManager } from "@tanstack/react-query";
 import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
 import * as Notifications from "expo-notifications";
 import * as Haptics from "expo-haptics";
 import { AppState, Platform } from "react-native";
 
+import { ApiError } from "@/lib/api/client";
+import { apiErrorMessage } from "@/lib/api/errorMessages";
 import type { WorkoutSession } from "@/lib/api/types";
 import { session, set, setLog } from "@/lib/workoutSession/fixtures";
 import { bffError, mockBff, type BffMock } from "@/test/bff";
 import { renderScreen } from "@/test/render";
+import { clearWorkoutData, openOutbox } from "@/lib/workoutSession/outbox";
 
 import { setHint, WorkoutSessionScreen } from "./WorkoutSessionScreen";
 
@@ -53,6 +57,12 @@ function modalOnDismiss(title: string): (() => void) | undefined {
 }
 
 let bff: BffMock;
+// The client app's layout opens the signed-in client's outbox (§3.4); the screens are tested without it.
+beforeEach(() => openOutbox(7, () => {}));
+afterEach(() => {
+  clearWorkoutData();
+  onlineManager.setOnline(true);
+});
 /** The Jest native mock leaves `AppState.currentState` unset; the screen reads it on a rest's end. */
 const appState = AppState as { currentState: string };
 let initialAppState: string;
@@ -199,111 +209,6 @@ describe("WorkoutSessionScreen", () => {
     await waitFor(() => expect(bff.calls.at(-1)?.route).toBe("POST /api/workout-sessions/500/complete"));
   });
 
-  it("says when finishing fails with every set ticked (no dialog to show it)", async () => {
-    const one = session([{ id: 1, order: 1, name: "Remada", sets: [set(11, 1)] }]);
-    bff = mockBff({
-      "GET /api/workouts/12/session": one,
-      "POST /api/workout-sessions/500/sets": setLog(11, ""),
-      "POST /api/workout-sessions/500/complete": bffError(500, "INTERNAL"),
-    });
-    await renderScreen(<WorkoutSessionScreen />);
-    await fireEvent.press(await screen.findByRole("checkbox", { name: "Série 1 feita" }));
-    await fireEvent.press(screen.getByRole("button", { name: "Finalizar treino" }));
-    expect(await screen.findByText("Não foi possível finalizar. Tente novamente.")).toBeOnTheScreen();
-    expect(mockReplace).not.toHaveBeenCalled();
-  });
-
-  it("re-sends a set that failed to save before finishing, and never finishes over one still failing", async () => {
-    let failures = 2;
-    const one = session([{ id: 1, order: 1, name: "Remada", sets: [set(11, 1)] }]);
-    bff = mockBff({
-      "GET /api/workouts/12/session": one,
-      "POST /api/workout-sessions/500/sets": () => (failures-- > 0 ? bffError(500, "INTERNAL") : Response.json(setLog(11, ""))),
-      "POST /api/workout-sessions/500/complete": { ...one.workoutLog, status: "COMPLETED", completionKind: "CLIENT", completedAt: "2026-10-21T11:00:00Z" },
-    });
-    await renderScreen(<WorkoutSessionScreen />);
-    await fireEvent.press(await screen.findByRole("checkbox", { name: "Série 1 feita" }));
-    await screen.findByText(/Não foi possível salvar/);
-    // The re-send fails too: no finish.
-    await fireEvent.press(screen.getByRole("button", { name: "Finalizar treino" }));
-    expect(await screen.findByText(/Algumas séries não foram salvas/)).toBeOnTheScreen();
-    expect(bff.calls.some((c) => c.route === "POST /api/workout-sessions/500/complete")).toBe(false);
-    // Then it lands, and the session finishes.
-    await fireEvent.press(screen.getByRole("button", { name: "Finalizar treino" }));
-    await waitFor(() => expect(bff.calls.at(-1)?.route).toBe("POST /api/workout-sessions/500/complete"));
-    expect(bff.calls.filter((c) => c.route === "POST /api/workout-sessions/500/sets")).toHaveLength(3);
-  });
-
-  it("re-sends a failed set's newest weight before finishing, never the old one", async () => {
-    let failures = 1;
-    const one = session([{ id: 1, order: 1, name: "Remada", sets: [set(11, 1)] }]);
-    bff = mockBff({
-      "GET /api/workouts/12/session": one,
-      "POST /api/workout-sessions/500/sets": () => (failures-- > 0 ? bffError(500, "INTERNAL") : Response.json(setLog(11, "60"))),
-      "POST /api/workout-sessions/500/complete": { ...one.workoutLog, status: "COMPLETED", completionKind: "CLIENT", completedAt: "2026-10-21T11:00:00Z" },
-    });
-    await renderScreen(<WorkoutSessionScreen />);
-    await fireEvent.changeText(await screen.findByLabelText("Carga da série 1, em quilos"), "50");
-    await fireEvent.press(screen.getByRole("checkbox", { name: "Série 1 feita" }));
-    await screen.findByText(/Não foi possível salvar/);
-    await fireEvent.changeText(screen.getByLabelText("Carga da série 1, em quilos"), "60");
-    await fireEvent.press(screen.getByRole("button", { name: "Finalizar treino" }));
-    await waitFor(() => expect(bff.calls.at(-1)?.route).toBe("POST /api/workout-sessions/500/complete"));
-    expect(bff.calls.filter((c) => c.route === "POST /api/workout-sessions/500/sets").map((c) => (c.body as { weight: string }).weight)).toEqual([
-      "50",
-      "60",
-    ]);
-  });
-
-  it("doesn't replay a write that failed after a newer one for the set was queued", async () => {
-    let failFirst: (() => void) | undefined;
-    let posts = 0;
-    const one = session([{ id: 1, order: 1, name: "Remada", sets: [set(11, 1)] }]);
-    bff = mockBff({
-      "GET /api/workouts/12/session": one,
-      "POST /api/workout-sessions/500/sets": () =>
-        posts++ === 0
-          ? new Promise<Response>((resolve) => (failFirst = () => resolve(bffError(500, "INTERNAL"))))
-          : Response.json(setLog(11, "60")),
-      "POST /api/workout-sessions/500/complete": { ...one.workoutLog, status: "COMPLETED", completionKind: "CLIENT", completedAt: "2026-10-21T11:00:00Z" },
-    });
-    await renderScreen(<WorkoutSessionScreen />);
-    await fireEvent.changeText(await screen.findByLabelText("Carga da série 1, em quilos"), "50");
-    await fireEvent.press(screen.getByRole("checkbox", { name: "Série 1 feita" }));
-    await fireEvent.changeText(screen.getByLabelText("Carga da série 1, em quilos"), "60");
-    // Finishing queues the 60 kg write behind the 50 kg one still in flight; then that one fails.
-    await fireEvent.press(screen.getByRole("button", { name: "Finalizar treino" }));
-    await act(async () => failFirst?.());
-    await waitFor(() => expect(bff.calls.at(-1)?.route).toBe("POST /api/workout-sessions/500/complete"));
-    expect(bff.calls.filter((c) => c.route === "POST /api/workout-sessions/500/sets").map((c) => (c.body as { weight: string }).weight)).toEqual([
-      "50",
-      "60",
-    ]);
-  });
-
-  it("doesn't re-record a set the client unticked after its save failed in flight", async () => {
-    let failTick: (() => void) | undefined;
-    const resumed = workout();
-    bff = mockBff({
-      "GET /api/workouts/12/session": resumed,
-      "POST /api/workout-sessions/500/sets": () => new Promise<Response>((resolve) => (failTick = () => resolve(bffError(500, "INTERNAL")))),
-      "DELETE /api/workout-sessions/500/sets/11": new Response(null, { status: 204 }),
-      "POST /api/workout-sessions/500/complete": { ...resumed.workoutLog, status: "COMPLETED", completionKind: "CLIENT", completedAt: "2026-10-21T11:00:00Z" },
-    });
-    jest.replaceProperty(Platform, "OS", "android");
-    await renderScreen(<WorkoutSessionScreen />);
-    const tick = await screen.findByRole("checkbox", { name: "Série 1 feita" });
-    await fireEvent.press(tick);
-    await fireEvent.press(tick);
-    await act(async () => failTick?.());
-    await waitFor(() => expect(bff.calls.some((c) => c.route === "DELETE /api/workout-sessions/500/sets/11")).toBe(true));
-    await fireEvent.press(screen.getByRole("button", { name: "Ver todos" }));
-    await fireEvent.press(screen.getByRole("button", { name: "Finalizar treino" }));
-    await fireEvent.press(await screen.findByRole("button", { name: "Finalizar mesmo assim" }));
-    await waitFor(() => expect(bff.calls.at(-1)?.route).toBe("POST /api/workout-sessions/500/complete"));
-    expect(bff.calls.filter((c) => c.route === "POST /api/workout-sessions/500/sets")).toHaveLength(1);
-  });
-
   it("doesn't hold the finish on a set the API refused for good (the rollover closed the session)", async () => {
     const one = session([{ id: 1, order: 1, name: "Remada", sets: [set(11, 1)] }]);
     bff = mockBff({
@@ -318,6 +223,65 @@ describe("WorkoutSessionScreen", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Finalizar treino" }));
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/aluno"));
     expect(bff.calls.filter((c) => c.route === "POST /api/workout-sessions/500/sets")).toHaveLength(1);
+  });
+
+  it("says when the API refuses the finish (no dialog to show it with every set ticked)", async () => {
+    const one = session([{ id: 1, order: 1, name: "Remada", sets: [set(11, 1)] }]);
+    bff = mockBff({
+      "GET /api/workouts/12/session": one,
+      "POST /api/workout-sessions/500/sets": setLog(11, ""),
+      "POST /api/workout-sessions/500/complete": bffError(409, "PRECONDITION_FAILED"),
+    });
+    await renderScreen(<WorkoutSessionScreen />);
+    await fireEvent.press(await screen.findByRole("checkbox", { name: "Série 1 feita" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Finalizar treino" }));
+    await waitFor(() => expect(bff.calls.at(-1)?.route).toBe("POST /api/workout-sessions/500/complete"));
+    expect(
+      await screen.findByText(apiErrorMessage(new ApiError({ code: "PRECONDITION_FAILED", message: "" }, 409), "Não foi possível finalizar. Tente novamente.")),
+    ).toBeOnTheScreen();
+    expect(mockReplace).not.toHaveBeenCalled();
+  });
+
+  it("trains offline: ticks wait in the outbox, the banner says so, finishing goes on, all is sent on reconnect (R56–R58)", async () => {
+    const one = session([{ id: 1, order: 1, name: "Remada", sets: [set(11, 1)] }]);
+    bff = mockBff({
+      "GET /api/workouts/12/session": one,
+      "POST /api/workout-sessions/500/sets": setLog(11, ""),
+      "POST /api/workout-sessions/500/complete": { ...one.workoutLog, status: "COMPLETED", completionKind: "CLIENT", completedAt: "2026-10-21T11:00:00Z" },
+    });
+    await renderScreen(<WorkoutSessionScreen />);
+    await screen.findByRole("checkbox", { name: "Série 1 feita" });
+    await act(async () => onlineManager.setOnline(false));
+    expect(screen.getByText("Sem conexão. Seu treino será enviado quando a conexão voltar.")).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole("checkbox", { name: "Série 1 feita" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Finalizar treino" }));
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith(expect.objectContaining({ pathname: "/aluno/treino/feedback/[logId]" })));
+    expect(bff.calls.map((c) => c.route)).toEqual(["GET /api/workouts/12/session"]);
+    await act(async () => onlineManager.setOnline(true));
+    await waitFor(() =>
+      expect(bff.calls.map((c) => c.route).slice(1)).toEqual(["POST /api/workout-sessions/500/sets", "POST /api/workout-sessions/500/complete"]),
+    );
+  });
+
+  it("reopens the session kept on the device while offline, where the client was", async () => {
+    bff = mockBff({ "GET /api/workouts/12/session": workout(), "POST /api/workout-sessions/500/sets": setLog(11, "45") });
+    const first = await renderScreen(<WorkoutSessionScreen />);
+    await fireEvent.changeText(await screen.findByLabelText("Carga da série 1, em quilos"), "45");
+    await fireEvent.press(screen.getByRole("checkbox", { name: "Série 1 feita" }));
+    await first.unmount();
+
+    await act(async () => onlineManager.setOnline(false));
+    await renderScreen(<WorkoutSessionScreen />);
+    expect(await screen.findByRole("checkbox", { name: "Série 1 feita" })).toBeChecked();
+    expect(screen.getByLabelText("Carga da série 1, em quilos").props.value).toBe("45");
+  });
+
+  it("can't open a workout never opened on this device without a connection (R55, E28)", async () => {
+    bff = mockBff({ "GET /api/workouts/12/session": workout() });
+    onlineManager.setOnline(false);
+    await renderScreen(<WorkoutSessionScreen />);
+    expect(await screen.findByText("Sem conexão")).toBeOnTheScreen();
+    expect(bff.calls).toEqual([]);
   });
 
   it("keeps an untick and a quick re-tick of the same set in order", async () => {

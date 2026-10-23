@@ -52,6 +52,23 @@ jest.mock("expo-audio", () => {
   const player = { play: jest.fn(), seekTo: jest.fn(async () => undefined) };
   return { useAudioPlayer: jest.fn(() => player), setAudioModeAsync: jest.fn(async () => undefined), __player: player };
 });
+// Sentry's native SDK starts timers on import; nothing reports under Jest (monitoring.ts is off
+// outside release builds anyway).
+jest.mock("@sentry/react-native", () => ({ init: jest.fn(), captureException: jest.fn(), captureMessage: jest.fn() }));
+// The workout outbox's store (client spec §3.4): an in-memory `expo-sqlite/kv-store`.
+jest.mock("expo-sqlite/kv-store", () => {
+  const items = new Map<string, string>();
+  return {
+    __esModule: true,
+    default: {
+      getItemSync: (key: string) => items.get(key) ?? null,
+      setItemSync: (key: string, value: string) => void items.set(key, value),
+      removeItemSync: (key: string) => void items.delete(key),
+      getAllKeysSync: () => [...items.keys()],
+      clearSync: () => items.clear(),
+    },
+  };
+});
 jest.mock("react-native-webview", () => {
   const { View } = require("react-native");
   return { WebView: (props: object) => require("react").createElement(View, { ...props, testID: "webview" }) };

@@ -20,11 +20,11 @@
 
 ## 0. Handoff — start here
 
-**State (2026-10-23):** PRs 15–18 are merged on mobile (PR 20 was folded into 18). The backend
-is merged too: vertice-api #73 (session lifecycle, rating) and #74 (trainer contacts, YouTube-only
-videos), and vertice-bff #50 (B1–B10). PR 21 (the trainer side and the client's trainer card) is in
-review on `feat/trainer-client-facing`. **Next:** PR 19 (offline outbox), then vertice-web-react's
-§2.4 items. The device checklists for PR 18 and PR 21 still need a native rebuild and a phone.
+**State (2026-10-23):** PRs 15–18 and 21 are merged on mobile (PR 20 was folded into 18). The
+backend is merged too: vertice-api #73 (session lifecycle, rating) and #74 (trainer contacts,
+YouTube-only videos), and vertice-bff #50 (B1–B10). PR 19 (the offline outbox) is in review on
+`feat/client-offline`. **Next:** vertice-web-react's §2.4 items. The device checklists for PRs 18,
+19 and 21 still need a native rebuild and a phone.
 
 **Per-PR loop:** the same as in the trainer spec's §0. Read the pen.dev nodes for the PR (values
 from `Get(id, {depth: 5})`, never from screenshots). Implement and test. Run every CI command
@@ -416,13 +416,19 @@ PRs are stacked as in the trainer spec. Every PR keeps all CI commands green (`t
   native rebuild** (`npm run ios` / `npm run android`): new native modules.
 
 ### PR 19 — `feat/client-offline`: persistence and outbox (§3.4)
-- [ ] `expo-sqlite` kv-store; `session:` and `outbox:` keyed by user; clearing on sign-out,
-  deletion and user switch; kept on a 401
-- [ ] Sender with ordering, backoff, `retryAfter` and drop-on-4xx with a scrubbed report; drain →
-  invalidations
-- [ ] Offline banner on the session screen; first open offline → offline error (E28)
-- [ ] Tests: a queued tick/untick/complete/feedback sequence survives a restart and replays in
-  order; a 400 for a deleted set is dropped; a 401 keeps the outbox
+- [x] `expo-sqlite` kv-store (`src/lib/workoutSession/store.ts`; an in-memory `store.web.ts`);
+  `session:` and `outbox:` keyed by user; cleared on "Sair", deletion (`clearWorkoutData` in
+  `AuthProvider`) and another user's open (`openOutbox`); kept on a 401
+- [x] Sender (`src/lib/workoutSession/outbox.ts`, run by `useWorkoutOutbox` in the client
+  layout) with ordering, backoff, `retryAfter` and drop-on-4xx with a scrubbed report
+  (`reportDroppedOperation`); drain → invalidations
+- [x] Every session write, finishing, discarding (also Início's) and the feedback go through it;
+  online, finishing and the feedback wait up to 10 s for the answer (`sendNow`), offline they go on
+- [x] The session is kept on the device (300 ms debounce, at once on background and on leaving) and
+  reopened from it offline, or online when the server's is the same one still in progress
+- [x] Offline banner on the session screen (R57 copy); first open offline → offline error (E28)
+- [x] Tests: the queue survives a restart and replays in order; a 400 is dropped; a 401 keeps the
+  queue; offline training then reconnecting; reopening offline
 - [ ] Device checklist: airplane mode mid-workout → finish → feedback → reconnect
 
 ### PR 20 — folded into PR 18
@@ -467,6 +473,7 @@ The feedback screen shipped with the session once B7 merged.
 |---|---|---|---|---|
 | 15 | `docs/client-workout-spec` | [#33](https://github.com/herbertpdl/vertice-mobile/pull/33) | merged | docs only; CI green |
 | 17 | `feat/client-shell` | [#35](https://github.com/herbertpdl/vertice-mobile/pull/35) | merged | 3 review rounds: 1 blocking (refresh without a plan) + 5 non-blocking (trainer routes guarded, routing test, copy, banner, profile fallback), all fixed; approved |
+| 21 | `feat/trainer-client-facing` | [#37](https://github.com/herbertpdl/vertice-mobile/pull/37) | merged | 2 review rounds: 1 should-fix (a pasted +55 WhatsApp stored wrong) + 1 consider (the trainer card kept after a later 404), both fixed; approved |
 | 18 (+20) | `feat/client-workout` | [#36](https://github.com/herbertpdl/vertice-mobile/pull/36) | merged | 6 review rounds: 3 blocking in round 1 (finish racing set saves, a stale alert after the background, iOS sheet → dialog) and 1 per round after (a silent failed finish, then old failed saves replayed over newer ones, twice), plus non-blocking fixes (hold-toast loop, untick/re-tick ordering, video locked to the embed, alert tests, Referer, a 4xx not blocking the finish); approved |
 | 16 | `feat/client-kit` | [#34](https://github.com/herbertpdl/vertice-mobile/pull/34) | merged | 5 review rounds: 3 blocking (narrow-screen fit, fixed-height rows, clipped weight) + 4 non-blocking, all fixed; approved |
 
@@ -552,3 +559,15 @@ The feedback screen shipped with the session once B7 merged.
 - 2026-10-23 — An exercise link saved before R61 that isn't YouTube is hidden everywhere: no
   thumbnail and no player. The trainer's detail screen says so and asks them to edit the link. It
   no longer opens externally, because `useOpenVideo` is gone.
+- 2026-10-23 — PR 19 replaces PR 18's in-screen write chain and failure replay with the outbox.
+  The outbox sends one queue in order for every set and session, and retries until a write lands
+  or the API refuses it for good. Finishing no longer waits for the set writes: `complete` is
+  queued behind them. Online, finishing waits up to 10 s for its answer, so an `AUTO` finish
+  still skips the feedback step. Offline (or past those 10 s), the feedback step comes, and a
+  feedback refused later is dropped.
+- 2026-10-23 — Opening a session first waits up to 5 s for the outbox to drain, so a switch's
+  queued discard (or the last ticks) lands before the new snapshot. Início reads only the server.
+  The local session is used by the session screen alone.
+- 2026-10-23 — On the web, the outbox keeps its queue in memory (`store.web.ts`): expo-sqlite's web
+  build needs a WASM setup, and the client screens can't be used on the web anyway (no
+  SecureStore).

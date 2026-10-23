@@ -11,7 +11,7 @@ import { apiErrorMessage } from "@/lib/api/errorMessages";
 import { fetchTrainingPlan, fetchTrainingPlans, myPlansQueryKey, trainingPlanQueryKey } from "@/lib/api/trainingPlans";
 import type { FullWorkout, TrainingPlanDetail, Workout, WorkoutLog } from "@/lib/api/types";
 import { fetchFullWorkout, fullWorkoutQueryKey } from "@/lib/api/workouts";
-import { discardWorkoutLog, fetchWorkoutLogs, workoutLogsQueryKey, workoutLogsQueryPrefix } from "@/lib/api/workoutSessions";
+import { fetchWorkoutLogs, workoutLogsQueryKey, workoutLogsQueryPrefix } from "@/lib/api/workoutSessions";
 import { useMe } from "@/lib/auth";
 import { dayOfWeekOf, weekStartOf } from "@/lib/calendar";
 import { clientWeek, finishedCount, homeAction, isFinished, type HomeAction } from "@/lib/clientWeek";
@@ -20,12 +20,16 @@ import { DAY_ABBR, DAY_NAMES } from "@/lib/labels";
 import { useIsOffline } from "@/lib/network";
 import { activePlan } from "@/lib/plans";
 import { usePullToRefresh } from "@/lib/usePullToRefresh";
+import { clearLocalSession, sendNow } from "@/lib/workoutSession/outbox";
 import { colors, radius, sizes, space } from "@/theme";
 
 function plural(count: number, one: string, many: string): string {
   return `${count} ${count === 1 ? one : many}`;
 }
 
+
+/** Online, how long discarding waits for the answer (offline it's sent later). */
+const DISCARD_WAIT_MS = 10_000;
 /** "6 exercícios · 22 séries" for a workout tree, or "" while it loads. */
 export function workoutSummary(full: FullWorkout | undefined): string {
   if (full === undefined) return "";
@@ -176,7 +180,11 @@ export function ClientHomeScreen() {
   const queryClient = useQueryClient();
   const toast = useToast();
   const discard = useMutation({
-    mutationFn: (logId: number) => discardWorkoutLog(logId),
+    // Through the outbox, behind the session's own queued writes (§3.4).
+    mutationFn: (logId: number) => {
+      clearLocalSession(logId);
+      return sendNow({ kind: "discard", logId }, DISCARD_WAIT_MS);
+    },
     onSuccess: () => {
       setDiscarding(null);
       void queryClient.invalidateQueries({ queryKey: workoutLogsQueryPrefix });

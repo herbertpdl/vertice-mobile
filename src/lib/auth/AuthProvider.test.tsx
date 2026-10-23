@@ -4,12 +4,14 @@ import { Pressable, Text } from "react-native";
 
 import { apiFetch } from "@/lib/api/client";
 import { clearExports } from "@/lib/exportData";
+import { clearWorkoutData } from "@/lib/workoutSession/outbox";
 import { queryClient } from "@/lib/query-client";
 
 import { AuthProvider, useAuth } from "./AuthProvider";
 import { storeToken } from "./tokenStorage";
 
 jest.mock("@/lib/exportData", () => ({ clearExports: jest.fn() }));
+jest.mock("@/lib/workoutSession/outbox", () => ({ clearWorkoutData: jest.fn() }));
 
 const fetchMock = jest.fn<Promise<Response>, Parameters<typeof fetch>>();
 const realFetch = global.fetch;
@@ -34,6 +36,7 @@ beforeEach(() => {
 });
 
 afterEach(async () => {
+  jest.mocked(clearWorkoutData).mockClear();
   global.fetch = realFetch;
   fetchMock.mockReset();
   await SecureStore.deleteItemAsync("vertice.session.token");
@@ -73,8 +76,9 @@ describe("AuthProvider", () => {
     expect(await screen.findByText("status:signedOut")).toBeOnTheScreen();
     expect(await SecureStore.getItemAsync("vertice.session.token")).toBeNull();
     expect(queryClient.getQueryData(["me"])).toBeUndefined();
-    // An exported data file never outlives the session.
+    // An exported data file never outlives the session; "Sair" clears the workout outbox too.
     expect(clearExports).toHaveBeenCalled();
+    expect(clearWorkoutData).toHaveBeenCalled();
   });
 
   it("a late 401 from the previous session doesn't sign out the new one", async () => {
@@ -112,5 +116,7 @@ describe("AuthProvider", () => {
       await apiFetch("/api/clients").catch(() => {});
     });
     expect(await screen.findByText("status:signedOut:expired")).toBeOnTheScreen();
+    // The workout outbox stays for the re-login (client spec §3.4).
+    expect(clearWorkoutData).not.toHaveBeenCalled();
   });
 });

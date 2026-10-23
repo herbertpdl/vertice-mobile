@@ -102,3 +102,12 @@ export function reportError(error: unknown) {
   if (!enabled) return;
   Sentry.captureException(error);
 }
+
+/**
+ * A workout write the API refused for good (a 4xx), dropped from the outbox: only the operation's
+ * kind and the error code go out, never weights or feedback text.
+ */
+export function reportDroppedOperation(kind: string, code: string) {
+  if (!enabled) return;
+  Sentry.captureMessage("Workout outbox dropped an operation", { level: "warning", tags: { kind, code } });
+}
