@@ -78,7 +78,7 @@ function persist() {
   else store.set(outboxKey(userId), JSON.stringify(queue));
 }
 
-function send(op: OutboxOp): Promise<unknown> {
+function send({ id, op }: Entry): Promise<unknown> {
   switch (op.kind) {
     case "recordSet":
       return recordSetLog(op.logId, { exerciseSetId: op.exerciseSetId, weight: op.weight, reps: op.reps });
@@ -89,7 +89,8 @@ function send(op: OutboxOp): Promise<unknown> {
     case "discard":
       return discardWorkoutLog(op.logId);
     case "feedback":
-      return submitFeedback(op.logId, { rating: op.rating, text: op.text });
+      // The entry's id is the idempotency key: a resend after a lost answer can't duplicate it.
+      return submitFeedback(op.logId, { rating: op.rating, text: op.text, clientKey: id });
   }
 }
 
@@ -121,7 +122,7 @@ async function pump(): Promise<void> {
     while (queue.length > 0 && onlineManager.isOnline() && generation === owner) {
       const entry = queue[0];
       try {
-        const value = await send(entry.op);
+        const value = await send(entry);
         if (generation !== owner) return;
         failures = 0;
         settle(entry, { value });
@@ -129,13 +130,6 @@ async function pump(): Promise<void> {
         if (generation !== owner) return;
         const status = error instanceof ApiError ? error.status : 0;
         if (status === 401) return; // Signed out: the queue waits for this user's next session.
-        if (entry.op.kind === "feedback" && error instanceof ApiError && error.code === "TIMEOUT") {
-          // The request may have reached the server, and each feedback sent is a new one: a retry
-          // could give the trainer the same feedback twice. Taken as sent.
-          failures = 0;
-          settle(entry, { value: null });
-          continue;
-        }
         if (status === 429) return retryIn(((error as ApiError).retryAfter ?? 5) * 1000);
         if (status === 0 || status >= 500) {
           failures += 1;

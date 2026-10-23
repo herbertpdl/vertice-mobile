@@ -125,25 +125,27 @@ describe("outbox", () => {
     expect(pendingOperations()).toEqual([]);
   });
 
-  it("never re-sends a feedback whose answer timed out (it may have landed: no duplicate)", async () => {
+  it("re-sends a feedback whose answer timed out with the same key (no duplicate upstream)", async () => {
     jest.useFakeTimers();
-    bff = mockBff({ "POST /api/workout-sessions/500/sets": {} });
-    const answered = global.fetch;
-    const feedbackPosts: string[] = [];
-    // The feedback's answer never comes: the request is aborted at the client's timeout.
+    let answered = false;
+    let firstKey: string | undefined;
+    bff = mockBff({ "POST /api/workout-logs/500/feedback": {} });
+    const routed = global.fetch;
+    // The first answer never comes: the request is aborted at the client's timeout.
     global.fetch = ((input: RequestInfo | URL, init?: RequestInit) => {
-      if (!String(input).endsWith("/feedback")) return answered(input, init);
-      feedbackPosts.push(String(input));
+      if (answered || !String(input).endsWith("/feedback")) return routed(input, init);
+      answered = true;
+      firstKey = (JSON.parse(String(init?.body)) as { clientKey: string }).clientKey;
       return new Promise<Response>((_, reject) => init?.signal?.addEventListener("abort", () => reject(new Error("aborted"))));
     }) as typeof fetch;
     openOutbox(7, drained);
     const feedback = enqueue({ kind: "feedback", logId: 500, rating: "EASY", text: "" });
-    const next = enqueue(tick(11));
     await jest.advanceTimersByTimeAsync(16_000);
-    await expect(feedback).resolves.toBeNull();
-    await next;
-    expect(feedbackPosts).toHaveLength(1);
-    expect(bff.calls.map((c) => c.route)).toEqual(["POST /api/workout-sessions/500/sets"]);
+    await feedback;
+    const sent = bff.calls.filter((c) => c.route === "POST /api/workout-logs/500/feedback");
+    expect(sent).toHaveLength(1);
+    expect(firstKey).toMatch(/^[A-Za-z0-9_-]{1,64}$/);
+    expect((sent[0].body as { clientKey: string }).clientKey).toBe(firstKey);
   });
 
   it("stops on a 401 and keeps the queue for this user's next session", async () => {

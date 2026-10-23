@@ -1,6 +1,6 @@
 /**
  * Generated from vertice-bff's OpenAPI document. Do not edit by hand.
- * Source:    herbertpdl/vertice-bff@acb90ab4cb3e1dcaad221d37349a1f4858aa3243:docs/openapi.json
+ * Source:    herbertpdl/vertice-bff@382192dcce1fe77bb369afca2dcfc4ccb0ebcfb7:docs/openapi.json
  * Spec:      vertice-bff 0.1.0 (OpenAPI 3.1.0)
  * Generator: openapi-typescript@7.13.0
  *
@@ -1241,6 +1241,8 @@ export interface components {
             rating: "VERY_HARD" | "HARD" | "JUST_RIGHT" | "EASY" | "VERY_EASY";
             /** @default  */
             text?: string;
+            /** @description Idempotency key: a resend with the same key returns the stored feedback, not a duplicate. */
+            clientKey?: string;
         };
         TrainingPlan: {
             id: number;
