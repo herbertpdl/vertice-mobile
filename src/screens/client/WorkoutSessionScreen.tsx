@@ -18,6 +18,7 @@ import {
   useToast,
   WorkoutSetRow,
 } from "@/components/ui";
+import { ApiError } from "@/lib/api/client";
 import { apiErrorMessage } from "@/lib/api/errorMessages";
 import { fetchTrainingPlan, myPlansQueryKey, trainingPlanQueryKey } from "@/lib/api/trainingPlans";
 import type { FullWorkout, Workout, WorkoutSession, WorkoutSessionSet } from "@/lib/api/types";
@@ -260,7 +261,9 @@ function SessionView({ snapshot }: { snapshot: WorkoutSession }) {
         void queryClient.invalidateQueries({ queryKey: workoutLogsQueryPrefix });
       })
       .catch((error: unknown) => {
-        if (latest.current[setId] === mine) failed.current = { ...failed.current, [setId]: request };
+        // Only what may pass on a retry (no answer, a 5xx, a 429): a 4xx such as the weekly rollover's
+        // 409 would block finishing for good, and finishing then says the session is already closed.
+        if (latest.current[setId] === mine && isRetryable(error)) failed.current = { ...failed.current, [setId]: request };
         toast.show(apiErrorMessage(error, "Não foi possível salvar. Verifique a conexão e tente de novo."), "error");
       });
   }
@@ -617,6 +620,10 @@ function SessionView({ snapshot }: { snapshot: WorkoutSession }) {
 }
 
 class UnsavedSetsError extends Error {}
+
+function isRetryable(error: unknown): boolean {
+  return !(error instanceof ApiError) || error.status === 0 || error.status === 429 || error.status >= 500;
+}
 
 function finishErrorMessage(error: unknown): string {
   return error instanceof UnsavedSetsError

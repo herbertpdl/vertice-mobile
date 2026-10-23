@@ -304,6 +304,22 @@ describe("WorkoutSessionScreen", () => {
     expect(bff.calls.filter((c) => c.route === "POST /api/workout-sessions/500/sets")).toHaveLength(1);
   });
 
+  it("doesn't hold the finish on a set the API refused for good (the rollover closed the session)", async () => {
+    const one = session([{ id: 1, order: 1, name: "Remada", sets: [set(11, 1)] }]);
+    bff = mockBff({
+      "GET /api/workouts/12/session": one,
+      "POST /api/workout-sessions/500/sets": bffError(409, "PRECONDITION_FAILED"),
+      "POST /api/workout-sessions/500/complete": { ...one.workoutLog, status: "COMPLETED", completionKind: "AUTO", completedAt: "2026-10-26T03:05:00Z" },
+    });
+    await renderScreen(<WorkoutSessionScreen />);
+    await fireEvent.press(await screen.findByRole("checkbox", { name: "Série 1 feita" }));
+    await waitFor(() => expect(bff.calls.some((c) => c.route === "POST /api/workout-sessions/500/sets")).toBe(true));
+    await act(async () => {});
+    await fireEvent.press(screen.getByRole("button", { name: "Finalizar treino" }));
+    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/aluno"));
+    expect(bff.calls.filter((c) => c.route === "POST /api/workout-sessions/500/sets")).toHaveLength(1);
+  });
+
   it("keeps an untick and a quick re-tick of the same set in order", async () => {
     let landDelete: (() => void) | undefined;
     const resumed = workout();
