@@ -126,6 +126,10 @@ drift check stays green.
   on only in release builds with `EXPO_PUBLIC_SENTRY_DSN`; reports never carry the app's data
   (no user, no payloads, no touch breadcrumbs, e-mails/CPFs/tokens scrubbed) — keep it that way.
   Source-map upload needs `SENTRY_ORG`, `SENTRY_PROJECT` and `SENTRY_AUTH_TOKEN` as EAS secrets.
+- **Local native module, `modules/backup-exclusion/`**: an iOS `ExpoAppDelegateSubscriber` that
+  keeps `Documents/SQLite` (the workout outbox, `expo-sqlite/kv-store`) out of iCloud backups;
+  Android has `allowBackup: false` in `app.json`. Autolinked from `modules/`; a change needs a
+  native rebuild.
 - **Icons**: `lucide-react-native` (+ `react-native-svg` peer dep) mirrors `vertice-web-react`'s
   use of `lucide-react`, for icon parity between web and mobile.
 

@@ -1,0 +1,9 @@
+{
+  "name": "backup-exclusion",
+  "version": "1.0.0",
+  "description": "Keeps the workout outbox's SQLite store out of iCloud backups (client workout spec §3.4).",
+  "license": "UNLICENSED",
+  "author": "Vertice",
+  "homepage": "https://github.com/herbertpdl/vertice-mobile",
+  "private": true
+}
