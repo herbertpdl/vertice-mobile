@@ -196,7 +196,9 @@ function SessionView({ snapshot }: { snapshot: WorkoutSession }) {
     } else if (state.rest !== null && at >= state.rest.endsAt) {
       // JS timers stop in the background: an end first seen on return already had its notification.
       // Once per rest, even if another tick lands before the end is rendered.
-      const live = AppState.currentState === "active" && at - state.rest.endsAt < LIVE_END_MS;
+      // "inactive" (Control Center, Notification Center) is still the foreground: timers run and the
+      // notification stays hidden, so the in-app alert is the one alert.
+      const live = AppState.currentState !== "background" && at - state.rest.endsAt < LIVE_END_MS;
       if (live && alertedEnd.current !== state.rest.endsAt) alert();
       alertedEnd.current = state.rest.endsAt;
       dispatch({ type: "restEnded" });
@@ -239,14 +241,23 @@ function SessionView({ snapshot }: { snapshot: WorkoutSession }) {
   /** Set once the session is finished or discarded: nothing is sent for it after that. */
   const ended = useRef(false);
 
+  /** Each set's last write that failed, to send again before finishing (a finished log takes no more). */
+  const failed = useRef<Record<number, () => Promise<unknown>>>({});
+
   function save(setId: number, request: () => Promise<unknown>) {
     const run = (writes.current[setId] ?? Promise.resolve()).then(request);
     writes.current = { ...writes.current, [setId]: run.then(() => undefined, () => undefined) };
     run
-      .then(() => void queryClient.invalidateQueries({ queryKey: workoutLogsQueryPrefix }))
-      .catch((error: unknown) =>
-        toast.show(apiErrorMessage(error, "Não foi possível salvar. Verifique a conexão e tente de novo."), "error"),
-      );
+      .then(() => {
+        // A later write for the set supersedes an earlier failure.
+        const { [setId]: _done, ...rest } = failed.current;
+        failed.current = rest;
+        void queryClient.invalidateQueries({ queryKey: workoutLogsQueryPrefix });
+      })
+      .catch((error: unknown) => {
+        failed.current = { ...failed.current, [setId]: request };
+        toast.show(apiErrorMessage(error, "Não foi possível salvar. Verifique a conexão e tente de novo."), "error");
+      });
   }
 
   /** Re-records the weights edited on ticked sets since they were last sent. */
@@ -289,8 +300,15 @@ function SessionView({ snapshot }: { snapshot: WorkoutSession }) {
     mutationFn: async () => {
       // The last tick's (or edit's) write lands first: a finished session takes no more sets.
       flushWeights();
+      for (const [setId, request] of Object.entries(failed.current)) save(Number(setId), request);
       await Promise.all(Object.values(writes.current));
+      // A set that still didn't save would be lost for good: don't finish over it.
+      if (Object.keys(failed.current).length > 0) throw new UnsavedSetsError();
       return completeWorkoutLog(logId);
+    },
+    onError: (error) => {
+      // With sets left the dialog shows the error; finishing with all ticked has no dialog.
+      if (overlay !== "finish") toast.show(finishErrorMessage(error), "error");
     },
     onSuccess: (log) => {
       ended.current = true;
@@ -553,7 +571,7 @@ function SessionView({ snapshot }: { snapshot: WorkoutSession }) {
         message={`Você ainda tem ${plural(pendingSets(state), "série não concluída", "séries não concluídas")}. Elas não serão registradas, e o treino conta como feito nesta semana.`}
         confirmLabel="Finalizar mesmo assim"
         loading={finish.isPending}
-        error={finish.isError ? apiErrorMessage(finish.error, "Não foi possível finalizar. Tente novamente.") : undefined}
+        error={finish.isError ? finishErrorMessage(finish.error) : undefined}
         onConfirm={() => finish.mutateAsync().catch(() => {})}
         onCancel={() => {
           setOverlay(null);
@@ -591,6 +609,14 @@ function SessionView({ snapshot }: { snapshot: WorkoutSession }) {
       />
     </>
   );
+}
+
+class UnsavedSetsError extends Error {}
+
+function finishErrorMessage(error: unknown): string {
+  return error instanceof UnsavedSetsError
+    ? "Algumas séries não foram salvas. Verifique a conexão e tente finalizar de novo."
+    : apiErrorMessage(error, "Não foi possível finalizar. Tente novamente.");
 }
 
 function totalOf(state: SessionState): number {
