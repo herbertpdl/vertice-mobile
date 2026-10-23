@@ -33,7 +33,6 @@
 - The device checklists for PRs 18, 19 and 21. They need a native rebuild (`npm run ios` /
   `npm run android`) and a phone.
 - The follow-ups in the decisions log:
-  - Excluding the kv-store from iCloud backups on iOS.
   - Optionally, a `workoutCount` on the plan's workouts.
 
 **Per-PR loop:** the same as in the trainer spec's §0. Read the pen.dev nodes for the PR (values
@@ -600,3 +599,8 @@ The feedback screen shipped with the session once B7 merged.
   vertice-bff #51 added `clientKey` on `POST …/feedback`. The outbox sends each feedback with its
   entry id as the key and retries it like any other write. A resend after a lost answer gets back
   the stored feedback. This replaces the earlier "a timed-out feedback is taken as sent".
+- 2026-10-23 — The iOS backup exclusion is in place. A local Expo module
+  (`modules/backup-exclusion`, an `ExpoAppDelegateSubscriber`) marks `Documents/SQLite` as excluded
+  from backup at every launch, before expo-sqlite opens a database. It was checked on the
+  simulator: the directory carries `com.apple.metadata:com_apple_backup_excludeItem`. Android has
+  `allowBackup: false`.
