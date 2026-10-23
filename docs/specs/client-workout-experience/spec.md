@@ -525,3 +525,15 @@ The feedback screen shipped with the session once B7 merged.
 - 2026-10-23 — The weekly rollover closes a session the client left open. When the client then
   finishes it, `CompleteWorkoutLog` returns it with `completionKind: "AUTO"` (it's idempotent),
   and the app goes home without the feedback step (R27).
+- 2026-10-23 — Before PR 19, each set's writes are chained per set (an untick's DELETE always
+  lands before a re-tick's POST). Finishing first sends any pending weight edit and waits for every
+  write. Leaving the screen any way sends a pending edit at once. A finished or discarded session
+  sends nothing more.
+- 2026-10-23 — The in-app rest alert plays only when the end is seen live. If the end is first
+  seen on the return from the background, the rest ends silently and the delivered notification is
+  cleared, since it already was the alert. On iOS, a dialog opened from a sheet ("Ver todos" →
+  Finalizar, Trocar → a workout) opens from the sheet's `onDismiss`, as in `ActionSheet`.
+- 2026-10-23 — The video WebView keeps the youtube-nocookie `/embed/` page as its top frame:
+  youtube.com may load only in sub-frames. The embed loads with `Referer:` set to the app's web
+  origin (`EXPO_PUBLIC_WEB_URL`), because YouTube refuses Referer-less embeds (error 153). Check
+  this on the device checklist.

@@ -1,6 +1,7 @@
 import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
 import * as Notifications from "expo-notifications";
-import { Platform } from "react-native";
+import * as Haptics from "expo-haptics";
+import { AppState, Platform } from "react-native";
 
 import type { WorkoutSession } from "@/lib/api/types";
 import { session, set, setLog } from "@/lib/workoutSession/fixtures";
@@ -33,8 +34,34 @@ function workout(over: Partial<WorkoutSession> = {}): WorkoutSession {
   };
 }
 
+/** The `onDismiss` of the open sheet titled `title` (UIKit calls it once the sheet is gone). */
+function modalOnDismiss(title: string): (() => void) | undefined {
+  type Node = { props: Record<string, unknown>; children: (Node | string)[] | null };
+  const has = (node: Node | string): boolean =>
+    typeof node !== "string" && (node.props.accessibilityLabel === title || (node.children ?? []).some(has));
+  const find = (node: Node | string): (() => void) | undefined => {
+    if (typeof node === "string") return undefined;
+    if (typeof node.props.onDismiss === "function" && has(node)) return node.props.onDismiss as () => void;
+    for (const child of node.children ?? []) {
+      const found = find(child);
+      if (found !== undefined) return found;
+    }
+    return undefined;
+  };
+  const tree = screen.toJSON() as Node | Node[] | null;
+  return (Array.isArray(tree) ? tree : tree === null ? [] : [tree]).map(find).find((f) => f !== undefined);
+}
+
 let bff: BffMock;
+/** The Jest native mock leaves `AppState.currentState` unset; the screen reads it on a rest's end. */
+const appState = AppState as { currentState: string };
+let initialAppState: string;
+beforeEach(() => {
+  initialAppState = appState.currentState;
+  appState.currentState = "active";
+});
 afterEach(() => {
+  appState.currentState = initialAppState;
   bff?.restore();
   jest.clearAllMocks();
   jest.useRealTimers();
@@ -77,6 +104,7 @@ describe("WorkoutSessionScreen", () => {
   });
 
   it("asks before finishing with sets left, then goes to the feedback step", async () => {
+    jest.replaceProperty(Platform, "OS", "android");
     bff = mockBff({
       "GET /api/workouts/12/session": workout(),
       "POST /api/workout-sessions/500/complete": { ...workout().workoutLog, status: "COMPLETED", completionKind: "CLIENT", completedAt: "2026-10-21T11:00:00Z" },
@@ -94,6 +122,7 @@ describe("WorkoutSessionScreen", () => {
   });
 
   it("skips feedback for a session the weekly rollover already finished", async () => {
+    jest.replaceProperty(Platform, "OS", "android");
     bff = mockBff({
       "GET /api/workouts/12/session": workout(),
       "POST /api/workout-sessions/500/complete": { ...workout().workoutLog, status: "COMPLETED", completionKind: "AUTO", completedAt: "2026-10-21T11:00:00Z" },
@@ -138,6 +167,104 @@ describe("WorkoutSessionScreen", () => {
       jest.advanceTimersByTime(30_500);
     });
     await waitFor(() => expect(bff.calls.find((c) => c.route === "POST /api/workout-sessions/500/sets")?.body).toEqual({ exerciseSetId: 21, weight: "", reps: 0 }));
+  });
+
+  it("on iOS, opens the finish dialog only once the list sheet has gone (UIKit presents one modal at a time)", async () => {
+    jest.replaceProperty(Platform, "OS", "ios");
+    bff = mockBff({ "GET /api/workouts/12/session": workout() });
+    await renderScreen(<WorkoutSessionScreen />);
+    await fireEvent.press(await screen.findByRole("button", { name: "Ver todos" }));
+    const dismissList = modalOnDismiss("Exercícios do treino");
+    expect(dismissList).toBeDefined();
+    await fireEvent.press(screen.getByRole("button", { name: "Finalizar treino" }));
+    expect(screen.queryByText(/Você ainda tem 3 séries não concluídas/)).toBeNull();
+    await act(async () => dismissList?.());
+    expect(await screen.findByText(/Você ainda tem 3 séries não concluídas/)).toBeOnTheScreen();
+  });
+
+  it("finishes only after the last set's save has landed", async () => {
+    let land: (() => void) | undefined;
+    const one = session([{ id: 1, order: 1, name: "Remada", sets: [set(11, 1)] }]);
+    bff = mockBff({
+      "GET /api/workouts/12/session": one,
+      "POST /api/workout-sessions/500/sets": () => new Promise<Response>((resolve) => (land = () => resolve(Response.json(setLog(11, ""))))),
+      "POST /api/workout-sessions/500/complete": { ...one.workoutLog, status: "COMPLETED", completionKind: "CLIENT", completedAt: "2026-10-21T11:00:00Z" },
+    });
+    await renderScreen(<WorkoutSessionScreen />);
+    await fireEvent.press(await screen.findByRole("checkbox", { name: "Série 1 feita" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Finalizar treino" }));
+    await act(async () => {});
+    expect(bff.calls.some((c) => c.route === "POST /api/workout-sessions/500/complete")).toBe(false);
+    await act(async () => land?.());
+    await waitFor(() => expect(bff.calls.at(-1)?.route).toBe("POST /api/workout-sessions/500/complete"));
+  });
+
+  it("keeps an untick and a quick re-tick of the same set in order", async () => {
+    let landDelete: (() => void) | undefined;
+    const resumed = workout();
+    resumed.exercises[0].sets[0] = set(11, 1, { current: setLog(11, "40.00") });
+    bff = mockBff({
+      "GET /api/workouts/12/session": resumed,
+      "DELETE /api/workout-sessions/500/sets/11": () => new Promise<Response>((resolve) => (landDelete = () => resolve(new Response(null, { status: 204 })))),
+      "POST /api/workout-sessions/500/sets": setLog(11, "40"),
+    });
+    await renderScreen(<WorkoutSessionScreen />);
+    const tick = await screen.findByRole("checkbox", { name: "Série 1 feita" });
+    await fireEvent.press(tick);
+    await fireEvent.press(tick);
+    await act(async () => {});
+    expect(bff.calls.some((c) => c.route === "POST /api/workout-sessions/500/sets")).toBe(false);
+    await act(async () => landDelete?.());
+    await waitFor(() => expect(bff.calls.at(-1)?.route).toBe("POST /api/workout-sessions/500/sets"));
+  });
+
+  it("schedules the rest's notification, cancels it on the next tick, and alerts when the rest ends live", async () => {
+    jest.useFakeTimers({ now: new Date("2026-10-21T10:00:00Z") });
+    bff = mockBff({ "GET /api/workouts/12/session": workout(), "POST /api/workout-sessions/500/sets": setLog(11, "40") });
+    await renderScreen(<WorkoutSessionScreen />);
+    await fireEvent.press(await screen.findByRole("checkbox", { name: "Série 1 feita" }));
+    await waitFor(() =>
+      expect(Notifications.scheduleNotificationAsync).toHaveBeenCalledWith(
+        expect.objectContaining({ trigger: expect.objectContaining({ seconds: 60 }) }),
+      ),
+    );
+    await act(async () => {
+      jest.advanceTimersByTime(60_250);
+    });
+    expect(Haptics.notificationAsync).toHaveBeenCalledTimes(1);
+
+    await fireEvent.press(screen.getByRole("checkbox", { name: "Série 2 feita" }));
+    await waitFor(() => expect(Notifications.scheduleNotificationAsync).toHaveBeenCalledTimes(2));
+    await fireEvent.press(screen.getByRole("button", { name: "Próximo exercício" }));
+    await waitFor(() => expect(Notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith("notification-id"));
+  });
+
+  it("gives no in-app alert for a rest that ended while the app was away", async () => {
+    jest.useFakeTimers({ now: new Date("2026-10-21T10:00:00Z") });
+    bff = mockBff({ "GET /api/workouts/12/session": workout(), "POST /api/workout-sessions/500/sets": setLog(11, "40") });
+    await renderScreen(<WorkoutSessionScreen />);
+    await fireEvent.press(await screen.findByRole("checkbox", { name: "Série 1 feita" }));
+    appState.currentState = "background";
+    await act(async () => {
+      jest.advanceTimersByTime(61_000);
+    });
+    expect(Haptics.notificationAsync).not.toHaveBeenCalled();
+    expect(screen.queryByLabelText(/^Descanso:/)).toBeNull();
+  });
+
+  it("stops a hold whose weight is invalid instead of retrying it", async () => {
+    jest.useFakeTimers({ now: new Date("2026-10-21T10:00:00Z") });
+    bff = mockBff({ "GET /api/workouts/12/session": workout() });
+    await renderScreen(<WorkoutSessionScreen />);
+    await fireEvent.press(await screen.findByRole("button", { name: "Ver todos" }));
+    await fireEvent.press(screen.getByRole("button", { name: /^Exercício 2: Prancha/ }));
+    await fireEvent.changeText(screen.getByLabelText("Carga da série 1, em quilos"), "1000");
+    await fireEvent.press(screen.getByRole("button", { name: "Iniciar a série 1" }));
+    await act(async () => {
+      jest.advanceTimersByTime(32_000);
+    });
+    expect(screen.getAllByText(/Carga inválida/)).toHaveLength(1);
+    expect(screen.getByRole("button", { name: "Iniciar a série 1" })).toBeOnTheScreen();
   });
 
   it("shows the error state when the session can't open", async () => {

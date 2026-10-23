@@ -79,7 +79,7 @@ export function SheetModal({
   );
 }
 
-export type SheetProps = Omit<SheetModalProps, "accessibilityLabel" | "gap" | "onDismiss"> & {
+export type SheetProps = Omit<SheetModalProps, "accessibilityLabel" | "gap"> & {
   title: string;
   /** Pinned under the content (M Bottom Sheet's footer slot: Cancelar + confirm). */
   footer?: ReactNode;

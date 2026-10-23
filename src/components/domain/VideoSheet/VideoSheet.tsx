@@ -4,6 +4,7 @@ import { StyleSheet, View } from "react-native";
 import { WebView } from "react-native-webview";
 
 import { Sheet, Text } from "@/components/ui";
+import { env } from "@/lib/env";
 import { youtubeVideoId } from "@/lib/video";
 import { colors, radius, space } from "@/theme";
 
@@ -22,11 +23,23 @@ export function embedUrl(videoId: string): string {
   return `https://www.youtube-nocookie.com/embed/${videoId}?playsinline=1&rel=0`;
 }
 
-/** Only the embed itself and YouTube's own player frames may load (no navigation away). */
-export function isAllowedNavigation(url: string): boolean {
+/**
+ * YouTube refuses embeds loaded without a Referer (player error 153), and a WebView's top-frame
+ * load sends none: the app's web origin stands in for the page the embed sits on.
+ */
+export const EMBED_REFERER = `${new URL(env.EXPO_PUBLIC_WEB_URL).origin}/`;
+
+/**
+ * Only the embed may be the page (§3.6: no navigation away, e.g. the logo's link to youtube.com);
+ * YouTube's own frames may load inside it.
+ */
+export function isAllowedNavigation({ url, isTopFrame = true }: { url: string; isTopFrame?: boolean }): boolean {
+  if (url.startsWith("about:")) return true;
   try {
-    const host = new URL(url).hostname;
-    return host === "www.youtube-nocookie.com" || host === "www.youtube.com" || url.startsWith("about:");
+    const { protocol, hostname, pathname } = new URL(url);
+    if (protocol !== "https:") return false;
+    if (hostname === "www.youtube-nocookie.com" && pathname.startsWith("/embed/")) return true;
+    return !isTopFrame && (hostname === "www.youtube.com" || hostname === "www.youtube-nocookie.com");
   } catch {
     return false;
   }
@@ -43,10 +56,10 @@ export function VideoSheet({ visible, onClose, title, videoUrl, description, foo
       {id === null ? null : (
         <View style={styles.player}>
           <WebView
-            source={{ uri: embedUrl(id) }}
+            source={{ uri: embedUrl(id), headers: { Referer: EMBED_REFERER } }}
             allowsInlineMediaPlayback
             mediaPlaybackRequiresUserAction={false}
-            onShouldStartLoadWithRequest={(request) => isAllowedNavigation(request.url)}
+            onShouldStartLoadWithRequest={isAllowedNavigation}
             style={styles.web}
             accessibilityLabel={`Vídeo de ${title}`}
           />

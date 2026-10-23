@@ -10,6 +10,8 @@ export type ExerciseListSheetProps = {
   steps: StepRow[];
   onPick: (index: number) => void;
   onFinish: () => void;
+  /** iOS only: the sheet finished animating out (open a dialog from here, see `ActionSheet`). */
+  onDismiss?: () => void;
 };
 
 /** "4 de 4 séries" / "Em andamento · 2 de 4 séries" / "0 de 3 séries". */
@@ -22,11 +24,12 @@ export function stepMeta(step: StepRow): string {
  * A - Todos os Exercícios (Sheet): every exercise with its sets progress, any one opens (R41), and
  * "Finalizar treino" is always here, sets left or not (R42).
  */
-export function ExerciseListSheet({ visible, onClose, steps, onPick, onFinish }: ExerciseListSheetProps) {
+export function ExerciseListSheet({ visible, onClose, steps, onPick, onFinish, onDismiss }: ExerciseListSheetProps) {
   return (
     <Sheet
       visible={visible}
       onClose={onClose}
+      onDismiss={onDismiss}
       title="Exercícios do treino"
       footer={
         <View style={styles.footer}>

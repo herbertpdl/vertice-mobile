@@ -18,6 +18,8 @@ export type WorkoutPickerSheetProps = {
   /** "Hoje (terça) não tem treino no seu plano…" above the list. */
   notice?: string;
   onPick: (workout: Workout) => void;
+  /** iOS only: the sheet finished animating out (open a dialog from here, see `ActionSheet`). */
+  onDismiss?: () => void;
 };
 
 function plural(count: number): string {
@@ -40,10 +42,10 @@ export function pickRow(
  * A - Escolher Treino (Sheet): the plan's workouts by weekday (Monday first), today's highlighted,
  * the ones done this week badged, the ones without exercises disabled (PRD R14–R17).
  */
-export function WorkoutPickerSheet({ visible, onClose, workouts, exerciseCounts, finished, today, notice, onPick }: WorkoutPickerSheetProps) {
+export function WorkoutPickerSheet({ visible, onClose, workouts, exerciseCounts, finished, today, notice, onPick, onDismiss }: WorkoutPickerSheetProps) {
   const ordered = [...workouts].sort((a, b) => DAY_ORDER.indexOf(a.dayOfWeek) - DAY_ORDER.indexOf(b.dayOfWeek));
   return (
-    <Sheet visible={visible} onClose={onClose} title="Escolher treino">
+    <Sheet visible={visible} onClose={onClose} onDismiss={onDismiss} title="Escolher treino">
       {notice === undefined ? null : <Banner tone="info" message={notice} />}
       <View style={styles.list}>
       {ordered.map((workout) => {

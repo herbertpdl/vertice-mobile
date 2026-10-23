@@ -42,6 +42,7 @@ jest.mock("expo-notifications", () => ({
   requestPermissionsAsync: jest.fn(async () => ({ status: "granted", canAskAgain: true })),
   scheduleNotificationAsync: jest.fn(async () => "notification-id"),
   cancelScheduledNotificationAsync: jest.fn(async () => undefined),
+  dismissAllNotificationsAsync: jest.fn(async () => undefined),
 }));
 jest.mock("expo-haptics", () => ({
   NotificationFeedbackType: { Success: "success" },

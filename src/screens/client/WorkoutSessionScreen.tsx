@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { ChartColumn, ChevronLeft, CirclePlay, Ellipsis, List, Repeat, RotateCcw, Trash2 } from "lucide-react-native";
 import { useEffect, useEffectEvent, useReducer, useRef, useState } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { AppState, Platform, Pressable, StyleSheet, View } from "react-native";
 
 import { ExerciseListSheet, ProgressSheet, VideoSheet, WorkoutPickerSheet } from "@/components/domain";
 import { NavBar, Screen } from "@/components/layout";
@@ -37,7 +37,7 @@ import { dayOfWeekOf } from "@/lib/calendar";
 import { todayLocalIso } from "@/lib/format";
 import { useIsOffline } from "@/lib/network";
 import { youtubeVideoId } from "@/lib/video";
-import { useRestAlert, useRestNotification } from "@/lib/workoutSession/alerts";
+import { dismissRestNotifications, useRestAlert, useRestNotification } from "@/lib/workoutSession/alerts";
 import {
   allTicked,
   clockText,
@@ -60,6 +60,8 @@ import { colors, controls, disabledOpacity, radius, sizes, space } from "@/theme
 const TICK_MS = 250;
 /** How long a weight edit on a ticked set waits before it's re-recorded. */
 const WEIGHT_SAVE_DELAY_MS = 800;
+/** A rest seen ending later than this (the app was away) gets no in-app alert: the notification was it. */
+const LIVE_END_MS = 2 * TICK_MS;
 
 function plural(count: number, one: string, many: string) {
   return `${count} ${count === 1 ? one : many}`;
@@ -168,26 +170,35 @@ function SessionView({ snapshot }: { snapshot: WorkoutSession }) {
     ),
   );
 
-  const tickSet = (setId: number, at: number) => {
+  /** Ticks a set and records it; false (with a toast) when its weight isn't valid. */
+  const tickSet = (setId: number, at: number): boolean => {
     const set = exercises.flatMap((e) => e.sets).find((s) => s.id === setId);
-    if (set === undefined) return;
+    if (set === undefined) return false;
     const weight = inputToWeight(state.weights[setId] ?? "");
     if (weight === null) {
       toast.show("Carga inválida: use até 999 kg, com até 2 casas decimais.", "error");
-      return;
+      return false;
     }
     dispatch({ type: "tick", setId, now: at });
     setNow(at);
     sent.current = { ...sent.current, [setId]: weight };
-    save(recordSetLog(logId, { exerciseSetId: setId, weight, reps: set.reps }));
+    save(setId, () => recordSetLog(logId, { exerciseSetId: setId, weight, reps: set.reps }));
+    return true;
   };
+
+  const alertedEnd = useRef<number | null>(null);
 
   /** Each clock tick: redraw, and end the hold (ticking its set) or the rest (alerting) when due. */
   const onClock = useEffectEvent((at: number) => {
     setNow(at);
-    if (state.hold !== null && at >= state.hold.endsAt) tickSet(state.hold.setId, at);
-    else if (state.rest !== null && at >= state.rest.endsAt) {
-      alert();
+    if (state.hold !== null && at >= state.hold.endsAt) {
+      if (!tickSet(state.hold.setId, at)) dispatch({ type: "stopHold" });
+    } else if (state.rest !== null && at >= state.rest.endsAt) {
+      // JS timers stop in the background: an end first seen on return already had its notification.
+      // Once per rest, even if another tick lands before the end is rendered.
+      const live = AppState.currentState === "active" && at - state.rest.endsAt < LIVE_END_MS;
+      if (live && alertedEnd.current !== state.rest.endsAt) alert();
+      alertedEnd.current = state.rest.endsAt;
       dispatch({ type: "restEnded" });
     }
   });
@@ -196,6 +207,18 @@ function SessionView({ snapshot }: { snapshot: WorkoutSession }) {
     const id = setInterval(() => onClock(Date.now()), TICK_MS);
     return () => clearInterval(id);
   }, [running]);
+
+  /** Back from the background: a rest that ended meanwhile ends silently, its notification cleared. */
+  const onForeground = useEffectEvent(() => {
+    dismissRestNotifications();
+    if (state.rest !== null && Date.now() >= state.rest.endsAt) dispatch({ type: "restEnded" });
+  });
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (next) => {
+      if (next === "active") onForeground();
+    });
+    return () => subscription.remove();
+  }, []);
 
   const nextSet = current === undefined ? undefined : exercise?.sets.find((s) => s.id === current);
   useRestNotification(
@@ -208,36 +231,51 @@ function SessionView({ snapshot }: { snapshot: WorkoutSession }) {
 
   // ---- saving -----------------------------------------------------------------------------------
 
-  function save(request: Promise<unknown>) {
-    request
+  /**
+   * Each set's writes, chained: the API keeps no request order, so an untick's DELETE racing a
+   * re-tick's POST could otherwise leave a ticked set unrecorded. Finishing waits for all of them.
+   */
+  const writes = useRef<Record<number, Promise<void>>>({});
+  /** Set once the session is finished or discarded: nothing is sent for it after that. */
+  const ended = useRef(false);
+
+  function save(setId: number, request: () => Promise<unknown>) {
+    const run = (writes.current[setId] ?? Promise.resolve()).then(request);
+    writes.current = { ...writes.current, [setId]: run.then(() => undefined, () => undefined) };
+    run
       .then(() => void queryClient.invalidateQueries({ queryKey: workoutLogsQueryPrefix }))
       .catch((error: unknown) =>
         toast.show(apiErrorMessage(error, "Não foi possível salvar. Verifique a conexão e tente de novo."), "error"),
       );
   }
 
+  /** Re-records the weights edited on ticked sets since they were last sent. */
+  const flushWeights = () => {
+    if (ended.current) return;
+    for (const [id, text] of Object.entries(state.weights)) {
+      const setId = Number(id);
+      const weight = inputToWeight(text);
+      if (!state.ticked[setId] || weight === null || sent.current[setId] === weight) continue;
+      const set = exercises.flatMap((e) => e.sets).find((s) => s.id === setId);
+      if (set === undefined) continue;
+      sent.current = { ...sent.current, [setId]: weight };
+      save(setId, () => recordSetLog(logId, { exerciseSetId: setId, weight, reps: set.reps }));
+    }
+  };
+  const onWeightsSettled = useEffectEvent(flushWeights);
   useEffect(() => {
-    const timer = setTimeout(() => {
-      for (const [id, text] of Object.entries(state.weights)) {
-        const setId = Number(id);
-        const weight = inputToWeight(text);
-        if (!state.ticked[setId] || weight === null || sent.current[setId] === weight) continue;
-        const set = exercises.flatMap((e) => e.sets).find((s) => s.id === setId);
-        if (set === undefined) continue;
-        sent.current = { ...sent.current, [setId]: weight };
-        save(recordSetLog(logId, { exerciseSetId: setId, weight, reps: set.reps }));
-      }
-    }, WEIGHT_SAVE_DELAY_MS);
+    const timer = setTimeout(onWeightsSettled, WEIGHT_SAVE_DELAY_MS);
     return () => clearTimeout(timer);
-    // Debounces the weights only.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.weights]);
+  // Leaving by any way (back, the swipe, the system) sends an edit still waiting out the delay.
+  const onLeave = useEffectEvent(flushWeights);
+  useEffect(() => () => onLeave(), []);
 
   const untick = (setId: number) => {
     dispatch({ type: "untick", setId });
     const { [setId]: _dropped, ...kept } = sent.current;
     sent.current = kept;
-    save(deleteSetLog(logId, setId));
+    save(setId, () => deleteSetLog(logId, setId));
   };
 
   // ---- finishing, discarding, switching -----------------------------------------------------------
@@ -248,8 +286,14 @@ function SessionView({ snapshot }: { snapshot: WorkoutSession }) {
     if (message !== undefined) toast.show(message);
   };
   const finish = useMutation({
-    mutationFn: () => completeWorkoutLog(logId),
+    mutationFn: async () => {
+      // The last tick's (or edit's) write lands first: a finished session takes no more sets.
+      flushWeights();
+      await Promise.all(Object.values(writes.current));
+      return completeWorkoutLog(logId);
+    },
     onSuccess: (log) => {
+      ended.current = true;
       setOverlay(null);
       void queryClient.invalidateQueries({ queryKey: workoutLogsQueryPrefix });
       // A session the weekly rollover already finished takes no feedback (R27).
@@ -264,6 +308,7 @@ function SessionView({ snapshot }: { snapshot: WorkoutSession }) {
   const discard = useMutation({
     mutationFn: () => discardWorkoutLog(logId),
     onSuccess: () => {
+      ended.current = true;
       setOverlay(null);
       if (switchTo !== null) {
         void queryClient.invalidateQueries({ queryKey: workoutLogsQueryPrefix });
@@ -285,6 +330,22 @@ function SessionView({ snapshot }: { snapshot: WorkoutSession }) {
   );
 
   const requestFinish = () => (pendingSets(state) > 0 ? setOverlay("finish") : void finish.mutateAsync().catch(() => {}));
+
+  /**
+   * Closes a sheet and then opens what it led to — on iOS once the sheet has finished dismissing,
+   * since UIKit won't present the dialog while the sheet's modal is animating out (`ActionSheet`).
+   */
+  const afterSheet = useRef<(() => void) | null>(null);
+  const closeSheetThen = (run: () => void) => {
+    setOverlay(null);
+    if (Platform.OS === "ios") afterSheet.current = run;
+    else run();
+  };
+  const onSheetDismissed = () => {
+    const run = afterSheet.current;
+    afterSheet.current = null;
+    run?.();
+  };
 
   // ---- render -----------------------------------------------------------------------------------
   if (exercise === undefined) {
@@ -448,10 +509,8 @@ function SessionView({ snapshot }: { snapshot: WorkoutSession }) {
           setOverlay(null);
           dispatch({ type: "goTo", index: i });
         }}
-        onFinish={() => {
-          setOverlay(null);
-          requestFinish();
-        }}
+        onFinish={() => closeSheetThen(requestFinish)}
+        onDismiss={onSheetDismissed}
       />
       {video === null ? null : (
         <VideoSheet
@@ -481,8 +540,9 @@ function SessionView({ snapshot }: { snapshot: WorkoutSession }) {
         today={dayOfWeekOf(todayLocalIso())}
         onPick={(workout) => {
           setSwitchTo(workout);
-          setOverlay("switch");
+          closeSheetThen(() => setOverlay("switch"));
         }}
+        onDismiss={onSheetDismissed}
       />
       <ConfirmDialog
         visible={overlay === "finish"}

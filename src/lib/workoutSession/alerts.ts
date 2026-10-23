@@ -50,19 +50,18 @@ export function useRestNotification(rest: Timer | null, notice: RestNotice | und
       scheduled.current = null;
       if (id !== null) void Notifications.cancelScheduledNotificationAsync(id);
     };
-    if (rest !== null && notice !== undefined) {
-      const seconds = Math.ceil((rest.endsAt - now()) / 1000);
-      if (seconds > 0) {
-        void ensureNotificationPermission().then(async (granted) => {
-          if (!granted || cancelled) return;
-          const id = await Notifications.scheduleNotificationAsync({
+    if (rest !== null && notice !== undefined && rest.endsAt > now()) {
+      void ensureNotificationPermission().then(async (granted) => {
+        // Measured once the permission prompt is gone, so the time it was up isn't added.
+        const seconds = Math.ceil((rest.endsAt - now()) / 1000);
+        if (!granted || cancelled || seconds <= 0) return;
+        const id = await Notifications.scheduleNotificationAsync({
             content: { title: notice.title, body: notice.body, sound: true },
-            trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds },
-          });
-          if (cancelled) void Notifications.cancelScheduledNotificationAsync(id);
-          else scheduled.current = id;
+          trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds },
         });
-      }
+        if (cancelled) void Notifications.cancelScheduledNotificationAsync(id);
+        else scheduled.current = id;
+      });
     }
     return () => {
       cancelled = true;
@@ -71,6 +70,11 @@ export function useRestNotification(rest: Timer | null, notice: RestNotice | und
     // The schedule follows the rest itself (set and end time), not each render's objects.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
+}
+
+/** Clears a rest notification already delivered while the app was away (it's stale once back). */
+export function dismissRestNotifications() {
+  void Notifications.dismissAllNotificationsAsync();
 }
 
 /**
