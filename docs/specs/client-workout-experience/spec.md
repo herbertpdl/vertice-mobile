@@ -32,7 +32,13 @@
   `docs/prds/client-workout-trainer-side/prd.md`, and its design is pen.dev frame `YICJ0`, approved
   by the owner.
 
-**Paused here (2026-10-23), at the owner's request.**
+**Resumed and audited (2026-10-23).** GitHub confirms the feature PRs above are merged.
+The working trees contain no unfinished client-workout code. Mobile's dependency follow-up is
+[#44](https://github.com/herbertpdl/vertice-mobile/pull/44), independently reviewed with no
+findings; CI and local checks pass (825 tests, both hostile time zones, lint, typecheck,
+generated routes/contracts/tokens, Expo alignment and Expo Doctor 21/21).
+The web `docs/client-workout-trainer-web` branch has the same PRD as `main` and needs no PR.
+Other open PRs concern separate work (exercise catalog, dashboard-field removal and dependencies).
 
 **Left:**
 - The device checklists for PRs 18, 19 and 21 need a phone: rest notifications with the phone
@@ -43,6 +49,7 @@
 - Before shipping a build with #41: vertice-api #75 and vertice-bff #51 in production (§5, step 5).
 - Optional, from the decisions log: a `workoutCount` on the plan's workouts.
 - Outside this spec: Dependabot's npm-minor-and-patch group PR (#38) fails CI.
+  - #44 supersedes it with the four non-Expo updates; Expo-pinned dependencies stay unchanged.
   - Its Expo-SDK-pinned packages (react/react-dom, @types/react, react-native-reanimated, -screens,
     -safe-area-context, -svg, -web) go through `npx expo install --fix`.
   - The rest (@tanstack/react-query, zod, react-hook-form, lucide-react-native) can be bumped
