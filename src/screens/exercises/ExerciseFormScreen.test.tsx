@@ -14,7 +14,6 @@ jest.mock("expo-router", () => ({
   },
   useLocalSearchParams: () => mockParams,
 }));
-jest.mock("expo-web-browser", () => ({ openBrowserAsync: jest.fn() }));
 
 const groups = [{ id: 1, name: "Peito" }, { id: 2, name: "Costas" }];
 const own: Exercise = { id: 4, name: "Remada", description: "", videoUrl: "", isStarter: false, muscleGroups: [groups[1]] };
@@ -38,11 +37,14 @@ describe("ExerciseFormScreen", () => {
     await fireEvent.press(screen.getByRole("button", { name: /^Grupos musculares/ }));
     await fireEvent.press(screen.getByRole("checkbox", { name: "Costas" }));
     await fireEvent.press(screen.getByRole("button", { name: "Aplicar (1)" }));
-    await fireEvent.changeText(screen.getByLabelText("URL do vídeo (opcional)"), "javascript:alert(1)");
+    await fireEvent.changeText(screen.getByLabelText("URL do vídeo (opcional)"), "https://vimeo.com/824512");
+    expect(screen.queryByRole("link", { name: "Abrir vídeo" })).toBeNull();
     await fireEvent.press(screen.getByRole("button", { name: "Criar exercício" }));
-    expect(await screen.findByText("Use um link começando com http:// ou https://")).toBeOnTheScreen();
+    expect(await screen.findByText("Só aceitamos vídeos do YouTube (youtube.com ou youtu.be).")).toBeOnTheScreen();
     await fireEvent.changeText(screen.getByLabelText("URL do vídeo (opcional)"), "https://youtu.be/dQw4w9WgXcQ");
-    expect(screen.getByRole("link", { name: "Abrir vídeo" })).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole("link", { name: "Abrir vídeo" }));
+    expect(screen.getByTestId("webview")).toBeOnTheScreen();
+    await fireEvent.press(screen.getAllByRole("button", { name: "Fechar" }).at(-1)!);
     await fireEvent.press(screen.getByRole("button", { name: "Criar exercício" }));
     await waitFor(() => expect(mockRouter.replace).toHaveBeenCalledWith("/exercicios/12"));
     expect(bff.calls.find((c) => c.route === "POST /api/exercises")?.body).toEqual({

@@ -20,7 +20,7 @@ const item = (id: number, name: string) => ({
   createdAt: "2026-10-01T10:00:00Z",
   clientName: name,
   workoutName: "Treino A",
-  trainingPlanName: "Base",
+  trainingPlanName: "Base", rating: null, replaced: false,
 });
 
 describe("FeedbacksScreen", () => {

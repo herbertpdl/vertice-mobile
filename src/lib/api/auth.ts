@@ -1,7 +1,7 @@
 import { apiClient, apiDownload, type ApiRequestInit } from "./client";
 import type { components } from "./schema";
 import { isMaskedCpf } from "./students";
-import type { AuthSession, Consent, Me } from "./types";
+import type { AuthSession, ClientTrainer, Consent, Me } from "./types";
 
 type Schemas = components["schemas"];
 
@@ -31,6 +31,16 @@ export async function setupPassword(input: Schemas["PasswordSetupRequest"]) {
 /** Pass React Query's `signal` (`queryFn: ({ signal }) => fetchMe({ signal })`) so a cancelled query aborts the request. */
 export function fetchMe(init?: Pick<ApiRequestInit, "signal">) {
   return apiClient.get<Me>("/api/auth/me", undefined, init);
+}
+
+export const myTrainerQueryKey = ["me", "trainer"] as const;
+
+/**
+ * `GET /api/auth/me/trainer`: a client's active trainer, with only the contacts the trainer shows
+ * (`""` otherwise). 404 when the client has no active trainer.
+ */
+export function fetchMyTrainer(init?: Pick<ApiRequestInit, "signal">) {
+  return apiClient.get<ClientTrainer>("/api/auth/me/trainer", undefined, init);
 }
 
 /** Records the caller's own consent (self only: no user id). Returns the new consent state. */

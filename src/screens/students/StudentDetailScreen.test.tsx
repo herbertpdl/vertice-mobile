@@ -27,8 +27,8 @@ const plans = [
   { id: 1, name: "Hipertrofia II", description: "", trainerId: 1, clientId: 7, startDate: "2026-09-01", endDate: "2099-11-24", level: "INTERMEDIATE" },
 ];
 const feedback = [
-  { id: 1, workoutLogId: 1, workoutId: 1, trainingPlanId: 1, clientId: 7, text: "Joelho ok.", createdAt: "2026-10-01T10:00:00Z", clientName: "Marina Costa", workoutName: "Treino B — Inferior", trainingPlanName: "Hipertrofia II" },
-  { id: 2, workoutLogId: 2, workoutId: 1, trainingPlanId: 1, clientId: 99, text: "Outro aluno.", createdAt: "2026-10-01T10:00:00Z", clientName: "Rafael", workoutName: "Treino A", trainingPlanName: "Base" },
+  { id: 1, workoutLogId: 1, workoutId: 1, trainingPlanId: 1, clientId: 7, text: "Joelho ok.", createdAt: "2026-10-01T10:00:00Z", clientName: "Marina Costa", workoutName: "Treino B — Inferior", trainingPlanName: "Hipertrofia II" , rating: null, replaced: false},
+  { id: 2, workoutLogId: 2, workoutId: 1, trainingPlanId: 1, clientId: 99, text: "Outro aluno.", createdAt: "2026-10-01T10:00:00Z", clientName: "Rafael", workoutName: "Treino A", trainingPlanName: "Base" , rating: null, replaced: false},
 ];
 
 const routes = (extra: Record<string, unknown> = {}) => ({

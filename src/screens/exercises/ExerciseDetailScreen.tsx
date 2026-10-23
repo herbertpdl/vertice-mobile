@@ -4,6 +4,7 @@ import { EllipsisVertical, Lock, Pencil, Trash2 } from "lucide-react-native";
 import { useEffect, useState } from "react";
 import { StyleSheet, View } from "react-native";
 
+import { VideoSheet } from "@/components/domain";
 import { NavBar, Screen } from "@/components/layout";
 import {
   ActionSheet,
@@ -25,8 +26,7 @@ import { useIsOffline } from "@/lib/network";
 import { useExercise } from "@/lib/useCatalog";
 import { usePullToRefresh } from "@/lib/usePullToRefresh";
 import { useRedirectOnError } from "@/lib/useRedirectOnError";
-import { useOpenVideo } from "@/lib/useOpenVideo";
-import { videoThumbnailUrl } from "@/lib/video";
+import { videoThumbnailUrl, youtubeVideoId } from "@/lib/video";
 import { sizes, space } from "@/theme";
 
 /** Copy for a failed delete: a workout using it (409), not the trainer's (403), anything else. */
@@ -47,8 +47,7 @@ export function ExerciseDetailScreen() {
   const queryClient = useQueryClient();
   const toast = useToast();
   const offline = useIsOffline();
-  const [sheet, setSheet] = useState<"actions" | "delete" | null>(null);
-  const open = useOpenVideo();
+  const [sheet, setSheet] = useState<"actions" | "delete" | "video" | null>(null);
   const exercise = useExercise(id, { enabled: valid });
   const pull = usePullToRefresh(() => exercise.refetch());
   useRedirectOnError(exercise.error, "Exercício não encontrado.", "/exercicios");
@@ -111,7 +110,13 @@ export function ExerciseDetailScreen() {
   return (
     <>
       <Screen header={header} contentStyle={styles.content} refreshing={pull.refreshing} onRefresh={pull.onRefresh}>
-        {data.videoUrl === "" ? null : <VideoThumbnail imageUri={videoThumbnailUrl(data.videoUrl)} onPress={() => void open(data.videoUrl)} />}
+        {youtubeVideoId(data.videoUrl) === null ? null : (
+          <VideoThumbnail imageUri={videoThumbnailUrl(data.videoUrl)} onPress={() => setSheet("video")} />
+        )}
+        {own && data.videoUrl !== "" && youtubeVideoId(data.videoUrl) === null ? (
+          // A link saved before videos became YouTube-only (R62): hidden from clients until replaced.
+          <Banner tone="info" message="Este vídeo não é do YouTube e não aparece para seus alunos. Edite o exercício para trocar o link." />
+        ) : null}
         <View style={styles.identity}>
           <Text variant="headline" accessibilityRole="header">
             {data.name}
@@ -142,6 +147,12 @@ export function ExerciseDetailScreen() {
           { icon: Pencil, label: "Editar exercício", onPress: edit },
           { icon: Trash2, label: "Excluir exercício", danger: true, onPress: () => setSheet("delete") },
         ]}
+      />
+      <VideoSheet
+        visible={sheet === "video"}
+        onClose={() => setSheet(null)}
+        title={data.name}
+        videoUrl={data.videoUrl}
       />
       <ConfirmDialog
         visible={sheet === "delete"}
