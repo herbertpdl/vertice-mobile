@@ -42,8 +42,11 @@
     since the new native modules arrived.
   - Rollout order for #41: BFF #51 and API #75 in production before that app build ships.
 - Optional, from the decisions log: a `workoutCount` on the plan's workouts.
-- Outside this spec: Dependabot's grouped Expo PR (#38) fails to refresh on peer conflicts. Expo
-  packages go through `npx expo install --fix` instead.
+- Outside this spec: Dependabot's npm-minor-and-patch group PR (#38) fails CI.
+  - Its Expo-SDK-pinned packages (react/react-dom, react-native-reanimated, -screens,
+    -safe-area-context, -svg, -web) go through `npx expo install --fix`.
+  - The rest (@tanstack/react-query, zod, react-hook-form, lucide-react-native, @types/react) can be
+    bumped separately.
 
 **Per-PR loop:** the same as in the trainer spec's §0. Read the pen.dev nodes for the PR (values
 from `Get(id, {depth: 5})`, never from screenshots). Implement and test. Run every CI command
@@ -480,6 +483,9 @@ The feedback screen shipped with the session once B7 merged.
 3. **Mobile:** PRs 16–17 can merge any time. PR 18 onward waits for step 2, a `.bff-ref` bump and
    `npm run api:types`.
 4. **Web** (§2.4) after step 2, independent of mobile.
+5. **Follow-up (feedback `clientKey`):** vertice-api #75, then vertice-bff #51, deployed **before**
+   any mobile build that includes #41. An older BFF or API without the key would at best ignore it
+   (no idempotency). At worst it would refuse the request, and the outbox drops a 4xx write.
 
 **Rollback:**
 - Mobile: revert the PR. With no client build released, nothing depends on it.
