@@ -44,12 +44,13 @@ Other open PRs concern separate work (exercise catalog, dashboard-field removal 
 - The device checklists for PRs 18, 19 and 21 need a phone: rest notifications with the phone
   locked, the chime and the silent switch, airplane mode mid-workout, the YouTube player and the
   contact links.
-  - The iOS dev build compiles and runs on the simulator (`npm run ios`). Android hasn't been built
-    since the new native modules arrived.
+  - The iOS dev build compiles and runs on the simulator (`npm run ios`).
+- Android debug compilation now passes with the new native modules (arm64, JDK 17). No physical
+  Android device was attached; the phone checklists remain open.
 - Before shipping a build with #41: vertice-api #75 and vertice-bff #51 in production (§5, step 5).
 - Optional, from the decisions log: a `workoutCount` on the plan's workouts.
 - Outside this spec: Dependabot's npm-minor-and-patch group PR (#38) fails CI.
-  - #44 supersedes it with the four non-Expo updates; Expo-pinned dependencies stay unchanged.
+  - #44 merged with the four non-Expo updates; #38 is closed. Expo-pinned dependencies stay unchanged.
   - Its Expo-SDK-pinned packages (react/react-dom, @types/react, react-native-reanimated, -screens,
     -safe-area-context, -svg, -web) go through `npx expo install --fix`.
   - The rest (@tanstack/react-query, zod, react-hook-form, lucide-react-native) can be bumped
@@ -503,6 +504,8 @@ The feedback screen shipped with the session once B7 merged.
 
 | PR | Branch | GitHub | Status | Review |
 |---|---|---|---|---|
+| follow-up | `fix/android-rest-vibration` | [#45](https://github.com/herbertpdl/vertice-mobile/pull/45) | approved | native debug build and merged manifest verified; independent review corrected a stale Android-build handoff sentence, re-review approved; CI green before this log-only update |
+| follow-up | `chore/deps-minor-patch` | [#44](https://github.com/herbertpdl/vertice-mobile/pull/44) | merged | independent standards/spec review and handoff re-review approved; CI green |
 | 15 | `docs/client-workout-spec` | [#33](https://github.com/herbertpdl/vertice-mobile/pull/33) | merged | docs only; CI green |
 | 17 | `feat/client-shell` | [#35](https://github.com/herbertpdl/vertice-mobile/pull/35) | merged | 3 review rounds: 1 blocking (refresh without a plan) + 5 non-blocking (trainer routes guarded, routing test, copy, banner, profile fallback), all fixed; approved |
 | follow-up | `feat/ios-backup-exclusion` | [#42](https://github.com/herbertpdl/vertice-mobile/pull/42) | merged | 1 round, approved; checked on the iOS simulator (`xattr` shows the backup-exclude flag) |
@@ -514,6 +517,9 @@ The feedback screen shipped with the session once B7 merged.
 
 ## Decisions log
 
+- 2026-10-23 — Android's inherited permission blocklist removed `VIBRATE`, suppressing the
+  rest alert's `Haptics.notificationAsync` (R49). Remove that entry so expo-haptics can add its
+  required normal permission. This needs a native rebuild; no runtime permission prompt is added.
 - 2026-10-22 — Client routes live under `/aluno` with role-guarded `Stack.Protected` groups, not
   under the trainer's `(tabs)`. Two groups can't both own `/`, and keeping the trainer's URLs
   unchanged avoids touching every trainer test.
