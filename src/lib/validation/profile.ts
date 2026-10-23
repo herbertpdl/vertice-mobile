@@ -61,7 +61,7 @@ export function profileChanges(me: Me, values: ProfileInput): UpdateMeInput {
   if (me.role === "TRAINER") {
     const cref = values.cref.trim();
     if (cref !== me.cref) changes.cref = cref === "" ? null : cref;
-    const whatsapp = onlyDigits(values.whatsapp);
+    const whatsapp = onlyDigits(maskPhone(values.whatsapp));
     if (whatsapp !== me.whatsapp) changes.whatsapp = whatsapp === "" ? null : whatsapp;
     const instagram = values.instagram.trim().replace(/^@/, "");
     if (instagram !== me.instagram) changes.instagram = instagram === "" ? null : instagram;

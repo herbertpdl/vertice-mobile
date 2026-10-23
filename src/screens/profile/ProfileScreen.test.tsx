@@ -2,7 +2,7 @@ import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
 
 import type { Me } from "@/lib/api/types";
 import { bffError, mockBff, type BffMock } from "@/test/bff";
-import { renderScreen } from "@/test/render";
+import { renderScreen, testQueryClient } from "@/test/render";
 
 import { ProfileScreen } from "./ProfileScreen";
 
@@ -40,6 +40,12 @@ jest.mock("@/lib/legal", () => ({
 }));
 
 let bff: BffMock;
+
+async function renderProfile() {
+  const queryClient = testQueryClient();
+  await renderScreen(<ProfileScreen />, queryClient);
+  return { queryClient };
+}
 afterEach(() => bff?.restore());
 
 describe("ProfileScreen", () => {
@@ -149,6 +155,26 @@ describe("ProfileScreen", () => {
       await act(async () => {});
       expect(screen.queryByText("SEU TREINADOR")).toBeNull();
       expect(screen.getByRole("button", { name: "Alterar senha" })).toBeOnTheScreen();
+    } finally {
+      Object.assign(me, { role: "TRAINER", cref: "012345-G/SP" });
+    }
+  });
+
+  it("hides the card when the trainer ends the relationship after it loaded", async () => {
+    Object.assign(me, { role: "CLIENT", cref: "" });
+    try {
+      let linked = true;
+      bff = mockBff({
+        "GET /api/auth/me/trainer": () =>
+          linked ? Response.json({ name: "Rafael Lima", email: "", whatsapp: "", instagram: "" }) : bffError(404, "NOT_FOUND"),
+      });
+      const { queryClient } = await renderProfile();
+      await screen.findByText("Rafael Lima");
+      linked = false;
+      await act(async () => {
+        await queryClient.refetchQueries({ queryKey: ["me", "trainer"] });
+      });
+      await waitFor(() => expect(screen.queryByText("SEU TREINADOR")).toBeNull());
     } finally {
       Object.assign(me, { role: "TRAINER", cref: "012345-G/SP" });
     }

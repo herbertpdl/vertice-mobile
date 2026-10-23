@@ -70,6 +70,9 @@ describe("profileChanges", () => {
         showWhatsapp: true,
       }),
     ).toEqual({ whatsapp: "11987654321", instagram: "ana.treinos", showWhatsapp: true });
+    expect(profileChanges(trainer, { ...profileDefaults(trainer), whatsapp: "+55 (11) 98765-4321" })).toEqual({
+      whatsapp: "11987654321",
+    });
     const stored: Me = { ...trainer, whatsapp: "11987654321", instagram: "ana.treinos" };
     expect(profileChanges(stored, { ...profileDefaults(stored), whatsapp: "", instagram: "@" })).toEqual({
       whatsapp: null,

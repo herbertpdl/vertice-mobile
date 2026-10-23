@@ -9,6 +9,7 @@ import { EditProfileSheet, TrainerContactCard } from "@/components/domain";
 import { Screen } from "@/components/layout";
 import { Avatar, ErrorState, ListRow, Skeleton, StatusBanner, Text, useToast } from "@/components/ui";
 import { exportMyData, fetchMyTrainer, myTrainerQueryKey } from "@/lib/api/auth";
+import { ApiError } from "@/lib/api/client";
 import { apiErrorMessage } from "@/lib/api/errorMessages";
 import { rateLimitedMessage } from "@/lib/api/rateLimit";
 import { useAuth, useMe } from "@/lib/auth";
@@ -47,6 +48,8 @@ export function ProfileScreen() {
     queryFn: ({ signal }) => fetchMyTrainer({ signal }),
     enabled: isClient,
   });
+  // A 404 on a refetch (the trainer ended the relationship) hides the card the cache still holds.
+  const hasTrainer = trainer.data !== undefined && !(trainer.error instanceof ApiError && trainer.error.status === 404);
   const pull = usePullToRefresh(() => Promise.all([me.refetch(), ...(isClient ? [trainer.refetch()] : [])]));
 
   const exportData = useMutation({
@@ -108,7 +111,7 @@ export function ProfileScreen() {
       )}
 
       {/* No trainer (a 404) or not loaded: the card is simply not there; it isn't the screen's subject. */}
-      {isClient && trainer.data !== undefined ? (
+      {isClient && hasTrainer && trainer.data !== undefined ? (
         <View style={styles.group}>
           <Text variant="overline" color="textSecondary" accessibilityRole="header">
             SEU TREINADOR
