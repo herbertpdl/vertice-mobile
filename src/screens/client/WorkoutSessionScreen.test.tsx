@@ -255,6 +255,55 @@ describe("WorkoutSessionScreen", () => {
     ]);
   });
 
+  it("doesn't replay a write that failed after a newer one for the set was queued", async () => {
+    let failFirst: (() => void) | undefined;
+    let posts = 0;
+    const one = session([{ id: 1, order: 1, name: "Remada", sets: [set(11, 1)] }]);
+    bff = mockBff({
+      "GET /api/workouts/12/session": one,
+      "POST /api/workout-sessions/500/sets": () =>
+        posts++ === 0
+          ? new Promise<Response>((resolve) => (failFirst = () => resolve(bffError(500, "INTERNAL"))))
+          : Response.json(setLog(11, "60")),
+      "POST /api/workout-sessions/500/complete": { ...one.workoutLog, status: "COMPLETED", completionKind: "CLIENT", completedAt: "2026-10-21T11:00:00Z" },
+    });
+    await renderScreen(<WorkoutSessionScreen />);
+    await fireEvent.changeText(await screen.findByLabelText("Carga da série 1, em quilos"), "50");
+    await fireEvent.press(screen.getByRole("checkbox", { name: "Série 1 feita" }));
+    await fireEvent.changeText(screen.getByLabelText("Carga da série 1, em quilos"), "60");
+    // Finishing queues the 60 kg write behind the 50 kg one still in flight; then that one fails.
+    await fireEvent.press(screen.getByRole("button", { name: "Finalizar treino" }));
+    await act(async () => failFirst?.());
+    await waitFor(() => expect(bff.calls.at(-1)?.route).toBe("POST /api/workout-sessions/500/complete"));
+    expect(bff.calls.filter((c) => c.route === "POST /api/workout-sessions/500/sets").map((c) => (c.body as { weight: string }).weight)).toEqual([
+      "50",
+      "60",
+    ]);
+  });
+
+  it("doesn't re-record a set the client unticked after its save failed in flight", async () => {
+    let failTick: (() => void) | undefined;
+    const resumed = workout();
+    bff = mockBff({
+      "GET /api/workouts/12/session": resumed,
+      "POST /api/workout-sessions/500/sets": () => new Promise<Response>((resolve) => (failTick = () => resolve(bffError(500, "INTERNAL")))),
+      "DELETE /api/workout-sessions/500/sets/11": new Response(null, { status: 204 }),
+      "POST /api/workout-sessions/500/complete": { ...resumed.workoutLog, status: "COMPLETED", completionKind: "CLIENT", completedAt: "2026-10-21T11:00:00Z" },
+    });
+    jest.replaceProperty(Platform, "OS", "android");
+    await renderScreen(<WorkoutSessionScreen />);
+    const tick = await screen.findByRole("checkbox", { name: "Série 1 feita" });
+    await fireEvent.press(tick);
+    await fireEvent.press(tick);
+    await act(async () => failTick?.());
+    await waitFor(() => expect(bff.calls.some((c) => c.route === "DELETE /api/workout-sessions/500/sets/11")).toBe(true));
+    await fireEvent.press(screen.getByRole("button", { name: "Ver todos" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Finalizar treino" }));
+    await fireEvent.press(await screen.findByRole("button", { name: "Finalizar mesmo assim" }));
+    await waitFor(() => expect(bff.calls.at(-1)?.route).toBe("POST /api/workout-sessions/500/complete"));
+    expect(bff.calls.filter((c) => c.route === "POST /api/workout-sessions/500/sets")).toHaveLength(1);
+  });
+
   it("keeps an untick and a quick re-tick of the same set in order", async () => {
     let landDelete: (() => void) | undefined;
     const resumed = workout();

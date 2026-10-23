@@ -241,11 +241,16 @@ function SessionView({ snapshot }: { snapshot: WorkoutSession }) {
   /** Set once the session is finished or discarded: nothing is sent for it after that. */
   const ended = useRef(false);
 
-  /** Each set's last write that failed, to send again before finishing (a finished log takes no more). */
+  /** Each set's newest write, if it failed: sent again before finishing (a finished log takes no more). */
   const failed = useRef<Record<number, () => Promise<unknown>>>({});
+  /** Each set's newest write: only it may record or clear the set's failure. */
+  const latest = useRef<Record<number, number>>({});
 
   function save(setId: number, request: () => Promise<unknown>) {
-    // Each write carries the set's whole state, so a newly queued one supersedes an earlier failure.
+    // Each write carries the set's whole state, so a newly queued one supersedes an earlier failure,
+    // including one from a write still in flight.
+    const mine = (latest.current[setId] ?? 0) + 1;
+    latest.current = { ...latest.current, [setId]: mine };
     const { [setId]: _superseded, ...others } = failed.current;
     failed.current = others;
     const run = (writes.current[setId] ?? Promise.resolve()).then(request);
@@ -255,7 +260,7 @@ function SessionView({ snapshot }: { snapshot: WorkoutSession }) {
         void queryClient.invalidateQueries({ queryKey: workoutLogsQueryPrefix });
       })
       .catch((error: unknown) => {
-        failed.current = { ...failed.current, [setId]: request };
+        if (latest.current[setId] === mine) failed.current = { ...failed.current, [setId]: request };
         toast.show(apiErrorMessage(error, "Não foi possível salvar. Verifique a conexão e tente de novo."), "error");
       });
   }
