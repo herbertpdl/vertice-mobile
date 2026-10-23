@@ -40,13 +40,13 @@
   contact links.
   - The iOS dev build compiles and runs on the simulator (`npm run ios`). Android hasn't been built
     since the new native modules arrived.
-  - Rollout order for #41: BFF #51 and API #75 in production before that app build ships.
+- Before shipping a build with #41: vertice-api #75 and vertice-bff #51 in production (§5, step 5).
 - Optional, from the decisions log: a `workoutCount` on the plan's workouts.
 - Outside this spec: Dependabot's npm-minor-and-patch group PR (#38) fails CI.
-  - Its Expo-SDK-pinned packages (react/react-dom, react-native-reanimated, -screens,
+  - Its Expo-SDK-pinned packages (react/react-dom, @types/react, react-native-reanimated, -screens,
     -safe-area-context, -svg, -web) go through `npx expo install --fix`.
-  - The rest (@tanstack/react-query, zod, react-hook-form, lucide-react-native, @types/react) can be
-    bumped separately.
+  - The rest (@tanstack/react-query, zod, react-hook-form, lucide-react-native) can be bumped
+    separately.
 
 **Per-PR loop:** the same as in the trainer spec's §0. Read the pen.dev nodes for the PR (values
 from `Get(id, {depth: 5})`, never from screenshots). Implement and test. Run every CI command
