@@ -31,6 +31,8 @@ export type { SaveBarProps } from "./SaveBar";
 export { SetHeader, SetRow } from "./SetRow";
 export type { SetRowProps } from "./SetRow";
 export { StudentCard } from "./StudentCard";
+export { TrainerContactCard, trainerContacts } from "./TrainerContactCard";
+export type { TrainerContactCardProps } from "./TrainerContactCard";
 export { embedUrl, isAllowedNavigation, VideoSheet } from "./VideoSheet";
 export type { VideoSheetProps } from "./VideoSheet";
 export { CHART_WEEKS, recentWeeks, WeightChart } from "./WeightChart";

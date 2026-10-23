@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
 
 import type { Me } from "@/lib/api/types";
 import { bffError, mockBff, type BffMock } from "@/test/bff";
@@ -86,6 +86,24 @@ describe("ProfileScreen", () => {
     expect(bff.calls.find((c) => c.route === "PATCH /api/auth/me")?.body).toEqual({ cpf: "52998224725", cref: null });
   });
 
+  it("lets a trainer choose which contacts their clients see (R77, R78)", async () => {
+    bff = mockBff({ "PATCH /api/auth/me": ({ body }) => Response.json({ ...me, ...(body as object) }) });
+    await renderScreen(<ProfileScreen />);
+    await fireEvent.press(screen.getByRole("button", { name: "Editar perfil" }));
+    expect(screen.getByRole("header", { name: "Contato para alunos" })).toBeOnTheScreen();
+    await fireEvent.changeText(screen.getByLabelText("WhatsApp"), "11987654321");
+    expect(screen.getByLabelText("WhatsApp")).toHaveDisplayValue("(11) 98765-4321");
+    await fireEvent.changeText(screen.getByLabelText("Instagram"), "@ana.treinos");
+    await fireEvent(screen.getByRole("switch", { name: "Mostrar WhatsApp aos alunos" }), "valueChange", true);
+    await fireEvent.press(screen.getByRole("button", { name: "Salvar" }));
+    expect(await screen.findByText("Perfil atualizado.")).toBeOnTheScreen();
+    expect(bff.calls.find((c) => c.route === "PATCH /api/auth/me")?.body).toEqual({
+      whatsapp: "11987654321",
+      instagram: "ana.treinos",
+      showWhatsapp: true,
+    });
+  });
+
   it("keeps the sheet open with the copy on a taken e-mail", async () => {
     bff = mockBff({ "PATCH /api/auth/me": bffError(409, "CONFLICT") });
     await renderScreen(<ProfileScreen />);
@@ -98,11 +116,48 @@ describe("ProfileScreen", () => {
   it("has no profile editing for a client (their account comes from their trainer)", async () => {
     Object.assign(me, { role: "CLIENT", cref: "" });
     try {
+      bff = mockBff({ "GET /api/auth/me/trainer": { name: "Rafael Lima", email: "", whatsapp: "", instagram: "" } });
       await renderScreen(<ProfileScreen />);
+      await screen.findByText("Rafael Lima");
       expect(screen.queryByRole("button", { name: "Editar perfil" })).toBeNull();
       expect(screen.getByRole("button", { name: "Alterar senha" })).toBeOnTheScreen();
     } finally {
       Object.assign(me, { role: "TRAINER", cref: "012345-G/SP" });
     }
+  });
+
+  it("shows a client their trainer with the contacts the trainer shows (R74–R76)", async () => {
+    Object.assign(me, { role: "CLIENT", cref: "" });
+    try {
+      bff = mockBff({ "GET /api/auth/me/trainer": { name: "Rafael Lima", email: "", whatsapp: "11987654321", instagram: "rafael.treina" } });
+      await renderScreen(<ProfileScreen />);
+      expect(await screen.findByText("Rafael Lima")).toBeOnTheScreen();
+      expect(screen.getByRole("header", { name: "SEU TREINADOR" })).toBeOnTheScreen();
+      expect(screen.getByRole("link", { name: "WhatsApp · (11) 98765-4321" })).toBeOnTheScreen();
+      expect(screen.getByRole("link", { name: "@rafael.treina" })).toBeOnTheScreen();
+    } finally {
+      Object.assign(me, { role: "TRAINER", cref: "012345-G/SP" });
+    }
+  });
+
+  it("leaves the trainer card out when the client has no active trainer", async () => {
+    Object.assign(me, { role: "CLIENT", cref: "" });
+    try {
+      bff = mockBff({ "GET /api/auth/me/trainer": bffError(404, "NOT_FOUND") });
+      await renderScreen(<ProfileScreen />);
+      await waitFor(() => expect(bff.calls.some((c) => c.route === "GET /api/auth/me/trainer")).toBe(true));
+      await act(async () => {});
+      expect(screen.queryByText("SEU TREINADOR")).toBeNull();
+      expect(screen.getByRole("button", { name: "Alterar senha" })).toBeOnTheScreen();
+    } finally {
+      Object.assign(me, { role: "TRAINER", cref: "012345-G/SP" });
+    }
+  });
+
+  it("never asks a trainer for their own trainer", async () => {
+    bff = mockBff({});
+    await renderScreen(<ProfileScreen />);
+    await act(async () => {});
+    expect(bff.calls.some((c) => c.route === "GET /api/auth/me/trainer")).toBe(false);
   });
 });

@@ -1,14 +1,14 @@
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import Constants from "expo-constants";
 import { router } from "expo-router";
 import { Download, FileText, KeyRound, LogOut, ShieldCheck, Trash2, UserPen } from "lucide-react-native";
 import { useState } from "react";
 import { StyleSheet, View } from "react-native";
 
-import { EditProfileSheet } from "@/components/domain";
+import { EditProfileSheet, TrainerContactCard } from "@/components/domain";
 import { Screen } from "@/components/layout";
 import { Avatar, ErrorState, ListRow, Skeleton, StatusBanner, Text, useToast } from "@/components/ui";
-import { exportMyData } from "@/lib/api/auth";
+import { exportMyData, fetchMyTrainer, myTrainerQueryKey } from "@/lib/api/auth";
 import { apiErrorMessage } from "@/lib/api/errorMessages";
 import { rateLimitedMessage } from "@/lib/api/rateLimit";
 import { useAuth, useMe } from "@/lib/auth";
@@ -28,7 +28,8 @@ export function exportErrorMessage(error: unknown): string {
 }
 
 /**
- * M - Perfil / A - Perfil: who is signed in (avatar, name, e-mail, CREF), Conta (Editar perfil,
+ * M - Perfil / A - Perfil: who is signed in (avatar, name, e-mail, CREF), a client's "Seu
+ * treinador" card (R74–R76; left out when they have no active trainer), Conta (Editar perfil,
  * Alterar senha), Privacidade (Termos, Política, Exportar meus dados), Sair and Excluir conta, and
  * the app version. A client's has no "Editar perfil" (PRD R73: their account is set up by their
  * trainer).
@@ -40,7 +41,13 @@ export function ProfileScreen() {
   const offline = useIsOffline();
   const [editing, setEditing] = useState(false);
   const [sheetKey, setSheetKey] = useState(0);
-  const pull = usePullToRefresh(() => me.refetch());
+  const isClient = me.data?.role === "CLIENT";
+  const trainer = useQuery({
+    queryKey: myTrainerQueryKey,
+    queryFn: ({ signal }) => fetchMyTrainer({ signal }),
+    enabled: isClient,
+  });
+  const pull = usePullToRefresh(() => Promise.all([me.refetch(), ...(isClient ? [trainer.refetch()] : [])]));
 
   const exportData = useMutation({
     mutationFn: async () => shareExport(await exportMyData()),
@@ -99,6 +106,16 @@ export function ProfileScreen() {
           </View>
         </View>
       )}
+
+      {/* No trainer (a 404) or not loaded: the card is simply not there; it isn't the screen's subject. */}
+      {isClient && trainer.data !== undefined ? (
+        <View style={styles.group}>
+          <Text variant="overline" color="textSecondary" accessibilityRole="header">
+            SEU TREINADOR
+          </Text>
+          <TrainerContactCard trainer={trainer.data} />
+        </View>
+      ) : null}
 
       <Group title="CONTA">
         {data?.role === "CLIENT" ? null : (

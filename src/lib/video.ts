@@ -1,9 +1,7 @@
-import * as WebBrowser from "expo-web-browser";
-
 /**
- * Exercise videos are any http(s) link (`Exercise.videoUrl`, `""` when none — the BFF only accepts
- * http/https, like the web's `videoUrl` schema). Mobile v1 opens them externally and shows a
- * thumbnail when the link is a YouTube video, whose still images are public at a predictable URL.
+ * Exercise videos are YouTube links (`Exercise.videoUrl`, `""` when none; YouTube-only since R61,
+ * older rows may hold another link). They play in the app's embedded player (`VideoSheet`), with a
+ * thumbnail from YouTube's public stills.
  */
 
 const YOUTUBE_ID = /^[\w-]{11}$/;
@@ -35,28 +33,4 @@ export function youtubeVideoId(url: string): string | null {
 export function videoThumbnailUrl(videoUrl: string): string | null {
   const id = youtubeVideoId(videoUrl);
   return id === null ? null : `https://img.youtube.com/vi/${id}/hqdefault.jpg`;
-}
-
-/**
- * Opens an exercise video in the in-app browser; anything but http(s) is ignored (a shared
- * catalog). False when it couldn't open (a browser already presented, no browser on Android).
- */
-export async function openVideo(videoUrl: string): Promise<boolean> {
-  if (!isOpenableVideoUrl(videoUrl)) return false;
-  try {
-    await WebBrowser.openBrowserAsync(videoUrl);
-    return true;
-  } catch {
-    return false;
-  }
-}
-
-/** Whether a stored `videoUrl` is something the app may open (http/https only). */
-export function isOpenableVideoUrl(videoUrl: string): boolean {
-  try {
-    const { protocol } = new URL(videoUrl);
-    return protocol === "https:" || protocol === "http:";
-  } catch {
-    return false;
-  }
 }

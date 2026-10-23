@@ -107,6 +107,8 @@ export const sizes = {
   skeletonCardGap: 14,
   /** M Student Card padding; M Link Box padding (4 around, 14 before the glyph). */
   studentCardPadding: 14,
+  /** A - Perfil's trainer card head: 14 top/bottom, 16 sides. */
+  trainerCardPaddingVertical: 14,
   linkBoxPaddingLeft: 14,
   /** Gap between a detail header's name and e-mail (M - Detalhe do Aluno). */
   identityLinesGap: 5,

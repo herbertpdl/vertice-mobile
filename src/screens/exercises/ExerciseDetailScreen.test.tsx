@@ -15,7 +15,6 @@ jest.mock("expo-router", () => ({
   },
   useLocalSearchParams: () => mockParams,
 }));
-jest.mock("expo-web-browser", () => ({ openBrowserAsync: jest.fn() }));
 
 const own: Exercise = {
   id: 4,
@@ -42,9 +41,17 @@ describe("ExerciseDetailScreen", () => {
   it("shows the trainer's own exercise with its video, and edits it", async () => {
     await open(own);
     expect(screen.getByText("Coluna neutra.")).toBeOnTheScreen();
-    expect(screen.getByRole("link", { name: "Abrir vídeo" })).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole("link", { name: "Abrir vídeo" }));
+    expect(screen.getByTestId("webview")).toBeOnTheScreen();
+    await fireEvent.press(screen.getAllByRole("button", { name: "Fechar" }).at(-1)!);
     await fireEvent.press(screen.getByRole("button", { name: "Editar exercício" }));
     expect(mockRouter.push).toHaveBeenCalledWith("/exercicios/4/editar");
+  });
+
+  it("tells the trainer a link from before YouTube-only is hidden from clients (R62)", async () => {
+    await open({ ...own, videoUrl: "https://vimeo.com/824512" });
+    expect(screen.queryByRole("link", { name: "Abrir vídeo" })).toBeNull();
+    expect(screen.getByText(/Este vídeo não é do YouTube e não aparece para seus alunos/)).toBeOnTheScreen();
   });
 
   it("is read-only for a starter exercise", async () => {

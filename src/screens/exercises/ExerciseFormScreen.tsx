@@ -1,10 +1,11 @@
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { StyleSheet, View } from "react-native";
 
+import { VideoSheet } from "@/components/domain";
 import { FormTextField } from "@/components/form";
 import { NavBar, Screen } from "@/components/layout";
 import { Banner, Button, ErrorState, MultiSelectField, Skeleton, StatusBanner, TextArea, useToast, VideoThumbnail } from "@/components/ui";
@@ -17,10 +18,9 @@ import { useIsOffline } from "@/lib/network";
 import { useExercise, useMuscleGroups } from "@/lib/useCatalog";
 import { useRedirectOnError } from "@/lib/useRedirectOnError";
 import { useSingleFlight } from "@/lib/useSingleFlight";
-import { DESCRIPTION_MAX, HTTP_URL_PATTERN, NAME_MAX, VIDEO_URL_MAX } from "@/lib/validation/bounds";
+import { DESCRIPTION_MAX, NAME_MAX, VIDEO_URL_MAX } from "@/lib/validation/bounds";
 import { exerciseSchema, type ExerciseFormInput } from "@/lib/validation/exercises";
-import { useOpenVideo } from "@/lib/useOpenVideo";
-import { videoThumbnailUrl } from "@/lib/video";
+import { videoThumbnailUrl, youtubeVideoId } from "@/lib/video";
 import { sizes, space } from "@/theme";
 
 /** Copy for a failed save, keyed on the code (the BFF's message is English and never shown). */
@@ -97,7 +97,7 @@ function ExerciseForm({
 }) {
   const queryClient = useQueryClient();
   const toast = useToast();
-  const open = useOpenVideo();
+  const [watching, setWatching] = useState(false);
   const {
     control,
     handleSubmit,
@@ -146,7 +146,7 @@ function ExerciseForm({
   });
   const busy = isSubmitting || save.isPending;
   const submit = useSingleFlight(handleSubmit((values) => save.mutateAsync(values).catch(() => {})));
-  const preview = HTTP_URL_PATTERN.test(videoUrl);
+  const preview = youtubeVideoId(videoUrl) !== null;
 
   return (
     <Screen
@@ -196,13 +196,18 @@ function ExerciseForm({
         name="videoUrl"
         label="URL do vídeo (opcional)"
         placeholder="https://"
-        help="Cole um link do YouTube ou Vimeo."
+        help="Cole um link do YouTube."
         keyboardType="url"
         autoCapitalize="none"
         autoCorrect={false}
         maxLength={VIDEO_URL_MAX}
       />
-      {preview ? <VideoThumbnail imageUri={videoThumbnailUrl(videoUrl)} onPress={() => void open(videoUrl)} /> : null}
+      {preview ? (
+        <>
+          <VideoThumbnail imageUri={videoThumbnailUrl(videoUrl)} onPress={() => setWatching(true)} />
+          <VideoSheet visible={watching} onClose={() => setWatching(false)} title="Vídeo do exercício" videoUrl={videoUrl} />
+        </>
+      ) : null}
     </Screen>
   );
 }
