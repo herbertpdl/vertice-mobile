@@ -20,11 +20,11 @@
 
 ## 0. Handoff — start here
 
-**State (2026-10-22):** PRs 15 (spec), 16 (kit) and 17 (shell: routing, Início, Planos, Perfil)
-are merged. A CLIENT session now gets the client app at `/aluno`; "Começar treino" opens a
-placeholder. **Next: the backend in §2** — vertice-api A1–A4 (session lifecycle + feedback rating,
-branch `feat/workout-session-lifecycle` in vertice-api), then A5–A7, then vertice-bff B1–B10, then
-bump `.bff-ref` here — which unblocks PRs 18–21.
+**State (2026-10-23):** PRs 15–17 are merged on mobile; the backend is merged: vertice-api #73
+(session lifecycle, rating) and #74 (trainer contacts, YouTube-only videos), and vertice-bff #50
+(B1–B10). PR 18 (session + feedback) is in review on `feat/client-workout`. **Next:** PR 19
+(offline outbox), then PR 21 (trainer side + the client's trainer card), then vertice-web-react's
+§2.4 items.
 
 **Per-PR loop:** the same as in the trainer spec's §0. Read the pen.dev nodes for the PR (values
 from `Get(id, {depth: 5})`, never from screenshots). Implement and test. Run every CI command
@@ -393,17 +393,27 @@ PRs are stacked as in the trainer spec. Every PR keeps all CI commands green (`t
 - [x] "Começar treino" opens `/aluno/treino/[workoutId]`, a placeholder until PR 18
 - [x] `Button` variant `ghostDanger` (A - Início's "Descartar treino", wired in PR 18)
 
-### PR 18 — `feat/client-workout`: the session (needs B1–B6 merged and `.bff-ref` bumped)
-- [ ] `src/lib/api/workoutSessions.ts`; engine (§3.3) with unit tests for every rule it covers
-  (R35–R48, R52–R54)
-- [ ] `WorkoutPickerSheet`, `WorkoutSessionScreen` (all frames), `ExerciseListSheet`, ⋮ actions,
-  the four dialogs, restart, switch and discard flows (§3.8)
-- [ ] Rest timer, holds, `expo-notifications`, `expo-haptics`, `expo-audio` (§3.5); `app.json`
-  plugin entries; a native rebuild noted in the PR
-- [ ] `VideoSheet` (`react-native-webview`), `ProgressSheet`
-- [ ] In-progress state on Início
+### PR 18 — `feat/client-workout`: the session and feedback (B1–B7 merged, `.bff-ref` at vertice-bff `acb90ab`)
+- [x] `src/lib/api/workoutSessions.ts` (session, restart, record/untick, complete, discard) and
+  `submitFeedback`; the generated contract adopted (`WorkoutLog.status`/`completionKind`, per-set
+  `current`, `FeedbackRating`, `ClientTrainer`)
+- [x] Engine (`src/lib/workoutSession/engine.ts`, §3.3) with unit tests: weights (API decimals
+  ↔ pt-BR field), initial weight (R35, R36), tick/rest/untick/goTo/next/holds (R38–R54),
+  selectors
+- [x] `WorkoutSessionScreen` (all frames): "Ver todos" (`ExerciseListSheet`), ⋮ → Trocar /
+  Descartar, the four dialogs, redo of a finished workout, switching (discards the current
+  session), finish → feedback (skipped for an automatic finish), Início's "Descartar treino"
+- [x] Rest timer and holds from end timestamps; `expo-notifications` local notification,
+  `expo-haptics` and `expo-audio` (`assets/sounds/rest-done.wav`, generated here, no
+  third-party license) (§3.5); `app.json` plugins; `ConfirmDialog` gets `confirmVariant` and the
+  `info` tone
+- [x] `VideoSheet` (`react-native-webview`, youtube-nocookie embed, navigation locked) and
+  `ProgressSheet`
+- [x] `WorkoutFeedbackScreen` (`/aluno/treino/feedback/[logId]`): rating required, optional
+  text, "Pular" (PR 20 folded in, now that B7 is merged)
 - [ ] Device checklist: rest notification with the phone locked (iOS + Android), permission
-  denied, silent switch, music keeps playing, a 10-minute background then reopening
+  denied, silent switch, music keeps playing, a 10-minute background then reopening. **Needs a
+  native rebuild** (`npm run ios` / `npm run android`): new native modules.
 
 ### PR 19 — `feat/client-offline`: persistence and outbox (§3.4)
 - [ ] `expo-sqlite` kv-store; `session:` and `outbox:` keyed by user; clearing on sign-out,
@@ -415,10 +425,8 @@ PRs are stacked as in the trainer spec. Every PR keeps all CI commands green (`t
   order; a 400 for a deleted set is dropped; a 401 keeps the outbox
 - [ ] Device checklist: airplane mode mid-workout → finish → feedback → reconnect
 
-### PR 20 — `feat/client-feedback` (needs B7)
-- [ ] `WorkoutFeedbackScreen` (`Z5VFj8`, `Q9F3s`): rating required, text optional with a counter,
-  "Pular", no back gesture; submitted through the outbox
-- [ ] Rating labels keyed by the generated enum
+### PR 20 — folded into PR 18
+The feedback screen shipped with the session once B7 merged.
 
 ### PR 21 — `feat/trainer-client-facing` (needs B7–B10)
 - [ ] `FeedbackRow` rating chip, "Sem comentário", "Sessão substituída" (`goaCq`) on Início,
@@ -511,3 +519,9 @@ PRs are stacked as in the trainer spec. Every PR keeps all CI commands green (`t
 - 2026-10-22 — The client's screens can't be checked on react-native-web after sign-in:
   `expo-secure-store` has no web implementation, so login fails there. The kit gallery is the web
   check; the screens are covered by tests and by the device checklists.
+- 2026-10-23 — Until PR 19's outbox, the session's writes go straight to the BFF. The screen
+  keeps the client's ticks and weights locally even when a call fails, and a failure only shows a
+  toast. A weight edit on a ticked set is re-recorded after 800 ms.
+- 2026-10-23 — The weekly rollover closes a session the client left open. When the client then
+  finishes it, `CompleteWorkoutLog` returns it with `completionKind: "AUTO"` (it's idempotent),
+  and the app goes home without the feedback step (R27).

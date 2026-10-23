@@ -53,6 +53,7 @@ const cases: [string, string][] = [
   ["/aluno/planos/3", "(app)/aluno/planos/[id]"],
   ["/aluno/treinos/5", "(app)/aluno/treinos/[id]"],
   ["/aluno/treino/5", "(app)/aluno/treino/[workoutId]"],
+  ["/aluno/treino/feedback/9", "(app)/aluno/treino/feedback/[logId]"],
   ["/login", "login"],
   ["/cadastro", "cadastro"],
 ];

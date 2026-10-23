@@ -8,6 +8,11 @@ const trainer: Me = {
   cpf: "***.***.***-25",
   cref: "012345-G/SP",
   role: "TRAINER",
+  whatsapp: "",
+  instagram: "",
+  showEmail: false,
+  showWhatsapp: false,
+  showInstagram: false,
   consent: { termsVersion: null, termsAcceptedAt: null, healthDataVersion: null, healthDataConsentAt: null },
 };
 

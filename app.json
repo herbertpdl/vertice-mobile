@@ -81,7 +81,20 @@
       "expo-secure-store",
       "expo-web-browser",
       "expo-sharing",
-      "@sentry/react-native"
+      "@sentry/react-native",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#00E5FF"
+        }
+      ],
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true,
