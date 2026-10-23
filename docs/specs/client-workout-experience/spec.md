@@ -504,7 +504,7 @@ The feedback screen shipped with the session once B7 merged.
 
 | PR | Branch | GitHub | Status | Review |
 |---|---|---|---|---|
-| follow-up | `fix/android-rest-vibration` | [#45](https://github.com/herbertpdl/vertice-mobile/pull/45) | open | restores the permission required by R49; review corrected a stale Android-build handoff sentence; CI in progress |
+| follow-up | `fix/android-rest-vibration` | [#45](https://github.com/herbertpdl/vertice-mobile/pull/45) | approved | native debug build and merged manifest verified; independent review corrected a stale Android-build handoff sentence, re-review approved; CI green before this log-only update |
 | follow-up | `chore/deps-minor-patch` | [#44](https://github.com/herbertpdl/vertice-mobile/pull/44) | merged | independent standards/spec review and handoff re-review approved; CI green |
 | 15 | `docs/client-workout-spec` | [#33](https://github.com/herbertpdl/vertice-mobile/pull/33) | merged | docs only; CI green |
 | 17 | `feat/client-shell` | [#35](https://github.com/herbertpdl/vertice-mobile/pull/35) | merged | 3 review rounds: 1 blocking (refresh without a plan) + 5 non-blocking (trainer routes guarded, routing test, copy, banner, profile fallback), all fixed; approved |
