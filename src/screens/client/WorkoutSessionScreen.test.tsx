@@ -234,6 +234,27 @@ describe("WorkoutSessionScreen", () => {
     expect(bff.calls.filter((c) => c.route === "POST /api/workout-sessions/500/sets")).toHaveLength(3);
   });
 
+  it("re-sends a failed set's newest weight before finishing, never the old one", async () => {
+    let failures = 1;
+    const one = session([{ id: 1, order: 1, name: "Remada", sets: [set(11, 1)] }]);
+    bff = mockBff({
+      "GET /api/workouts/12/session": one,
+      "POST /api/workout-sessions/500/sets": () => (failures-- > 0 ? bffError(500, "INTERNAL") : Response.json(setLog(11, "60"))),
+      "POST /api/workout-sessions/500/complete": { ...one.workoutLog, status: "COMPLETED", completionKind: "CLIENT", completedAt: "2026-10-21T11:00:00Z" },
+    });
+    await renderScreen(<WorkoutSessionScreen />);
+    await fireEvent.changeText(await screen.findByLabelText("Carga da série 1, em quilos"), "50");
+    await fireEvent.press(screen.getByRole("checkbox", { name: "Série 1 feita" }));
+    await screen.findByText(/Não foi possível salvar/);
+    await fireEvent.changeText(screen.getByLabelText("Carga da série 1, em quilos"), "60");
+    await fireEvent.press(screen.getByRole("button", { name: "Finalizar treino" }));
+    await waitFor(() => expect(bff.calls.at(-1)?.route).toBe("POST /api/workout-sessions/500/complete"));
+    expect(bff.calls.filter((c) => c.route === "POST /api/workout-sessions/500/sets").map((c) => (c.body as { weight: string }).weight)).toEqual([
+      "50",
+      "60",
+    ]);
+  });
+
   it("keeps an untick and a quick re-tick of the same set in order", async () => {
     let landDelete: (() => void) | undefined;
     const resumed = workout();

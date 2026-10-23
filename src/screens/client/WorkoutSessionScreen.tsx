@@ -245,13 +245,13 @@ function SessionView({ snapshot }: { snapshot: WorkoutSession }) {
   const failed = useRef<Record<number, () => Promise<unknown>>>({});
 
   function save(setId: number, request: () => Promise<unknown>) {
+    // Each write carries the set's whole state, so a newly queued one supersedes an earlier failure.
+    const { [setId]: _superseded, ...others } = failed.current;
+    failed.current = others;
     const run = (writes.current[setId] ?? Promise.resolve()).then(request);
     writes.current = { ...writes.current, [setId]: run.then(() => undefined, () => undefined) };
     run
       .then(() => {
-        // A later write for the set supersedes an earlier failure.
-        const { [setId]: _done, ...rest } = failed.current;
-        failed.current = rest;
         void queryClient.invalidateQueries({ queryKey: workoutLogsQueryPrefix });
       })
       .catch((error: unknown) => {
