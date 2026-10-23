@@ -44,6 +44,7 @@
     },
     "android": {
       "package": "com.vertice.mobile",
+      "allowBackup": false,
       "adaptiveIcon": {
         "backgroundColor": "#0A0E14",
         "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -94,7 +95,8 @@
           "color": "#00E5FF"
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "expo-sqlite"
     ],
     "experiments": {
       "typedRoutes": true,

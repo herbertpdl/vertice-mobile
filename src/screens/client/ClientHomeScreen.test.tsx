@@ -1,7 +1,10 @@
+import { onlineManager } from "@tanstack/react-query";
 import { act, fireEvent, screen } from "@testing-library/react-native";
+import { Platform } from "react-native";
 
 import { mockBff, type BffMock } from "@/test/bff";
 import { renderScreen } from "@/test/render";
+import { clearWorkoutData, openOutbox, pendingOperations } from "@/lib/workoutSession/outbox";
 
 import { ClientHomeScreen, workoutSummary } from "./ClientHomeScreen";
 import { full, log, plan, planDetail, workout } from "./fixtures";
@@ -42,6 +45,9 @@ function routes(workouts = [monday, wednesday, friday], logs = [log(11, "2026-10
 }
 
 let bff: BffMock;
+// The client app's layout opens the signed-in client's outbox (§3.4); the screens are tested without it.
+beforeEach(() => openOutbox(7, () => {}));
+afterEach(() => clearWorkoutData());
 afterEach(() => {
   bff?.restore();
   jest.clearAllMocks();
@@ -77,6 +83,22 @@ describe("ClientHomeScreen", () => {
     expect(await screen.findByText("EM ANDAMENTO · INICIADO ÀS 07:12")).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole("button", { name: "Continuar treino" }));
     expect(mockPush).toHaveBeenCalledWith("/aluno/treino/13");
+  });
+
+  it("discards a session in progress through the outbox, holding that workout's next opening", async () => {
+    jest.replaceProperty(Platform, "OS", "android");
+    bff = mockBff({ ...routes(undefined, [log(13, "", "2026-10-21T10:12:00Z")]), "DELETE /api/workout-sessions/130": new Response(null, { status: 204 }) });
+    onlineManager.setOnline(false);
+    try {
+      await renderScreen(<ClientHomeScreen />);
+      await act(async () => onlineManager.setOnline(true));
+      await fireEvent.press(await screen.findByRole("button", { name: "Descartar treino" }));
+      onlineManager.setOnline(false);
+      await fireEvent.press((await screen.findAllByRole("button", { name: "Descartar treino" })).at(-1)!);
+      expect(pendingOperations()).toEqual([{ kind: "discard", logId: 130, workoutId: 13 }]);
+    } finally {
+      onlineManager.setOnline(true);
+    }
   });
 
   it("offers another workout once today's is done, through the picker", async () => {

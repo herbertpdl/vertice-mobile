@@ -21,24 +21,32 @@ import {
 import { ApiError } from "@/lib/api/client";
 import { apiErrorMessage } from "@/lib/api/errorMessages";
 import { fetchTrainingPlan, myPlansQueryKey, trainingPlanQueryKey } from "@/lib/api/trainingPlans";
-import type { FullWorkout, Workout, WorkoutSession, WorkoutSessionSet } from "@/lib/api/types";
+import type { FullWorkout, Workout, WorkoutLog, WorkoutSession, WorkoutSessionSet } from "@/lib/api/types";
 import { fullWorkoutQueryKey } from "@/lib/api/workouts";
 import {
-  completeWorkoutLog,
-  deleteSetLog,
-  discardWorkoutLog,
   fetchWorkoutSession,
-  recordSetLog,
   restartWorkoutSession,
   workoutLogsQueryPrefix,
   workoutSessionQueryKey,
 } from "@/lib/api/workoutSessions";
 import { useMe } from "@/lib/auth";
-import { dayOfWeekOf } from "@/lib/calendar";
+import { dayOfWeekOf, weekStartOf } from "@/lib/calendar";
 import { todayLocalIso } from "@/lib/format";
 import { useIsOffline } from "@/lib/network";
+import { shouldRetry } from "@/lib/query-client";
 import { youtubeVideoId } from "@/lib/video";
 import { dismissRestNotifications, useRestAlert, useRestNotification } from "@/lib/workoutSession/alerts";
+import {
+  clearLocalSession,
+  enqueue,
+  readLocalSession,
+  pendingOperations,
+  saveLocalSession,
+  sendNow,
+  whenDrained,
+  type LocalSession,
+  type OutboxOp,
+} from "@/lib/workoutSession/outbox";
 import {
   allTicked,
   clockText,
@@ -59,6 +67,12 @@ import { colors, controls, disabledOpacity, radius, sizes, space } from "@/theme
 
 /** How often the timers redraw while one runs (time is read from the clock, never counted). */
 const TICK_MS = 250;
+/** How long the session waits to be kept on the device after a change. */
+const PERSIST_DELAY_MS = 300;
+/** Online, how long finishing waits for its answer (an automatic finish skips the feedback). */
+const FINISH_WAIT_MS = 10_000;
+/** Opening a session waits this long at most for the outbox to drain first. */
+const OPEN_DRAIN_MS = 5_000;
 /** How long a weight edit on a ticked set waits before it's re-recorded. */
 const WEIGHT_SAVE_DELAY_MS = 800;
 /** A rest seen ending later than this (the app was away) gets no in-app alert: the notification was it. */
@@ -88,9 +102,42 @@ export function WorkoutSessionScreen() {
   const workoutId = Number(params.workoutId);
   const queryClient = useQueryClient();
   const [redo, setRedo] = useState<WorkoutSession | null>(null);
+  // This workout's session as last seen on this device (§3.4): it opens offline, and online it's
+  // what the client did that the server may not have yet.
+  const [local] = useState(() => {
+    const stored = readLocalSession();
+    if (stored?.workoutId !== workoutId) return null;
+    // Finished or discarded already, the answer still queued (the app closed while waiting): the
+    // session is closing, and it's never resumed.
+    const closing = pendingOperations().some(
+      (op) => (op.kind === "complete" || op.kind === "discard") && op.logId === stored.logId,
+    );
+    if (closing) {
+      clearLocalSession(stored.logId);
+      return null;
+    }
+    // An earlier week's session was closed by the rollover: never resumed (its writes would all
+    // be refused).
+    if (stored.state.snapshot.workoutLog.weekStartDate !== weekStartOf(todayLocalIso())) {
+      clearLocalSession(stored.logId);
+      return null;
+    }
+    return stored;
+  });
   const session = useQuery({
     queryKey: workoutSessionQueryKey(workoutId),
-    queryFn: ({ signal }) => fetchWorkoutSession(workoutId, { signal }),
+    queryFn: async ({ signal }) => {
+      // What's still queued (a discard before a switch, the last ticks) lands before the snapshot.
+      const drained = await whenDrained(OPEN_DRAIN_MS);
+      // A finish or discard of this workout still waiting: the server's session is about to close,
+      // so opening it now would queue new ticks behind it.
+      const closing = pendingOperations().some(
+        (op) => (op.kind === "complete" || op.kind === "discard") && op.workoutId === workoutId,
+      );
+      if (!drained && closing) throw new SyncPendingError();
+      return fetchWorkoutSession(workoutId, { signal });
+    },
+    retry: (count, error) => !(error instanceof SyncPendingError) && shouldRetry(count, error),
     // One snapshot per opening (R29): never refetched under the client, dropped when they leave.
     staleTime: Infinity,
     gcTime: 0,
@@ -104,10 +151,41 @@ export function WorkoutSessionScreen() {
   });
 
   const header = <NavBar title="Treino" />;
+  const offline = session.fetchStatus === "paused";
+  // The local session is the one in progress unless the server says this week's is another one, or
+  // done (finished elsewhere), or refuses it (a 4xx: the workout or the trainer is gone). Without
+  // an answer — offline, a network error, a 5xx — the local one goes on.
+  const unreachable = session.isError && isUnreachable(session.error);
+  const server = session.data;
+  const resume =
+    redo === null &&
+    local !== null &&
+    (server === undefined
+      ? offline || unreachable
+      : server.workoutLog.id === local.logId && server.workoutLog.status === "IN_PROGRESS");
+  const superseded = local !== null && !resume && (server !== undefined || (session.isError && !unreachable));
+  useEffect(() => {
+    if (superseded) clearLocalSession(local.logId);
+  }, [superseded, local]);
+  if (resume && local !== null) return <SessionView key={local.logId} snapshot={local.state.snapshot} restored={local} />;
   if (session.data === undefined) {
     return (
       <Screen header={header}>
-        {session.isError ? (
+        {session.error instanceof SyncPendingError ? (
+          <ErrorState
+            title="Enviando seu último treino"
+            message="O treino que você finalizou ainda está sendo enviado. Tente de novo em instantes."
+            onRetry={() => void session.refetch()}
+            retrying={session.isFetching}
+          />
+        ) : offline ? (
+          // A workout never opened on this device needs the connection once (R55, E28).
+          <ErrorState
+            title="Sem conexão"
+            message="Conecte-se à internet para abrir este treino. Depois de aberto, ele funciona sem conexão."
+            onRetry={() => void session.refetch()}
+          />
+        ) : session.isError ? (
           <ErrorState onRetry={() => void session.refetch()} retrying={session.isFetching} />
         ) : (
           <View style={styles.skeleton} accessible accessibilityLabel="Abrindo o treino">
@@ -147,12 +225,12 @@ export function WorkoutSessionScreen() {
 
 type Overlay = "actions" | "list" | "video" | "progress" | "picker" | "finish" | "discard" | "switch" | null;
 
-function SessionView({ snapshot }: { snapshot: WorkoutSession }) {
+function SessionView({ snapshot, restored }: { snapshot: WorkoutSession; restored?: LocalSession }) {
   const queryClient = useQueryClient();
   const toast = useToast();
   const offline = useIsOffline();
   const { data: me } = useMe();
-  const [state, dispatch] = useReducer(sessionReducer, snapshot, initSession);
+  const [state, dispatch] = useReducer(sessionReducer, snapshot, (s) => restored?.state ?? initSession(s));
   const [now, setNow] = useState(() => Date.now());
   const [overlay, setOverlay] = useState<Overlay>(null);
   const [switchTo, setSwitchTo] = useState<Workout | null>(null);
@@ -166,9 +244,10 @@ function SessionView({ snapshot }: { snapshot: WorkoutSession }) {
   const running = state.rest !== null || state.hold !== null;
   /** What was last sent per set, so a weight edit on a ticked set is re-recorded once. */
   const sent = useRef<Record<number, string>>(
-    Object.fromEntries(
-      snapshot.exercises.flatMap((e) => e.sets).flatMap((set) => (set.current === null ? [] : [[set.id, set.current.weight]])),
-    ),
+    restored?.sent ??
+      Object.fromEntries(
+        snapshot.exercises.flatMap((e) => e.sets).flatMap((set) => (set.current === null ? [] : [[set.id, set.current.weight]])),
+      ),
   );
 
   /** Ticks a set and records it; false (with a toast) when its weight isn't valid. */
@@ -183,7 +262,7 @@ function SessionView({ snapshot }: { snapshot: WorkoutSession }) {
     dispatch({ type: "tick", setId, now: at });
     setNow(at);
     sent.current = { ...sent.current, [setId]: weight };
-    save(setId, () => recordSetLog(logId, { exerciseSetId: setId, weight, reps: set.reps }));
+    save({ kind: "recordSet", logId, exerciseSetId: setId, weight, reps: set.reps });
     return true;
   };
 
@@ -234,39 +313,39 @@ function SessionView({ snapshot }: { snapshot: WorkoutSession }) {
 
   // ---- saving -----------------------------------------------------------------------------------
 
-  /**
-   * Each set's writes, chained: the API keeps no request order, so an untick's DELETE racing a
-   * re-tick's POST could otherwise leave a ticked set unrecorded. Finishing waits for all of them.
-   */
-  const writes = useRef<Record<number, Promise<void>>>({});
-  /** Set once the session is finished or discarded: nothing is sent for it after that. */
+  /** Set once the session is finished or discarded: nothing is sent or kept for it after that. */
   const ended = useRef(false);
 
-  /** Each set's newest write, if it failed: sent again before finishing (a finished log takes no more). */
-  const failed = useRef<Record<number, () => Promise<unknown>>>({});
-  /** Each set's newest write: only it may record or clear the set's failure. */
-  const latest = useRef<Record<number, number>>({});
-
-  function save(setId: number, request: () => Promise<unknown>) {
-    // Each write carries the set's whole state, so a newly queued one supersedes an earlier failure,
-    // including one from a write still in flight.
-    const mine = (latest.current[setId] ?? 0) + 1;
-    latest.current = { ...latest.current, [setId]: mine };
-    const { [setId]: _superseded, ...others } = failed.current;
-    failed.current = others;
-    const run = (writes.current[setId] ?? Promise.resolve()).then(request);
-    writes.current = { ...writes.current, [setId]: run.then(() => undefined, () => undefined) };
-    run
-      .then(() => {
-        void queryClient.invalidateQueries({ queryKey: workoutLogsQueryPrefix });
-      })
-      .catch((error: unknown) => {
-        // Only what may pass on a retry (no answer, a 5xx, a 429): a 4xx such as the weekly rollover's
-        // 409 would block finishing for good, and finishing then says the session is already closed.
-        if (latest.current[setId] === mine && isRetryable(error)) failed.current = { ...failed.current, [setId]: request };
-        toast.show(apiErrorMessage(error, "Não foi possível salvar. Verifique a conexão e tente de novo."), "error");
-      });
+  /**
+   * Every write goes through the outbox (§3.4): sent in order, kept across a closed app and a lost
+   * connection, retried until it lands. Only a write the API refuses for good (a set the trainer
+   * deleted meanwhile) is dropped, with a toast.
+   */
+  function save(op: OutboxOp) {
+    enqueue(op).catch((error: unknown) => {
+      if (error instanceof ApiError && error.status !== 0) {
+        toast.show(apiErrorMessage(error, "Uma série não pôde ser salva."), "error");
+      }
+    });
   }
+
+  // The session is kept on the device as it changes, and at once when the app leaves the
+  // foreground (the system may close it there).
+  const persist = () => {
+    if (!ended.current) saveLocalSession({ workoutId: snapshot.id, logId, state, sent: sent.current });
+  };
+  const onStateSettled = useEffectEvent(persist);
+  useEffect(() => {
+    const timer = setTimeout(onStateSettled, PERSIST_DELAY_MS);
+    return () => clearTimeout(timer);
+  }, [state]);
+  const onBackground = useEffectEvent(persist);
+  useEffect(() => {
+    const subscription = AppState.addEventListener("change", (next) => {
+      if (next !== "active") onBackground();
+    });
+    return () => subscription.remove();
+  }, []);
 
   /** Re-records the weights edited on ticked sets since they were last sent. */
   const flushWeights = () => {
@@ -278,7 +357,7 @@ function SessionView({ snapshot }: { snapshot: WorkoutSession }) {
       const set = exercises.flatMap((e) => e.sets).find((s) => s.id === setId);
       if (set === undefined) continue;
       sent.current = { ...sent.current, [setId]: weight };
-      save(setId, () => recordSetLog(logId, { exerciseSetId: setId, weight, reps: set.reps }));
+      save({ kind: "recordSet", logId, exerciseSetId: setId, weight, reps: set.reps });
     }
   };
   const onWeightsSettled = useEffectEvent(flushWeights);
@@ -286,15 +365,19 @@ function SessionView({ snapshot }: { snapshot: WorkoutSession }) {
     const timer = setTimeout(onWeightsSettled, WEIGHT_SAVE_DELAY_MS);
     return () => clearTimeout(timer);
   }, [state.weights]);
-  // Leaving by any way (back, the swipe, the system) sends an edit still waiting out the delay.
-  const onLeave = useEffectEvent(flushWeights);
+  // Leaving by any way (back, the swipe, the system) sends an edit still waiting out the delay, and
+  // keeps the session as it is.
+  const onLeave = useEffectEvent(() => {
+    flushWeights();
+    persist();
+  });
   useEffect(() => () => onLeave(), []);
 
   const untick = (setId: number) => {
     dispatch({ type: "untick", setId });
     const { [setId]: _dropped, ...kept } = sent.current;
     sent.current = kept;
-    save(setId, () => deleteSetLog(logId, setId));
+    save({ kind: "deleteSet", logId, exerciseSetId: setId });
   };
 
   // ---- finishing, discarding, switching -----------------------------------------------------------
@@ -305,14 +388,12 @@ function SessionView({ snapshot }: { snapshot: WorkoutSession }) {
     if (message !== undefined) toast.show(message);
   };
   const finish = useMutation({
-    mutationFn: async () => {
-      // The last tick's (or edit's) write lands first: a finished session takes no more sets.
+    mutationFn: async (): Promise<WorkoutLog | null> => {
+      // Queued after the last tick's (or edit's) write: the outbox keeps the order (a finished
+      // session takes no more sets).
       flushWeights();
-      for (const [setId, request] of Object.entries(failed.current)) save(Number(setId), request);
-      await Promise.all(Object.values(writes.current));
-      // A set that still didn't save would be lost for good: don't finish over it.
-      if (Object.keys(failed.current).length > 0) throw new UnsavedSetsError();
-      return completeWorkoutLog(logId);
+      // Offline it's sent later (R56): the feedback step comes now either way.
+      return sendNow<WorkoutLog>({ kind: "complete", logId, workoutId: snapshot.id }, FINISH_WAIT_MS);
     },
     onError: (error) => {
       // With sets left the dialog shows the error; finishing with all ticked has no dialog.
@@ -320,10 +401,11 @@ function SessionView({ snapshot }: { snapshot: WorkoutSession }) {
     },
     onSuccess: (log) => {
       ended.current = true;
+      clearLocalSession(logId);
       setOverlay(null);
       void queryClient.invalidateQueries({ queryKey: workoutLogsQueryPrefix });
       // A session the weekly rollover already finished takes no feedback (R27).
-      if (log.completionKind === "AUTO") return leave("Treino finalizado.");
+      if (log?.completionKind === "AUTO") return leave("Treino finalizado.");
       const done = Object.keys(state.ticked).length;
       router.replace({
         pathname: "/aluno/treino/feedback/[logId]",
@@ -332,9 +414,11 @@ function SessionView({ snapshot }: { snapshot: WorkoutSession }) {
     },
   });
   const discard = useMutation({
-    mutationFn: () => discardWorkoutLog(logId),
+    // Queued like every write; a switch's next session is opened after it's sent (`whenDrained`).
+    mutationFn: async () => void enqueue({ kind: "discard", logId, workoutId: snapshot.id }),
     onSuccess: () => {
       ended.current = true;
+      clearLocalSession(logId);
       setOverlay(null);
       if (switchTo !== null) {
         void queryClient.invalidateQueries({ queryKey: workoutLogsQueryPrefix });
@@ -409,7 +493,7 @@ function SessionView({ snapshot }: { snapshot: WorkoutSession }) {
               onBack={() => (router.canGoBack() ? router.back() : router.replace("/aluno"))}
               action={{ icon: Ellipsis, accessibilityLabel: "Ações do treino", onPress: () => setOverlay("actions") }}
             />
-            {offline ? <StatusBanner kind="offline" /> : null}
+            {offline ? <StatusBanner kind="offline" message="Sem conexão. Seu treino será enviado quando a conexão voltar." /> : null}
           </>
         }
         contentStyle={styles.content}
@@ -619,16 +703,17 @@ function SessionView({ snapshot }: { snapshot: WorkoutSession }) {
   );
 }
 
-class UnsavedSetsError extends Error {}
+/** Opening waits on a queued finish or discard of the same workout that couldn't be sent yet. */
+class SyncPendingError extends Error {}
 
-function isRetryable(error: unknown): boolean {
-  return !(error instanceof ApiError) || error.status === 0 || error.status === 429 || error.status >= 500;
+/** No answer from the server (offline, a timeout, a 5xx): not a refusal of the session. */
+function isUnreachable(error: unknown): boolean {
+  if (error instanceof SyncPendingError) return false;
+  return !(error instanceof ApiError) || error.status === 0 || error.status >= 500;
 }
 
 function finishErrorMessage(error: unknown): string {
-  return error instanceof UnsavedSetsError
-    ? "Algumas séries não foram salvas. Verifique a conexão e tente finalizar de novo."
-    : apiErrorMessage(error, "Não foi possível finalizar. Tente novamente.");
+  return apiErrorMessage(error, "Não foi possível finalizar. Tente novamente.");
 }
 
 function totalOf(state: SessionState): number {

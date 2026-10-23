@@ -5,6 +5,7 @@ import { clearDrafts } from "@/lib/draftStash";
 import { clearExports } from "@/lib/exportData";
 import type { AuthSession } from "@/lib/api/types";
 import { queryClient } from "@/lib/query-client";
+import { clearWorkoutData } from "@/lib/workoutSession/outbox";
 
 import { clearStoredToken, readStoredToken, storeToken } from "./tokenStorage";
 
@@ -55,6 +56,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // An expired session keeps the unsaved drafts for the re-login; "Sair" means done. An exported
     // data file never outlives the session that made it.
     if (reason === "user") clearDrafts();
+    // The same for the workout outbox and the session in progress (client spec §3.4): kept on the
+    // device for a re-login after a 401, gone on "Sair" and account deletion.
+    if (reason === "user") clearWorkoutData();
     clearExports();
     setStatus("signedOut");
     try {
