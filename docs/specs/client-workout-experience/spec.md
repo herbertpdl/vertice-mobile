@@ -33,7 +33,6 @@
 - The device checklists for PRs 18, 19 and 21. They need a native rebuild (`npm run ios` /
   `npm run android`) and a phone.
 - The follow-ups in the decisions log:
-  - An idempotency key on feedback.
   - Excluding the kv-store from iCloud backups on iOS.
   - Optionally, a `workoutCount` on the plan's workouts.
 
@@ -597,3 +596,7 @@ The feedback screen shipped with the session once B7 merged.
   Documents and goes into iCloud device backups. Excluding it (`NSURLIsExcludedFromBackupKey`)
   needs native code and is a follow-up. Until then a backup can hold the queue, which is cleared
   on "Sair" on the device.
+- 2026-10-23 — The idempotency key is in place: vertice-api #75 added `client_key`, and
+  vertice-bff #51 added `clientKey` on `POST …/feedback`. The outbox sends each feedback with its
+  entry id as the key and retries it like any other write. A resend after a lost answer gets back
+  the stored feedback. This replaces the earlier "a timed-out feedback is taken as sent".

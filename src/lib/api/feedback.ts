@@ -9,6 +9,7 @@ export function fetchFeedback(init?: Pick<ApiRequestInit, "signal">) {
 }
 
 /** The client's feedback on a session they just finished (PRD R65–R70): a rating, optional text. */
-export function submitFeedback(workoutLogId: number, input: { rating: FeedbackRating; text: string }) {
+/** `clientKey`: the same key on a resend returns the stored feedback instead of a second one. */
+export function submitFeedback(workoutLogId: number, input: { rating: FeedbackRating; text: string; clientKey?: string }) {
   return apiClient.post<WorkoutFeedback>(`/api/workout-logs/${workoutLogId}/feedback`, input);
 }

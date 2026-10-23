@@ -35,7 +35,7 @@ describe("WorkoutFeedbackScreen", () => {
     await fireEvent.changeText(screen.getByLabelText("Quer contar algo ao seu treinador? (opcional)"), "  Pesado  ");
     await fireEvent.press(screen.getByRole("button", { name: "Enviar feedback" }));
     await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/aluno"));
-    expect(bff.calls.find((c) => c.route === "POST /api/workout-logs/500/feedback")?.body).toEqual({ rating: "HARD", text: "Pesado" });
+    expect(bff.calls.find((c) => c.route === "POST /api/workout-logs/500/feedback")?.body).toEqual({ rating: "HARD", text: "Pesado", clientKey: expect.any(String) });
   });
 
   it("offline, goes home and sends the feedback when the connection returns (R56–R58)", async () => {
