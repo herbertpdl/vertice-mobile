@@ -3,8 +3,9 @@ import { StyleSheet, View } from "react-native";
 
 import { Button, Chip, Sheet, Text, TextArea } from "@/components/ui";
 import type { SetStrategy } from "@/lib/api/types";
-import { SET_STRATEGIES, SET_STRATEGY_DESCRIPTIONS } from "@/lib/labels";
+import { SET_STRATEGIES } from "@/lib/labels";
 import { NOTES_MAX } from "@/lib/validation/bounds";
+import { strategyDescription } from "@/lib/workoutText";
 import { colors, radius, space } from "@/theme";
 
 const STRATEGY_ORDER = Object.keys(SET_STRATEGIES) as SetStrategy[];
@@ -15,6 +16,8 @@ export type StrategyEditSheetProps = {
   /** 1-based position, for the title ("Série 2"). */
   number: number;
   strategy: SetStrategy;
+  /** The set is prescribed by duration (the default description depends on it). */
+  timed: boolean;
   /** The set's notes: the description the client sees in place of the strategy's own. */
   notes: string;
   /** "Concluir": the chosen strategy and the description ("" for none). */
@@ -27,7 +30,7 @@ export type StrategyEditSheetProps = {
  * the trainer knows what they would replace. Nothing changes until "Concluir". Mount it with a
  * `key` per opening so it starts from the set's current values.
  */
-export function StrategyEditSheet({ visible, onClose, number, strategy, notes, onDone }: StrategyEditSheetProps) {
+export function StrategyEditSheet({ visible, onClose, number, strategy, timed, notes, onDone }: StrategyEditSheetProps) {
   const [chosen, setChosen] = useState(strategy);
   const [text, setText] = useState(notes);
   return (
@@ -60,7 +63,7 @@ export function StrategyEditSheet({ visible, onClose, number, strategy, notes, o
           DESCRIÇÃO PADRÃO
         </Text>
         <Text variant="caption" color="textSecondary">
-          {SET_STRATEGY_DESCRIPTIONS[chosen]}
+          {strategyDescription(chosen, timed)}
         </Text>
       </View>
     </Sheet>

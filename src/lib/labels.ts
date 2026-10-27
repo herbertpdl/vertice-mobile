@@ -92,7 +92,8 @@ export const SET_STRATEGIES: Record<SetStrategy, string> = {
 
 /**
  * What each strategy asks of the client, shown when a set's strategy is opened during a workout
- * (the trainer's own description, the set's `notes`, replaces it).
+ * (the trainer's own description, the set's `notes`, replaces it). Isometria's names the hold
+ * button, which only a timed set has: `strategyDescription` words it for a set with reps.
  */
 export const SET_STRATEGY_DESCRIPTIONS: Record<SetStrategy, string> = {
   STRAIGHT: "Série tradicional: faça as repetições indicadas com a mesma carga e descanse normalmente.",
@@ -107,6 +108,9 @@ export const SET_STRATEGY_DESCRIPTIONS: Record<SetStrategy, string> = {
   ISOMETRIC_HOLD: "Segure a posição parada pelo tempo indicado. Use o botão ▶ para cronometrar.",
   FAILURE: "Faça repetições até não conseguir completar mais nenhuma com boa técnica.",
 };
+
+/** Isometria on a set prescribed in reps: no time to hold for, no hold button. */
+export const ISOMETRIC_REPS_DESCRIPTION = "Segure a posição parada por alguns segundos em cada repetição, sem mover.";
 
 export const ROLES: Record<Role, string> = {
   ADMIN: "Administrador(a)",

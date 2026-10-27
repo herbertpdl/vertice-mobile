@@ -125,11 +125,11 @@ describe("WorkoutSessionScreen", () => {
     expect(screen.getByText("DROPSET")).toBeOnTheScreen();
     expect(screen.getByText("Orientação do seu treinador")).toBeOnTheScreen();
     // Another set: a row that says what it opens; a plain "Direta" set has none.
-    expect(screen.getByRole("button", { name: "Falha: como fazer" })).toBeOnTheScreen();
+    expect(screen.getByRole("button", { name: "Série 2, Falha: como fazer" })).toBeOnTheScreen();
     expect(screen.queryByRole("button", { name: /Direta/ })).toBeNull();
     expect(screen.getByText("Até a falha")).toBeOnTheScreen();
 
-    await fireEvent.press(screen.getByRole("button", { name: "Falha: como fazer" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Série 2, Falha: como fazer" }));
     expect(screen.getByText("SÉRIE 2 · ESTRATÉGIA")).toBeOnTheScreen();
     expect(screen.getByText("Faça repetições até não conseguir completar mais nenhuma com boa técnica.")).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole("button", { name: "Entendi" }));

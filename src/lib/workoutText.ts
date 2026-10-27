@@ -1,5 +1,5 @@
-import type { ExerciseSet, FullWorkoutExercise } from "@/lib/api/types";
-import { SET_STRATEGIES, SET_STRATEGY_DESCRIPTIONS } from "@/lib/labels";
+import type { ExerciseSet, FullWorkoutExercise, SetStrategy } from "@/lib/api/types";
+import { ISOMETRIC_REPS_DESCRIPTION, SET_STRATEGIES, SET_STRATEGY_DESCRIPTIONS } from "@/lib/labels";
 
 /**
  * How a prescribed set and exercise read on the client's screens ("12 reps · Direta",
@@ -45,16 +45,21 @@ export type StrategyGuide = {
   fromTrainer: boolean;
 };
 
+/** A strategy's own description for a set: Isometria's names the hold button only on a timed set. */
+export function strategyDescription(strategy: SetStrategy, timed: boolean): string {
+  return strategy === "ISOMETRIC_HOLD" && !timed ? ISOMETRIC_REPS_DESCRIPTION : SET_STRATEGY_DESCRIPTIONS[strategy];
+}
+
 /**
  * The guide for a set, or null for a plain "Direta" set with nothing from the trainer: only a set
  * with something to explain gets a strategy row.
  */
-export function strategyGuide(set: Pick<ExerciseSet, "strategy" | "notes">): StrategyGuide | null {
+export function strategyGuide(set: Pick<ExerciseSet, "strategy" | "notes" | "durationSeconds">): StrategyGuide | null {
   const note = set.notes.trim();
   if (set.strategy === "STRAIGHT" && note === "") return null;
   return {
     name: SET_STRATEGIES[set.strategy],
-    text: note === "" ? SET_STRATEGY_DESCRIPTIONS[set.strategy] : note,
+    text: note === "" ? strategyDescription(set.strategy, isTimed(set)) : note,
     fromTrainer: note !== "",
   };
 }

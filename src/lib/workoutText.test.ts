@@ -60,21 +60,30 @@ describe("workoutText", () => {
 
 describe("strategyGuide", () => {
   it("has nothing to explain for a plain Direta set", () => {
-    expect(strategyGuide({ strategy: "STRAIGHT", notes: "" })).toBeNull();
-    expect(strategyGuide({ strategy: "STRAIGHT", notes: "  " })).toBeNull();
+    expect(strategyGuide({ strategy: "STRAIGHT", notes: "", durationSeconds: 0 })).toBeNull();
+    expect(strategyGuide({ strategy: "STRAIGHT", notes: "  ", durationSeconds: 0 })).toBeNull();
   });
 
   it("explains a strategy with its own description", () => {
-    expect(strategyGuide({ strategy: "FAILURE", notes: "" })).toEqual({
+    expect(strategyGuide({ strategy: "FAILURE", notes: "", durationSeconds: 0 })).toEqual({
       name: "Falha",
       text: "Faça repetições até não conseguir completar mais nenhuma com boa técnica.",
       fromTrainer: false,
     });
   });
 
+  it("names the hold button for Isometria only on a timed set", () => {
+    expect(strategyGuide({ strategy: "ISOMETRIC_HOLD", notes: "", durationSeconds: 30 })?.text).toBe(
+      "Segure a posição parada pelo tempo indicado. Use o botão ▶ para cronometrar.",
+    );
+    expect(strategyGuide({ strategy: "ISOMETRIC_HOLD", notes: "", durationSeconds: 0 })?.text).toBe(
+      "Segure a posição parada por alguns segundos em cada repetição, sem mover.",
+    );
+  });
+
   it("puts the trainer's description in its place, Direta included", () => {
-    expect(strategyGuide({ strategy: "DROPSET", notes: " Tire 10 kg. " })).toEqual({ name: "Dropset", text: "Tire 10 kg.", fromTrainer: true });
-    expect(strategyGuide({ strategy: "STRAIGHT", notes: "Pausa de 1 s embaixo." })).toEqual({
+    expect(strategyGuide({ strategy: "DROPSET", notes: " Tire 10 kg. ", durationSeconds: 0 })).toEqual({ name: "Dropset", text: "Tire 10 kg.", fromTrainer: true });
+    expect(strategyGuide({ strategy: "STRAIGHT", notes: "Pausa de 1 s embaixo.", durationSeconds: 0 })).toEqual({
       name: "Direta",
       text: "Pausa de 1 s embaixo.",
       fromTrainer: true,

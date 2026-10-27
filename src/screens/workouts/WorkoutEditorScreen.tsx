@@ -426,6 +426,7 @@ function WorkoutEditorSession({ planId, workoutId, initial, dayPreset, userId, c
           onClose={() => setSheet(null)}
           number={strategyOf.index + 1}
           strategy={strategySet.strategy}
+          timed={(strategySet.durationSeconds ?? 0) > 0}
           notes={strategySet.notes ?? ""}
           onDone={(strategy, notes) => {
             engine.dispatch({

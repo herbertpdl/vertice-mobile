@@ -76,7 +76,7 @@ describe("WorkoutSetRow", () => {
     expect(screen.getByText("DROPSET")).toBeOnTheScreen();
     expect(screen.getByText("Tire 10 kg duas vezes.").props.numberOfLines).toBe(3);
     expect(screen.getByText("Orientação do seu treinador")).toBeOnTheScreen();
-    await fireEvent.press(screen.getByRole("button", { name: "Dropset: ver tudo" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Série 3, Dropset: ver tudo" }));
     expect(onOpen).toHaveBeenCalled();
   });
 
@@ -87,7 +87,7 @@ describe("WorkoutSetRow", () => {
     );
     expect(screen.queryByText("Até não sair mais.")).toBeNull();
     expect(screen.getByText("· Como fazer")).toBeOnTheScreen();
-    await fireEvent.press(screen.getByRole("button", { name: "Falha: como fazer" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Série 3, Falha: como fazer" }));
     expect(onOpen).toHaveBeenCalled();
   });
 });

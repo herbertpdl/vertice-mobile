@@ -162,16 +162,16 @@ export function WorkoutSetRow({
         </Pressable>
       </View>
       {strategy === undefined ? null : strategy.expanded ? (
-        <StrategyPanel strategy={strategy} />
+        <StrategyPanel strategy={strategy} number={number} />
       ) : (
-        <StrategyLink strategy={strategy} done={done} />
+        <StrategyLink strategy={strategy} number={number} done={done} />
       )}
     </View>
   );
 }
 
 /** The current set's explanation, inline: the client reads it before doing the set. */
-function StrategyPanel({ strategy }: { strategy: WorkoutSetStrategy }) {
+function StrategyPanel({ strategy, number }: { strategy: WorkoutSetStrategy; number: number }) {
   return (
     <View style={styles.panel}>
       <View style={styles.panelHead}>
@@ -196,7 +196,7 @@ function StrategyPanel({ strategy }: { strategy: WorkoutSetStrategy }) {
         )}
         <Pressable
           accessibilityRole="button"
-          accessibilityLabel={`${strategy.name}: ver tudo`}
+          accessibilityLabel={`Série ${number}, ${strategy.name}: ver tudo`}
           onPress={strategy.onOpen}
           hitSlop={(controls.hitTarget - sizes.strategyLinkHeight) / 2}
           style={styles.more}
@@ -212,11 +212,11 @@ function StrategyPanel({ strategy }: { strategy: WorkoutSetStrategy }) {
 }
 
 /** Any other set's strategy: a full-width row that says what it opens. */
-function StrategyLink({ strategy, done }: { strategy: WorkoutSetStrategy; done: boolean }) {
+function StrategyLink({ strategy, number, done }: { strategy: WorkoutSetStrategy; number: number; done: boolean }) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${strategy.name}: como fazer`}
+      accessibilityLabel={`Série ${number}, ${strategy.name}: como fazer`}
       onPress={strategy.onOpen}
       style={({ pressed }) => [styles.link, done ? styles.linkDone : null, pressed ? styles.linkPressed : null]}
     >
