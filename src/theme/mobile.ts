@@ -206,6 +206,8 @@ export const sizes = {
   workoutSetWeightHeight: 44,
   workoutSetCheck: 36,
   workoutSetHold: 36,
+  /** "Ver tudo ›" in a workout set's strategy panel (hit area padded to 44). */
+  strategyLinkHeight: 32,
   /** M Rest Timer icon disc. */
   restTimerIcon: 44,
   /** M Exercise Step Row height and index disc. */

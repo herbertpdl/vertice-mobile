@@ -1,11 +1,11 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { useNavigation, usePreventRemove, type NavigationAction } from "expo-router/react-navigation";
-import { ArrowDown, ArrowUp, ChevronRight, Copy, Dumbbell, EllipsisVertical, Plus, Trash2 } from "lucide-react-native";
+import { ArrowDown, ArrowUp, ChevronRight, Copy, Dumbbell, EllipsisVertical, MessageSquareText, Plus, Trash2 } from "lucide-react-native";
 import { useEffect, useState, type ReactNode } from "react";
 import { Pressable, StyleSheet, View } from "react-native";
 
-import { AddExerciseSheet, ExerciseEditorCard, SaveBar, saveBarFrame } from "@/components/domain";
+import { AddExerciseSheet, ExerciseEditorCard, SaveBar, saveBarFrame, StrategyEditSheet } from "@/components/domain";
 import { NavBar, Screen } from "@/components/layout";
 import {
   ActionSheet,
@@ -167,6 +167,7 @@ type Sheet =
   | { kind: "add" | "actions" | "delete" | "discard" }
   | { kind: "leave"; action: NavigationAction }
   | { kind: "set"; exerciseKey: string; setKey: string; index: number }
+  | { kind: "strategy" }
   | { kind: "move"; exerciseKey: string; index: number };
 
 /**
@@ -182,6 +183,8 @@ function WorkoutEditorSession({ planId, workoutId, initial, dayPreset, userId, c
   const navigation = useNavigation();
   const [sheet, setSheet] = useState<Sheet | null>(null);
   const [addKey, setAddKey] = useState(0);
+  /** The set whose strategy sheet is open, kept while it animates out; `key` remounts it per opening. */
+  const [strategyOf, setStrategyOf] = useState<{ exerciseKey: string; setKey: string; index: number; key: number } | null>(null);
   const [saving, setSaving] = useState(false);
 
   const editor: WorkoutEditor = useWorkoutEditor({
@@ -250,11 +253,23 @@ function WorkoutEditorSession({ planId, workoutId, initial, dayPreset, userId, c
   const refusedSets = new Set(refusal?.setKeys ?? []);
   const canSave = state.dirty && dayChosen && !busy;
 
+  const strategySet = draft.exercises
+    .find((e) => e.key === strategyOf?.exerciseKey)
+    ?.sets.find((set) => set.key === strategyOf?.setKey);
+
   const setActions = (target: Extract<Sheet, { kind: "set" }>): SheetAction[] => {
     const we = draft.exercises.find((e) => e.key === target.exerciseKey);
     if (we === undefined) return [];
     const { exerciseKey, setKey, index } = target;
     return [
+      {
+        icon: MessageSquareText,
+        label: "Estratégia e descrição",
+        onPress: () => {
+          setStrategyOf({ exerciseKey, setKey, index, key: (strategyOf?.key ?? 0) + 1 });
+          setSheet({ kind: "strategy" });
+        },
+      },
       ...(we.sets.length < MAX_SETS ? [{ icon: Copy, label: "Duplicar série", onPress: () => engine.dispatch({ type: "duplicateSet", exerciseKey, setKey }) }] : []),
       ...(index > 0 ? [{ icon: ArrowUp, label: "Mover para cima", onPress: () => engine.dispatch({ type: "moveSet", exerciseKey, setKey, toIndex: index - 1 }) }] : []),
       ...(index < we.sets.length - 1
@@ -404,6 +419,25 @@ function WorkoutEditorSession({ planId, workoutId, initial, dayPreset, userId, c
           setSheet(null);
         }}
       />
+      {strategySet === undefined || strategyOf === null ? null : (
+        <StrategyEditSheet
+          key={strategyOf.key}
+          visible={sheet?.kind === "strategy"}
+          onClose={() => setSheet(null)}
+          number={strategyOf.index + 1}
+          strategy={strategySet.strategy}
+          notes={strategySet.notes ?? ""}
+          onDone={(strategy, notes) => {
+            engine.dispatch({
+              type: "updateSet",
+              exerciseKey: strategyOf.exerciseKey,
+              setKey: strategyOf.setKey,
+              patch: { strategy, notes: notes === "" ? undefined : notes },
+            });
+            setSheet(null);
+          }}
+        />
+      )}
       <ActionSheet
         visible={sheet?.kind === "set"}
         onClose={() => setSheet(null)}

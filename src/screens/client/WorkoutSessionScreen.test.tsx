@@ -79,9 +79,9 @@ afterEach(() => {
 });
 
 describe("setHint", () => {
-  it("prefers the trainer's note, then last time's weight, then the trainer's load", () => {
-    expect(setHint(set(1, 1, { notes: "Segure 1 s" }))).toBe("Segure 1 s");
-    expect(setHint(set(1, 1, { lastPerformed: setLog(1, "42.50") }))).toBe("Última vez: 42,5 kg");
+  it("shows last time's weight, then the trainer's load; a note belongs to the strategy", () => {
+    expect(setHint(set(1, 1, { notes: "Segure 1 s" }))).toBeUndefined();
+    expect(setHint(set(1, 1, { lastPerformed: setLog(1, "42.50"), notes: "Segure 1 s" }))).toBe("Última vez: 42,5 kg");
     expect(setHint(set(1, 1, { weight: "40" }))).toBe("Carga sugerida 40 kg");
     expect(setHint(set(1, 1))).toBeUndefined();
   });
@@ -101,6 +101,41 @@ describe("WorkoutSessionScreen", () => {
     expect(bff.calls.find((c) => c.route === "POST /api/workout-sessions/500/sets")?.body).toEqual({ exerciseSetId: 11, weight: "40", reps: 12 });
     expect(screen.getByLabelText(/^Descanso: 1:00\./)).toBeOnTheScreen();
     await waitFor(() => expect(Notifications.scheduleNotificationAsync).toHaveBeenCalled());
+  });
+
+  it("explains the current set's strategy in its row, the others' from a sheet, and names it in the rest", async () => {
+    bff = mockBff({
+      "GET /api/workouts/12/session": session([
+        {
+          id: 1,
+          order: 1,
+          name: "Remada",
+          sets: [
+            set(11, 1, { strategy: "DROPSET", notes: "Tire 10 kg duas vezes." }),
+            set(12, 2, { strategy: "FAILURE", reps: 0 }),
+            set(13, 3),
+          ],
+        },
+      ]),
+      "POST /api/workout-sessions/500/sets": setLog(11, ""),
+    });
+    await renderScreen(<WorkoutSessionScreen />);
+    // The current set: the trainer's description, in the row.
+    expect(await screen.findByText("Tire 10 kg duas vezes.")).toBeOnTheScreen();
+    expect(screen.getByText("DROPSET")).toBeOnTheScreen();
+    expect(screen.getByText("Orientação do seu treinador")).toBeOnTheScreen();
+    // Another set: a row that says what it opens; a plain "Direta" set has none.
+    expect(screen.getByRole("button", { name: "Falha: como fazer" })).toBeOnTheScreen();
+    expect(screen.queryByRole("button", { name: /Direta/ })).toBeNull();
+    expect(screen.getByText("Até a falha")).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByRole("button", { name: "Falha: como fazer" }));
+    expect(screen.getByText("SÉRIE 2 · ESTRATÉGIA")).toBeOnTheScreen();
+    expect(screen.getByText("Faça repetições até não conseguir completar mais nenhuma com boa técnica.")).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole("button", { name: "Entendi" }));
+
+    await fireEvent.press(screen.getByRole("checkbox", { name: "Série 1 feita" }));
+    expect(await screen.findByLabelText(/Próxima: série 2 · Até a falha · Falha$/)).toBeOnTheScreen();
   });
 
   it("unticks a set", async () => {

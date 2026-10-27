@@ -151,6 +151,13 @@ product promises them.
 - R31. Each exercise shows its name, the trainer's description, and its sets in order.
 - R32. Each set shows its number, the prescribed reps or duration, the trainer's prescribed weight
   or load percentage when set, its strategy, and the trainer's set notes when set.
+  - R32a. A set's strategy is explained, not only named. The explanation is the trainer's set notes
+    when set, else a fixed pt-BR description of the strategy. A plain "Direta" set with no notes
+    has nothing to explain and shows no strategy.
+  - R32b. The set the client is on shows its explanation inside the row (3 lines, "Ver tudo"). Every
+    other set with one shows a "<strategy> · Como fazer" row that opens it. The trainer's text says
+    "Orientação do seu treinador".
+  - R32c. The rest timer names the next set's strategy ("Próxima: série 3 · 10 reps · Dropset").
 - R33. Each set has a weight field in kilograms that accepts 0 to 999 with up to two decimals.
 - R34. The weight field is optional; a set can be ticked with it empty.
 - R35. The weight field starts with the weight the client recorded for that same set the last time
@@ -298,6 +305,7 @@ product promises them.
 | Leaving mid-workout | Resume where stopped, discard available | (proposed, accepted) |
 | Switching workouts mid-session | Discards the current session | Owner's choice over keeping both in progress |
 | Weight pre-fill | Last time's weight, else trainer's, else empty | (proposed, accepted) requirement "it should be there for them to remember" |
+| How a set's strategy is shown (2026-10-27) | Explained inline on the current set, a "Como fazer" row elsewhere; the trainer's notes replace the default text | Owner: clients don't know what a strategy means, and an info badge wasn't obviously tappable. Design: Claude Design canvas "Estratégia da série" (pen.dev was over its plan limit) |
 | Recording reps | No | Owner: weight only |
 | Rest countdown controls | None; ticking another set ends it | Owner: fixed timer; early tick (proposed, accepted) |
 | Finishing with unticked sets | Allowed after confirmation | (proposed, accepted) |

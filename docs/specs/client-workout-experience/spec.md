@@ -519,6 +519,16 @@ The feedback screen shipped with the session once B7 merged.
 
 ## Decisions log
 
+- 2026-10-27 — Set strategies are explained (PRD R32a–c). The trainer's description is the set's
+  existing `notes` field, so nothing changes in vertice-api or vertice-bff. The default
+  descriptions are `SET_STRATEGY_DESCRIPTIONS` in `src/lib/labels.ts`, next to the names.
+  - The design was approved on a Claude Design canvas ("Estratégia da série") because pen.dev was
+    over its plan limit; it still needs adding to `Vertice Web.pen`.
+  - Notes no longer replace the "Última vez" hint, and the set's line drops the strategy name
+    ("10 reps", not "10 reps · Direta").
+  - The mobile editor sets a strategy and description from the set's actions, as chips in one
+    sheet: a select would open a second modal on top of a sheet, which iOS doesn't handle well.
+
 - 2026-10-23 — Android's inherited permission blocklist removed `VIBRATE`, suppressing the
   rest alert's `Haptics.notificationAsync` (R49). Remove that entry so expo-haptics can add its
   required normal permission. This needs a native rebuild; no runtime permission prompt is added.
