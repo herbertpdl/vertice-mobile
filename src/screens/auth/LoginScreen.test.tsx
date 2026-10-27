@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
 
 import { bffError, mockBff, type BffMock } from "@/test/bff";
 import { renderScreen } from "@/test/render";
@@ -11,11 +11,31 @@ jest.mock("@/lib/auth", () => ({
   useAuth: () => ({ signIn: mockSignIn, sessionExpired: mockSessionExpired }),
 }));
 
+// Reactive like expo-router's: a link opened while the screen is mounted updates the params
+// without remounting it.
 let mockParams: Record<string, string | string[] | undefined> = {};
-jest.mock("expo-router", () => ({
-  router: { push: jest.fn(), back: jest.fn() },
-  useLocalSearchParams: () => mockParams,
-}));
+const mockParamListeners = new Set<() => void>();
+jest.mock("expo-router", () => {
+  const { useSyncExternalStore } = jest.requireActual("react");
+  return {
+    router: { push: jest.fn(), back: jest.fn() },
+    useLocalSearchParams: () =>
+      useSyncExternalStore(
+        (listener: () => void) => {
+          mockParamListeners.add(listener);
+          return () => mockParamListeners.delete(listener);
+        },
+        () => mockParams,
+      ),
+  };
+});
+
+async function openLink(params: Record<string, string>) {
+  await act(async () => {
+    mockParams = params;
+    mockParamListeners.forEach((listener) => listener());
+  });
+}
 
 const session = { token: "t", user: { id: 1, name: "Ana", email: "ana@vertice.fit", role: "TRAINER" } };
 let bff: BffMock;
@@ -51,6 +71,14 @@ describe("LoginScreen", () => {
     await fireEvent.changeText(screen.getByLabelText("Senha"), "segredo123");
     await fireEvent.press(screen.getByRole("button", { name: "Entrar" }));
     await waitFor(() => expect(bff.calls[0]?.body).toEqual({ email: "bia+treino@vertice.fit", password: "segredo123" }));
+  });
+
+  it("fills in the e-mail when the link opens while the login is already on screen", async () => {
+    bff = mockBff({});
+    await renderScreen(<LoginScreen />);
+    expect(screen.getByLabelText("E-mail").props.value).toBe("");
+    await openLink({ email: "bia@vertice.fit" });
+    await waitFor(() => expect(screen.getByLabelText("E-mail").props.value).toBe("bia@vertice.fit"));
   });
 
   it("ignores a repeated email parameter", async () => {

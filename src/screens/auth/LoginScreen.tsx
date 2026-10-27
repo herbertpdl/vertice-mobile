@@ -44,16 +44,22 @@ export function LoginScreen() {
     control,
     handleSubmit,
     setFocus,
+    setValue,
     formState: { isSubmitting, errors, submitCount },
   } = useForm<LoginForm>({
     resolver: zodResolver(loginFormSchema),
     defaultValues: { email: linkEmail, password: "" },
   });
 
-  // Arriving with the e-mail filled in, the client only types the password they just chose.
+  // Arriving with the e-mail filled in, the client only types the password they just chose. The
+  // value is set here too, not only as the default: a link opened while this screen is already
+  // the current route updates the params without remounting the form.
   useEffect(() => {
-    if (linkEmail) setFocus("password");
-  }, [linkEmail, setFocus]);
+    if (linkEmail) {
+      setValue("email", linkEmail);
+      setFocus("password");
+    }
+  }, [linkEmail, setValue, setFocus]);
 
   const submit = handleSubmit(async ({ email, password }) => {
     setFormError(null);
