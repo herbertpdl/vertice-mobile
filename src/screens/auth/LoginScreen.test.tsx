@@ -1,4 +1,4 @@
-import { fireEvent, screen, waitFor } from "@testing-library/react-native";
+import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
 
 import { bffError, mockBff, type BffMock } from "@/test/bff";
 import { renderScreen } from "@/test/render";
@@ -11,7 +11,31 @@ jest.mock("@/lib/auth", () => ({
   useAuth: () => ({ signIn: mockSignIn, sessionExpired: mockSessionExpired }),
 }));
 
-jest.mock("expo-router", () => ({ router: { push: jest.fn(), back: jest.fn() } }));
+// Reactive like expo-router's: a link opened while the screen is mounted updates the params
+// without remounting it.
+let mockParams: Record<string, string | string[] | undefined> = {};
+const mockParamListeners = new Set<() => void>();
+jest.mock("expo-router", () => {
+  const { useSyncExternalStore } = jest.requireActual("react");
+  return {
+    router: { push: jest.fn(), back: jest.fn() },
+    useLocalSearchParams: () =>
+      useSyncExternalStore(
+        (listener: () => void) => {
+          mockParamListeners.add(listener);
+          return () => mockParamListeners.delete(listener);
+        },
+        () => mockParams,
+      ),
+  };
+});
+
+async function openLink(params: Record<string, string>) {
+  await act(async () => {
+    mockParams = params;
+    mockParamListeners.forEach((listener) => listener());
+  });
+}
 
 const session = { token: "t", user: { id: 1, name: "Ana", email: "ana@vertice.fit", role: "TRAINER" } };
 let bff: BffMock;
@@ -20,6 +44,7 @@ afterEach(() => {
   bff?.restore();
   mockSignIn.mockReset();
   mockSessionExpired = false;
+  mockParams = {};
 });
 
 async function fill(email: string, password: string) {
@@ -36,6 +61,31 @@ describe("LoginScreen", () => {
     expect(await screen.findByText("Não foi possível entrar. Corrija os campos abaixo.")).toBeOnTheScreen();
     expect(screen.getByText("Informe a senha")).toBeOnTheScreen();
     expect(bff.calls).toHaveLength(0);
+  });
+
+  it("fills in the e-mail from the web's \"Abrir o app\" link", async () => {
+    bff = mockBff({ "POST /api/auth/login": session });
+    mockParams = { email: " bia+treino@vertice.fit " };
+    await renderScreen(<LoginScreen />);
+    expect(screen.getByLabelText("E-mail").props.value).toBe("bia+treino@vertice.fit");
+    await fireEvent.changeText(screen.getByLabelText("Senha"), "segredo123");
+    await fireEvent.press(screen.getByRole("button", { name: "Entrar" }));
+    await waitFor(() => expect(bff.calls[0]?.body).toEqual({ email: "bia+treino@vertice.fit", password: "segredo123" }));
+  });
+
+  it("fills in the e-mail when the link opens while the login is already on screen", async () => {
+    bff = mockBff({});
+    await renderScreen(<LoginScreen />);
+    expect(screen.getByLabelText("E-mail").props.value).toBe("");
+    await openLink({ email: "bia@vertice.fit" });
+    await waitFor(() => expect(screen.getByLabelText("E-mail").props.value).toBe("bia@vertice.fit"));
+  });
+
+  it("ignores a repeated email parameter", async () => {
+    bff = mockBff({});
+    mockParams = { email: ["a@vertice.fit", "b@vertice.fit"] };
+    await renderScreen(<LoginScreen />);
+    expect(screen.getByLabelText("E-mail").props.value).toBe("");
   });
 
   it("signs in with the session the BFF returns (e-mail trimmed, no token sent)", async () => {

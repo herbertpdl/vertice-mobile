@@ -1,6 +1,6 @@
 import { zodResolver } from "@hookform/resolvers/zod";
-import { router } from "expo-router";
-import { useState } from "react";
+import { router, useLocalSearchParams } from "expo-router";
+import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import { StyleSheet, View } from "react-native";
 import { z } from "zod";
@@ -26,19 +26,40 @@ export function loginErrorMessage(error: unknown): string {
   return apiErrorMessage(error, "Não foi possível entrar");
 }
 
+/**
+ * The e-mail a link filled in: the web's "Abrir o app" after a client sets their password opens
+ * `verticemobile://login?email=<e-mail>` (web-trainer-only-access R10a). Only a single value is
+ * taken, trimmed; anything else leaves the field empty.
+ */
+function emailFromLink(param: string | string[] | undefined): string {
+  return typeof param === "string" ? param.trim() : "";
+}
+
 /** M - Login / M - Login (Erro de Validação). */
 export function LoginScreen() {
   const { signIn, sessionExpired } = useAuth();
+  const linkEmail = emailFromLink(useLocalSearchParams<{ email?: string }>().email);
   const [formError, setFormError] = useState<string | null>(null);
   const {
     control,
     handleSubmit,
     setFocus,
+    setValue,
     formState: { isSubmitting, errors, submitCount },
   } = useForm<LoginForm>({
     resolver: zodResolver(loginFormSchema),
-    defaultValues: { email: "", password: "" },
+    defaultValues: { email: linkEmail, password: "" },
   });
+
+  // Arriving with the e-mail filled in, the client only types the password they just chose. The
+  // value is set here too, not only as the default: a link opened while this screen is already
+  // the current route updates the params without remounting the form.
+  useEffect(() => {
+    if (linkEmail) {
+      setValue("email", linkEmail);
+      setFocus("password");
+    }
+  }, [linkEmail, setValue, setFocus]);
 
   const submit = handleSubmit(async ({ email, password }) => {
     setFormError(null);
