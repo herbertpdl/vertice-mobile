@@ -90,4 +90,4 @@ export type { WeekDayState, WeekStripDay, WeekStripProps } from "./WeekStrip";
 export { WorkoutPickRow } from "./WorkoutPickRow";
 export type { WorkoutPickRowProps, WorkoutPickState } from "./WorkoutPickRow";
 export { WorkoutSetRow } from "./WorkoutSetRow";
-export type { WorkoutSetRowProps, WorkoutSetTimed } from "./WorkoutSetRow";
+export type { WorkoutSetRowProps, WorkoutSetStrategy, WorkoutSetTimed } from "./WorkoutSetRow";

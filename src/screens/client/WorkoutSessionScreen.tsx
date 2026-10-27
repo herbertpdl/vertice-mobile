@@ -4,7 +4,7 @@ import { ChartColumn, ChevronLeft, CirclePlay, Ellipsis, List, Repeat, RotateCcw
 import { useEffect, useEffectEvent, useReducer, useRef, useState } from "react";
 import { AppState, Platform, Pressable, StyleSheet, View } from "react-native";
 
-import { ExerciseListSheet, ProgressSheet, VideoSheet, WorkoutPickerSheet } from "@/components/domain";
+import { ExerciseListSheet, ProgressSheet, StrategySheet, VideoSheet, WorkoutPickerSheet } from "@/components/domain";
 import { NavBar, Screen } from "@/components/layout";
 import {
   ActionSheet,
@@ -62,7 +62,7 @@ import {
   timerProgress,
   type SessionState,
 } from "@/lib/workoutSession/engine";
-import { exerciseSummary, isTimed, prescribedLoad, setTarget, weightText } from "@/lib/workoutText";
+import { exerciseSummary, isTimed, nextSetText, prescribedLoad, setGoal, strategyGuide, weightText } from "@/lib/workoutText";
 import { colors, controls, disabledOpacity, radius, sizes, space } from "@/theme";
 
 /** How often the timers redraw while one runs (time is read from the clock, never counted). */
@@ -82,9 +82,8 @@ function plural(count: number, one: string, many: string) {
   return `${count} ${count === 1 ? one : many}`;
 }
 
-/** The second line of a set: a note, else last time's weight, else the trainer's load. */
+/** The second line of a set: last time's weight, else the trainer's load (a note is the strategy's). */
 export function setHint(set: WorkoutSessionSet): string | undefined {
-  if (set.notes.trim() !== "") return set.notes.trim();
   if (set.lastPerformed !== null && set.lastPerformed.weight !== "") {
     return `Última vez: ${weightText(set.lastPerformed.weight.replace(/\.?0+$/, ""))} kg`;
   }
@@ -223,7 +222,7 @@ export function WorkoutSessionScreen() {
   return <SessionView key={active.workoutLog.id} snapshot={active} />;
 }
 
-type Overlay = "actions" | "list" | "video" | "progress" | "picker" | "finish" | "discard" | "switch" | null;
+type Overlay = "actions" | "list" | "video" | "progress" | "picker" | "strategy" | "finish" | "discard" | "switch" | null;
 
 function SessionView({ snapshot, restored }: { snapshot: WorkoutSession; restored?: LocalSession }) {
   const queryClient = useQueryClient();
@@ -234,6 +233,8 @@ function SessionView({ snapshot, restored }: { snapshot: WorkoutSession; restore
   const [now, setNow] = useState(() => Date.now());
   const [overlay, setOverlay] = useState<Overlay>(null);
   const [switchTo, setSwitchTo] = useState<Workout | null>(null);
+  /** The set whose strategy sheet is open (kept while it animates out). */
+  const [strategySet, setStrategySet] = useState<WorkoutSessionSet | null>(null);
   const alert = useRestAlert();
   const logId = snapshot.workoutLog.id;
   const exercises = orderedExercises(snapshot);
@@ -471,8 +472,7 @@ function SessionView({ snapshot, restored }: { snapshot: WorkoutSession; restore
   const index = state.exerciseIndex;
   const last = allTicked(state);
   const video = youtubeVideoId(exercise.exercise.videoUrl) === null ? null : exercise.exercise.videoUrl;
-  const restCaption =
-    nextSet === undefined ? "Exercício concluído" : `Próxima: série ${nextSet.setNumber} · ${setTarget(nextSet).split(" · ")[0]}`;
+  const restCaption = nextSet === undefined ? "Exercício concluído" : nextSetText(nextSet);
   const restTimer = (flat: boolean) =>
     state.rest === null ? null : (
       <RestTimer
@@ -569,17 +569,30 @@ function SessionView({ snapshot, restored }: { snapshot: WorkoutSession; restore
         <View style={styles.sets}>
           {exercise.sets.map((set) => {
             const holding = state.hold?.setId === set.id;
+            const guide = strategyGuide(set);
             return (
               <WorkoutSetRow
                 key={set.id}
                 number={set.setNumber}
-                target={isTimed(set) ? setTarget(set).split(" · ")[1] ?? setTarget(set) : setTarget(set)}
+                target={setGoal(set)}
                 hint={holding ? `de ${set.durationSeconds} s` : setHint(set)}
                 weight={state.weights[set.id] ?? ""}
                 onWeightChange={(text) => dispatch({ type: "setWeight", setId: set.id, text })}
                 done={state.ticked[set.id] === true}
                 onToggle={() => (state.ticked[set.id] ? untick(set.id) : tickSet(set.id, Date.now()))}
                 current={set.id === current}
+                strategy={
+                  guide === null
+                    ? undefined
+                    : {
+                        ...guide,
+                        expanded: set.id === current,
+                        onOpen: () => {
+                          setStrategySet(set);
+                          setOverlay("strategy");
+                        },
+                      }
+                }
                 timed={
                   isTimed(set)
                     ? {
@@ -632,6 +645,12 @@ function SessionView({ snapshot, restored }: { snapshot: WorkoutSession; restore
           footer={restTimer(true) ?? undefined}
         />
       )}
+      <StrategySheet
+        visible={overlay === "strategy"}
+        onClose={() => setOverlay(null)}
+        setNumber={strategySet?.setNumber ?? 0}
+        guide={strategySet === null ? null : strategyGuide(strategySet)}
+      />
       {me === undefined ? null : (
         <ProgressSheet
           visible={overlay === "progress"}

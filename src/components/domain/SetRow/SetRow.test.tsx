@@ -64,4 +64,13 @@ describe("SetRow", () => {
     await render(<SetHeader />);
     expect(screen.getByText("CARGA (KG)", { includeHiddenElements: true })).toBeOnTheScreen();
   });
+
+  it("tags a set whose strategy isn't Direta, or that carries a description", async () => {
+    const { rerender } = await render(<SetRow set={set} number={2} onUpdate={jest.fn()} onOptions={jest.fn()} />);
+    expect(screen.queryByText("Direta")).toBeNull();
+    await rerender(<SetRow set={{ ...set, strategy: "FAILURE" }} number={2} onUpdate={jest.fn()} onOptions={jest.fn()} />);
+    expect(screen.getByLabelText("Falha")).toBeOnTheScreen();
+    await rerender(<SetRow set={{ ...set, notes: "Pausa de 1 s." }} number={2} onUpdate={jest.fn()} onOptions={jest.fn()} />);
+    expect(screen.getByLabelText("Direta, com descrição")).toBeOnTheScreen();
+  });
 });

@@ -5,7 +5,7 @@ import { WorkoutSetRow } from "./WorkoutSetRow";
 
 const base = {
   number: 3,
-  target: "10 reps · Direta",
+  target: "10 reps",
   hint: "Última vez: 45 kg",
   weight: "45",
   onWeightChange: () => {},
@@ -16,7 +16,7 @@ describe("WorkoutSetRow", () => {
   it("shows the target, hint and weight, and ticks", async () => {
     const onToggle = jest.fn();
     await render(<WorkoutSetRow {...base} done={false} onToggle={onToggle} />);
-    expect(screen.getByText("10 reps · Direta")).toBeOnTheScreen();
+    expect(screen.getByText("10 reps")).toBeOnTheScreen();
     expect(screen.getByText("Última vez: 45 kg")).toBeOnTheScreen();
     expect(screen.getByLabelText("Carga da série 3, em quilos").props.value).toBe("45");
     const check = screen.getByRole("checkbox", { name: "Série 3 feita" });
@@ -53,7 +53,7 @@ describe("WorkoutSetRow", () => {
 
   it("grows with large text instead of fixing its height, and caps the weight's scaling", async () => {
     await render(<WorkoutSetRow {...base} done={false} testID="set" />);
-    const style = StyleSheet.flatten(screen.getByTestId("set").props.style);
+    const style = StyleSheet.flatten(screen.getByTestId("set-row").props.style);
     expect(style.height).toBeUndefined();
     expect(style.minHeight).toBe(68);
     expect(screen.getByLabelText("Carga da série 3, em quilos").props.maxFontSizeMultiplier).toBe(1.3);
@@ -61,5 +61,33 @@ describe("WorkoutSetRow", () => {
     const box = StyleSheet.flatten(screen.getByTestId("set-weight").props.style);
     expect(box.width).toBeUndefined();
     expect(box.minWidth).toBe(84);
+  });
+
+  it("explains the current set's strategy in the row, and opens it from there", async () => {
+    const onOpen = jest.fn();
+    await render(
+      <WorkoutSetRow
+        {...base}
+        done={false}
+        current
+        strategy={{ name: "Dropset", text: "Tire 10 kg duas vezes.", fromTrainer: true, expanded: true, onOpen }}
+      />,
+    );
+    expect(screen.getByText("DROPSET")).toBeOnTheScreen();
+    expect(screen.getByText("Tire 10 kg duas vezes.").props.numberOfLines).toBe(3);
+    expect(screen.getByText("Orientação do seu treinador")).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole("button", { name: "Série 3, Dropset: ver tudo" }));
+    expect(onOpen).toHaveBeenCalled();
+  });
+
+  it("offers any other set's strategy as a row that says what it opens", async () => {
+    const onOpen = jest.fn();
+    await render(
+      <WorkoutSetRow {...base} done strategy={{ name: "Falha", text: "Até não sair mais.", fromTrainer: false, expanded: false, onOpen }} />,
+    );
+    expect(screen.queryByText("Até não sair mais.")).toBeNull();
+    expect(screen.getByText("· Como fazer")).toBeOnTheScreen();
+    await fireEvent.press(screen.getByRole("button", { name: "Série 3, Falha: como fazer" }));
+    expect(onOpen).toHaveBeenCalled();
   });
 });

@@ -1,5 +1,5 @@
-import type { ExerciseSet, FullWorkoutExercise } from "@/lib/api/types";
-import { SET_STRATEGIES } from "@/lib/labels";
+import type { ExerciseSet, FullWorkoutExercise, SetStrategy } from "@/lib/api/types";
+import { ISOMETRIC_REPS_DESCRIPTION, SET_STRATEGIES, SET_STRATEGY_DESCRIPTIONS } from "@/lib/labels";
 
 /**
  * How a prescribed set and exercise read on the client's screens ("12 reps · Direta",
@@ -33,6 +33,41 @@ export function setGoal(set: Pick<ExerciseSet, "reps" | "durationSeconds" | "str
 /** The set's line: "12 reps · Direta", "30 s · Isometria". */
 export function setTarget(set: Pick<ExerciseSet, "reps" | "durationSeconds" | "strategy">): string {
   return `${setGoal(set)} · ${SET_STRATEGIES[set.strategy]}`;
+}
+
+/** What a set's strategy row explains: its name and how to do it. */
+export type StrategyGuide = {
+  /** "Dropset". */
+  name: string;
+  /** The trainer's description (the set's notes), else the strategy's own. */
+  text: string;
+  /** `text` is the trainer's. */
+  fromTrainer: boolean;
+};
+
+/** A strategy's own description for a set: Isometria's names the hold button only on a timed set. */
+export function strategyDescription(strategy: SetStrategy, timed: boolean): string {
+  return strategy === "ISOMETRIC_HOLD" && !timed ? ISOMETRIC_REPS_DESCRIPTION : SET_STRATEGY_DESCRIPTIONS[strategy];
+}
+
+/**
+ * The guide for a set, or null for a plain "Direta" set with nothing from the trainer: only a set
+ * with something to explain gets a strategy row.
+ */
+export function strategyGuide(set: Pick<ExerciseSet, "strategy" | "notes" | "durationSeconds">): StrategyGuide | null {
+  const note = set.notes.trim();
+  if (set.strategy === "STRAIGHT" && note === "") return null;
+  return {
+    name: SET_STRATEGIES[set.strategy],
+    text: note === "" ? strategyDescription(set.strategy, isTimed(set)) : note,
+    fromTrainer: note !== "",
+  };
+}
+
+/** The rest timer's caption for the set that comes next: "Próxima: série 3 · 10 reps · Dropset". */
+export function nextSetText(set: Pick<ExerciseSet, "setNumber" | "reps" | "durationSeconds" | "strategy">): string {
+  const strategy = set.strategy === "STRAIGHT" ? "" : ` · ${SET_STRATEGIES[set.strategy]}`;
+  return `Próxima: série ${set.setNumber} · ${setGoal(set)}${strategy}`;
 }
 
 /** The trainer's suggestion for a set: "Carga sugerida 40 kg", "70% da carga máxima", or "". */

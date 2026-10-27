@@ -1,4 +1,13 @@
-import { durationText, exerciseSummary, prescribedLoad, restSecondsFor, setTarget, weightText } from "./workoutText";
+import {
+  durationText,
+  exerciseSummary,
+  nextSetText,
+  prescribedLoad,
+  restSecondsFor,
+  setTarget,
+  strategyGuide,
+  weightText,
+} from "./workoutText";
 
 const set = (over: Partial<Parameters<typeof setTarget>[0] & { weight: string; loadPercentage: string; restSeconds: number }> = {}) => ({
   reps: 12,
@@ -46,5 +55,46 @@ describe("workoutText", () => {
     expect(exerciseSummary(ex([set(), set(), set({ reps: 10 }), set({ reps: 8 })]))).toBe("4 séries · 12 a 8 reps · 60 s de descanso");
     expect(exerciseSummary(ex([set({ durationSeconds: 30, reps: 0, restSeconds: 45 })]))).toBe("1 série · 30 s · 45 s de descanso");
     expect(exerciseSummary(ex([]))).toBe("0 séries");
+  });
+});
+
+describe("strategyGuide", () => {
+  it("has nothing to explain for a plain Direta set", () => {
+    expect(strategyGuide({ strategy: "STRAIGHT", notes: "", durationSeconds: 0 })).toBeNull();
+    expect(strategyGuide({ strategy: "STRAIGHT", notes: "  ", durationSeconds: 0 })).toBeNull();
+  });
+
+  it("explains a strategy with its own description", () => {
+    expect(strategyGuide({ strategy: "FAILURE", notes: "", durationSeconds: 0 })).toEqual({
+      name: "Falha",
+      text: "Faça repetições até não conseguir completar mais nenhuma com boa técnica.",
+      fromTrainer: false,
+    });
+  });
+
+  it("names the hold button for Isometria only on a timed set", () => {
+    expect(strategyGuide({ strategy: "ISOMETRIC_HOLD", notes: "", durationSeconds: 30 })?.text).toBe(
+      "Segure a posição parada pelo tempo indicado. Use o botão ▶ para cronometrar.",
+    );
+    expect(strategyGuide({ strategy: "ISOMETRIC_HOLD", notes: "", durationSeconds: 0 })?.text).toBe(
+      "Segure a posição parada por alguns segundos em cada repetição, sem mover.",
+    );
+  });
+
+  it("puts the trainer's description in its place, Direta included", () => {
+    expect(strategyGuide({ strategy: "DROPSET", notes: " Tire 10 kg. ", durationSeconds: 0 })).toEqual({ name: "Dropset", text: "Tire 10 kg.", fromTrainer: true });
+    expect(strategyGuide({ strategy: "STRAIGHT", notes: "Pausa de 1 s embaixo.", durationSeconds: 0 })).toEqual({
+      name: "Direta",
+      text: "Pausa de 1 s embaixo.",
+      fromTrainer: true,
+    });
+  });
+});
+
+describe("nextSetText", () => {
+  it("names the next set, its goal and a strategy other than Direta", () => {
+    expect(nextSetText({ setNumber: 2, reps: 10, durationSeconds: 0, strategy: "STRAIGHT" })).toBe("Próxima: série 2 · 10 reps");
+    expect(nextSetText({ setNumber: 3, reps: 10, durationSeconds: 0, strategy: "DROPSET" })).toBe("Próxima: série 3 · 10 reps · Dropset");
+    expect(nextSetText({ setNumber: 1, reps: 0, durationSeconds: 30, strategy: "ISOMETRIC_HOLD" })).toBe("Próxima: série 1 · 30 s · Isometria");
   });
 });

@@ -153,6 +153,24 @@ describe("WorkoutEditorScreen — editing", () => {
     expect(screen.getByLabelText("Repetições da série 3")).toHaveDisplayValue("12");
   });
 
+  it("sets a set's strategy and the description the client sees, from its action sheet", async () => {
+    await openExisting();
+    await fireEvent.press(screen.getByRole("button", { name: "Opções da série 2" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Estratégia e descrição" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Dropset" }));
+    expect(screen.getByText(/^Ao terminar as repetições, reduza a carga/)).toBeOnTheScreen();
+    await fireEvent.changeText(screen.getByLabelText("Descrição da estratégia (opcional)"), "  Tire 10 kg duas vezes.  ");
+    await fireEvent.press(screen.getByRole("button", { name: "Concluir" }));
+    expect(screen.getByLabelText("Dropset, com descrição")).toBeOnTheScreen();
+
+    await fireEvent.press(screen.getByRole("button", { name: "Salvar treino" }));
+    await waitFor(() => expect(bff.calls.find((c) => c.route === "PUT /api/workouts/5/exercises")).toBeDefined());
+    const put = bff.calls.find((c) => c.route === "PUT /api/workouts/5/exercises")?.body as {
+      exercises: { sets: { strategy: string; notes?: string }[] }[];
+    };
+    expect(put.exercises[0].sets[1]).toMatchObject({ strategy: "DROPSET", notes: "Tire 10 kg duas vezes." });
+  });
+
   it("deletes the workout from ⋮, or says why it can't", async () => {
     await openExisting({ "DELETE /api/workouts/5": bffError(409, "PRECONDITION_FAILED") });
     await fireEvent.press(screen.getByRole("button", { name: "Ações do treino" }));

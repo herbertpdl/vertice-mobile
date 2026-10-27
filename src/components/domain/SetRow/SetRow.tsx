@@ -1,10 +1,15 @@
+import { MessageSquareText } from "lucide-react-native";
 import { useState } from "react";
 import { Pressable, StyleSheet, TextInput, View } from "react-native";
 
 import { Text } from "@/components/ui/Text";
 import { REPS_MAX, REST_SECONDS_MAX } from "@/lib/validation/bounds";
+import { SET_STRATEGIES } from "@/lib/labels";
 import type { EditorSet, SetFields } from "@/lib/workoutEditor/model";
-import { colors, controls, radius, sizes, space, textStyle } from "@/theme";
+import { colors, controls, radius, sizes, space, textStyle, TINT_ALPHA, withAlpha } from "@/theme";
+
+/** The strategy tag's fill: secondary (violet) at the badge tint, as on the client's set. */
+const STRATEGY_FILL = withAlpha(colors.secondary, TINT_ALPHA);
 
 // What may be typed (anything else marks the cell invalid) vs. what is committed: a lone or
 // trailing separator ("." / "6,") is a keystroke away from a number, so it is neither flagged nor
@@ -92,7 +97,7 @@ export type SetRowProps = {
   /** 1-based position. */
   number: number;
   onUpdate: (patch: Partial<SetFields>) => void;
-  /** The number cell opens the set's actions (duplicate, move, remove). */
+  /** The number cell opens the set's actions (strategy, duplicate, move, remove). */
   onOptions: () => void;
   /** A removal of this set was refused and undone: drawn in warning. */
   refused?: boolean;
@@ -102,52 +107,71 @@ export type SetRowProps = {
 /**
  * M Set Row: the set's number, then reps, load (kg) and rest (s) cells — 44 pt tall `bg` boxes,
  * 14/600 centered. The web's row also edits strategy, duration and load %; the phone keeps the
- * three columns of the design and carries the others unchanged. A cell commits as it's typed
+ * three columns of the design, sets the strategy from the number's actions and carries duration
+ * and load % unchanged. A cell commits as it's typed
  * when the text is a complete value within the platform's bounds (the web's rules); anything
- * else turns the cell's border danger and is never sent.
+ * else turns the cell's border danger and is never sent. A set that isn't a plain "Direta", or
+ * carries a description for the client, shows its strategy under the cells (set from the number's
+ * actions).
  */
 export function SetRow({ set, number, onUpdate, onOptions, refused = false, disabled = false }: SetRowProps) {
   const editable = !disabled;
+  const described = (set.notes ?? "").trim() !== "";
+  const tagged = set.strategy !== "STRAIGHT" || described;
   return (
-    <View style={styles.row}>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`Opções da série ${number}`}
-        disabled={disabled}
-        onPress={onOptions}
-        hitSlop={{ top: 0, bottom: 0, left: space[2], right: 0 }}
-        style={styles.number}
-      >
-        <Text variant="bodyStrong" color={refused ? "warning" : "textSecondary"}>
-          {number}
-        </Text>
-      </Pressable>
-      <Cell
-        value={set.reps === undefined ? "" : String(set.reps)}
-        onCommit={(v) => onUpdate({ reps: v === "" ? undefined : Number(v) })}
-        kind="integer"
-        bounds={{ max: REPS_MAX }}
-        accessibilityLabel={`Repetições da série ${number}`}
-        editable={editable}
-      />
-      <Cell
-        value={set.weight === undefined ? "" : toDisplayDecimal(set.weight)}
-        onCommit={(v) => onUpdate({ weight: v === "" ? undefined : v })}
-        kind="decimal"
-        bounds={WEIGHT_BOUNDS}
-        unit="kg"
-        accessibilityLabel={`Carga da série ${number}, em quilos`}
-        editable={editable}
-      />
-      <Cell
-        value={set.restSeconds === undefined ? "" : String(set.restSeconds)}
-        onCommit={(v) => onUpdate({ restSeconds: v === "" ? undefined : Number(v) })}
-        kind="integer"
-        bounds={{ max: REST_SECONDS_MAX }}
-        unit="s"
-        accessibilityLabel={`Descanso da série ${number}, em segundos`}
-        editable={editable}
-      />
+    <View style={styles.set}>
+      <View style={styles.row}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel={`Opções da série ${number}`}
+          disabled={disabled}
+          onPress={onOptions}
+          hitSlop={{ top: 0, bottom: 0, left: space[2], right: 0 }}
+          style={styles.number}
+        >
+          <Text variant="bodyStrong" color={refused ? "warning" : "textSecondary"}>
+            {number}
+          </Text>
+        </Pressable>
+        <Cell
+          value={set.reps === undefined ? "" : String(set.reps)}
+          onCommit={(v) => onUpdate({ reps: v === "" ? undefined : Number(v) })}
+          kind="integer"
+          bounds={{ max: REPS_MAX }}
+          accessibilityLabel={`Repetições da série ${number}`}
+          editable={editable}
+        />
+        <Cell
+          value={set.weight === undefined ? "" : toDisplayDecimal(set.weight)}
+          onCommit={(v) => onUpdate({ weight: v === "" ? undefined : v })}
+          kind="decimal"
+          bounds={WEIGHT_BOUNDS}
+          unit="kg"
+          accessibilityLabel={`Carga da série ${number}, em quilos`}
+          editable={editable}
+        />
+        <Cell
+          value={set.restSeconds === undefined ? "" : String(set.restSeconds)}
+          onCommit={(v) => onUpdate({ restSeconds: v === "" ? undefined : Number(v) })}
+          kind="integer"
+          bounds={{ max: REST_SECONDS_MAX }}
+          unit="s"
+          accessibilityLabel={`Descanso da série ${number}, em segundos`}
+          editable={editable}
+        />
+      </View>
+      {tagged ? (
+        <View
+          style={styles.tag}
+          accessible
+          accessibilityLabel={`${SET_STRATEGIES[set.strategy]}${described ? ", com descrição" : ""}`}
+        >
+          <Text variant="smallStrong" color="secondaryHover">
+            {SET_STRATEGIES[set.strategy]}
+          </Text>
+          {described ? <MessageSquareText size={13} color={colors.secondaryHover} /> : null}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -169,6 +193,18 @@ export function SetHeader() {
 }
 
 const styles = StyleSheet.create({
+  set: { gap: space[1] },
+  tag: {
+    alignSelf: "flex-start",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: space[1],
+    marginLeft: sizes.setNumberColumn + space[2],
+    paddingHorizontal: space[2],
+    paddingVertical: sizes.rowLinesGap,
+    borderRadius: radius.full,
+    backgroundColor: STRATEGY_FILL,
+  },
   row: { flexDirection: "row", alignItems: "center", gap: space[2] },
   number: { width: sizes.setNumberColumn, height: controls.hitTarget, justifyContent: "center" },
   numberHead: { width: sizes.setNumberColumn },

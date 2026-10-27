@@ -290,30 +290,37 @@ export default function KitScreen() {
               { label: "DOM", dayNumber: "26", name: "Domingo", state: "rest" },
             ]}
           />
-          {["12 reps · Direta", "10 reps · Direta", "10 reps · Direta", "Até a falha · Falha"].map((target, i) => (
+          {["12 reps", "10 reps", "10 reps", "Até a falha"].map((target, i) => (
             <WorkoutSetRow
               key={i}
               number={i + 1}
               target={target}
-              hint={i === 3 ? "Segure 1 s embaixo" : "Última vez: 45 kg"}
+              hint="Última vez: 45 kg"
               weight={weights[i] ?? ""}
               onWeightChange={(text) => setWeights((w) => w.map((v, j) => (j === i ? text : v)))}
               done={ticked[i] ?? false}
               onToggle={() => setTicked((t) => t.map((v, j) => (j === i ? !v : v)))}
               current={ticked.indexOf(false) === i}
+              strategy={
+                i === 2
+                  ? { name: "Dropset", text: "Tire 10 kg duas vezes, sem descanso.", fromTrainer: true, expanded: ticked.indexOf(false) === i, onOpen: () => {} }
+                  : i === 3
+                    ? { name: "Falha", text: "Faça repetições até não conseguir completar mais nenhuma com boa técnica.", fromTrainer: false, expanded: ticked.indexOf(false) === i, onOpen: () => {} }
+                    : undefined
+              }
             />
           ))}
           <WorkoutSetRow
             number={2}
-            target="Isometria"
-            hint={holding ? "de 30 s" : "Segurar 30 s"}
+            target="30 s"
+            hint={holding ? "de 30 s" : undefined}
             weight=""
             onWeightChange={() => {}}
             done={false}
             onToggle={() => {}}
             timed={{ holding, remaining: "0:18", onHoldPress: () => setHolding((h) => !h) }}
           />
-          <RestTimer remaining="0:47" progress={0.22} caption="Próxima: série 4 · até a falha" />
+          <RestTimer remaining="0:47" progress={0.22} caption="Próxima: série 4 · Até a falha · Falha" />
           <ExerciseStepRow index={1} name="Remada curvada com barra" meta="4 de 4 séries" state="done" onPress={() => {}} />
           <ExerciseStepRow index={2} name="Puxada frontal aberta" meta="Em andamento · 2 de 4 séries" state="current" onPress={() => {}} />
           <ExerciseStepRow index={3} name="Remada baixa no cabo" meta="0 de 3 séries" state="pending" onPress={() => {}} />
