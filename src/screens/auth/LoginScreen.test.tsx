@@ -11,7 +11,11 @@ jest.mock("@/lib/auth", () => ({
   useAuth: () => ({ signIn: mockSignIn, sessionExpired: mockSessionExpired }),
 }));
 
-jest.mock("expo-router", () => ({ router: { push: jest.fn(), back: jest.fn() } }));
+let mockParams: Record<string, string | string[] | undefined> = {};
+jest.mock("expo-router", () => ({
+  router: { push: jest.fn(), back: jest.fn() },
+  useLocalSearchParams: () => mockParams,
+}));
 
 const session = { token: "t", user: { id: 1, name: "Ana", email: "ana@vertice.fit", role: "TRAINER" } };
 let bff: BffMock;
@@ -20,6 +24,7 @@ afterEach(() => {
   bff?.restore();
   mockSignIn.mockReset();
   mockSessionExpired = false;
+  mockParams = {};
 });
 
 async function fill(email: string, password: string) {
@@ -36,6 +41,23 @@ describe("LoginScreen", () => {
     expect(await screen.findByText("Não foi possível entrar. Corrija os campos abaixo.")).toBeOnTheScreen();
     expect(screen.getByText("Informe a senha")).toBeOnTheScreen();
     expect(bff.calls).toHaveLength(0);
+  });
+
+  it("fills in the e-mail from the web's \"Abrir o app\" link", async () => {
+    bff = mockBff({ "POST /api/auth/login": session });
+    mockParams = { email: " bia+treino@vertice.fit " };
+    await renderScreen(<LoginScreen />);
+    expect(screen.getByLabelText("E-mail").props.value).toBe("bia+treino@vertice.fit");
+    await fireEvent.changeText(screen.getByLabelText("Senha"), "segredo123");
+    await fireEvent.press(screen.getByRole("button", { name: "Entrar" }));
+    await waitFor(() => expect(bff.calls[0]?.body).toEqual({ email: "bia+treino@vertice.fit", password: "segredo123" }));
+  });
+
+  it("ignores a repeated email parameter", async () => {
+    bff = mockBff({});
+    mockParams = { email: ["a@vertice.fit", "b@vertice.fit"] };
+    await renderScreen(<LoginScreen />);
+    expect(screen.getByLabelText("E-mail").props.value).toBe("");
   });
 
   it("signs in with the session the BFF returns (e-mail trimmed, no token sent)", async () => {
