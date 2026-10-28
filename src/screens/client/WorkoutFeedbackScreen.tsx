@@ -113,5 +113,5 @@ const styles = StyleSheet.create({
     backgroundColor: colors.surface,
   },
   question: { gap: space[1], paddingHorizontal: space[4] },
-  footer: { flex: 1, gap: space[1] },
+  footer: { gap: space[1] },
 });

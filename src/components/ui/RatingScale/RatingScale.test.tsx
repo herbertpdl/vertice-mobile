@@ -4,15 +4,15 @@ import { StyleSheet } from "react-native";
 import { RatingScale } from "./RatingScale";
 
 describe("RatingScale", () => {
-  it("offers the five ratings, hardest first, as radios", async () => {
+  it("offers the five ratings, easiest first, as radios", async () => {
     await render(<RatingScale value={null} onChange={() => {}} />);
     const radios = screen.getAllByRole("radio");
     expect(radios.map((r) => r.props.accessibilityLabel)).toEqual([
-      "Muito difícil",
-      "Difícil",
-      "Na medida",
-      "Fácil",
       "Muito fácil",
+      "Fácil",
+      "Na medida",
+      "Difícil",
+      "Muito difícil",
     ]);
     expect(radios.every((r) => r.props.accessibilityState.checked === false)).toBe(true);
   });
