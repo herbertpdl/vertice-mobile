@@ -3,7 +3,7 @@ import { StyleSheet, View, type StyleProp, type ViewStyle } from "react-native";
 
 import { colors, radius, shadows, sizes, space, TINT_ALPHA, withAlpha } from "@/theme";
 
-import { ProgressBar } from "../ProgressBar";
+import { ProgressBar, type ProgressSpan } from "../ProgressBar";
 import { Text } from "../Text";
 
 /** M Rest Timer's ring (primary at `59`) and icon disc (primary at `1F`). */
@@ -15,6 +15,8 @@ export type RestTimerProps = {
   remaining: string;
   /** Share of the rest already elapsed, 0–1 (the bar fills as the rest runs out). */
   progress: number;
+  /** When the rest started and ends (epoch ms), so the bar fills smoothly between ticks. */
+  span?: ProgressSpan;
   /** "Próxima: série 3 · 12 reps", "Continua contando". */
   caption: string;
   /** Drop the shadow when docked inside a sheet (M - Ver Execução). */
@@ -27,7 +29,7 @@ export type RestTimerProps = {
  * buttons — the rest can't be skipped or changed (R47); ticking the next set ends it. Announced
  * politely as the countdown changes only through its label, not every second.
  */
-export function RestTimer({ remaining, progress, caption, flat = false, style }: RestTimerProps) {
+export function RestTimer({ remaining, progress, span, caption, flat = false, style }: RestTimerProps) {
   return (
     <View
       style={[styles.card, flat ? null : shadows.restTimer, style]}
@@ -51,7 +53,7 @@ export function RestTimer({ remaining, progress, caption, flat = false, style }:
           {remaining}
         </Text>
       </View>
-      <ProgressBar value={progress} accessibilityLabel="Descanso decorrido" />
+      <ProgressBar value={progress} span={span} accessibilityLabel="Descanso decorrido" />
     </View>
   );
 }

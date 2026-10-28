@@ -479,6 +479,7 @@ function SessionView({ snapshot, restored }: { snapshot: WorkoutSession; restore
         flat={flat}
         remaining={clockText(secondsLeft(state.rest, now))}
         progress={timerProgress(state.rest, now)}
+        span={state.rest}
         caption={flat ? "Continua contando" : restCaption}
       />
     );
