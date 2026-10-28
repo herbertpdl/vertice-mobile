@@ -40,7 +40,8 @@ export function ProgressBar({ value, tone = "primary", span, accessibilityLabel,
   const running = span !== undefined && !reduceMotion;
   const startedAt = span?.startedAt;
   const endsAt = span?.endsAt;
-  const fill = useSharedValue(0);
+  // Seeded with `value` so a bar mounted mid-span (Ver execução, a restored session) never paints empty.
+  const fill = useSharedValue(clamped);
 
   useEffect(() => {
     if (!running || startedAt === undefined || endsAt === undefined) return;

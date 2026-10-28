@@ -65,11 +65,16 @@ export function SheetModal({
         />
         {/* The slide-in runs on a full-height layer, not the panel: a frame change that lands while
             an entering animation runs is dropped, so a panel that grew mid-slide (a query answering
-            fast) kept its old top and ran off the bottom of the screen. */}
-        <Animated.View entering={SlideInDown.duration(260)} style={styles.slide} pointerEvents="box-none">
+            fast) kept its old top and ran off the bottom of the screen. The layer is the backdrop's
+            sibling, so it carries `accessibilityViewIsModal` (VoiceOver skips the backdrop). */}
+        <Animated.View
+          entering={SlideInDown.duration(260)}
+          style={styles.slide}
+          pointerEvents="box-none"
+          accessibilityViewIsModal
+        >
           <View
             style={[styles.panel, { gap, paddingBottom: Math.max(insets.bottom, space[5]) }]}
-            accessibilityViewIsModal
             accessibilityLabel={accessibilityLabel}
           >
             <View style={styles.grabberRow}>
