@@ -63,16 +63,20 @@ export function SheetModal({
           accessibilityRole="button"
           accessibilityLabel="Fechar"
         />
-        <Animated.View
-          entering={SlideInDown.duration(260)}
-          style={[styles.panel, { gap, paddingBottom: Math.max(insets.bottom, space[5]) }]}
-          accessibilityViewIsModal
-          accessibilityLabel={accessibilityLabel}
-        >
-          <View style={styles.grabberRow}>
-            <View style={styles.grabber} />
+        {/* The slide-in runs on a full-height layer, not the panel: a frame change that lands while
+            an entering animation runs is dropped, so a panel that grew mid-slide (a query answering
+            fast) kept its old top and ran off the bottom of the screen. */}
+        <Animated.View entering={SlideInDown.duration(260)} style={styles.slide} pointerEvents="box-none">
+          <View
+            style={[styles.panel, { gap, paddingBottom: Math.max(insets.bottom, space[5]) }]}
+            accessibilityViewIsModal
+            accessibilityLabel={accessibilityLabel}
+          >
+            <View style={styles.grabberRow}>
+              <View style={styles.grabber} />
+            </View>
+            {children}
           </View>
-          {children}
         </Animated.View>
       </KeyboardAvoidingView>
     </Modal>
@@ -121,6 +125,7 @@ export function Sheet({ title, footer, scroll = true, children, ...modal }: Shee
 const styles = StyleSheet.create({
   fill: { flex: 1, justifyContent: "flex-end" },
   backdrop: { backgroundColor: overlay.backdrop },
+  slide: { flex: 1, justifyContent: "flex-end" },
   panel: {
     maxHeight: "92%",
     backgroundColor: colors.surface,

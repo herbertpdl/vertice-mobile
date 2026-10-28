@@ -44,7 +44,7 @@ export type { OptionRowProps } from "./OptionRow";
 export { PickerField } from "./PickerField";
 export type { PickerOption, PickerFieldProps } from "./PickerField";
 export { ProgressBar } from "./ProgressBar";
-export type { ProgressTone, ProgressBarProps } from "./ProgressBar";
+export type { ProgressTone, ProgressBarProps, ProgressSpan } from "./ProgressBar";
 export { RatingChip } from "./RatingChip";
 export type { RatingChipProps } from "./RatingChip";
 export { RatingEmoji } from "./RatingEmoji";
