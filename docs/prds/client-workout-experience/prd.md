@@ -214,8 +214,8 @@ product promises them.
 
 ### 4.7 Feedback
 - R65. After a session is finished by the client, the feedback step opens.
-- R66. The feedback step offers five ratings, each a custom emoji illustration: Muito difícil,
-  Difícil, Na medida, Fácil, Muito fácil.
+- R66. The feedback step offers five ratings, each a custom emoji illustration, easiest first:
+  Muito fácil, Fácil, Na medida, Difícil, Muito difícil.
 - R67. Sending feedback requires a rating.
 - R68. A comment is optional and holds up to 2,000 characters.
 - R69. The client can skip the feedback step with "Pular".
