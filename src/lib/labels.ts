@@ -121,8 +121,8 @@ export const ROLES: Record<Role, string> = {
 /** How a client rates a finished workout (the client app's feedback step). */
 export type FeedbackRating = components["schemas"]["FeedbackRating"];
 
-/** Hardest first, as the scale is shown. */
-export const RATING_ORDER: FeedbackRating[] = ["VERY_HARD", "HARD", "JUST_RIGHT", "EASY", "VERY_EASY"];
+/** Easiest first, as the scale is shown. */
+export const RATING_ORDER: FeedbackRating[] = ["VERY_EASY", "EASY", "JUST_RIGHT", "HARD", "VERY_HARD"];
 
 export const RATINGS: Record<FeedbackRating, string> = {
   VERY_HARD: "Muito difícil",

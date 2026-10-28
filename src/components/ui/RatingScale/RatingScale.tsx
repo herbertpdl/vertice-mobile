@@ -13,7 +13,7 @@ export type RatingScaleProps = {
 };
 
 /**
- * M Rating Scale: the five M Rating Options, hardest first. A selected option gets the
+ * M Rating Scale: the five M Rating Options, easiest first. A selected option gets the
  * `surfaceActive` card with a primary ring and label (M Rating Option Selected); the others show
  * their face faded. The options share the row (up to 68 pt each), so the scale fits a 320 pt
  * content width. Read as a radio group ("Como foi o treino?" is the screen's question).
