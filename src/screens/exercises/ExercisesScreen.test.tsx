@@ -30,46 +30,84 @@ const catalog = [
 let bff: BffMock;
 afterEach(() => bff?.restore());
 
+const groups = [{ id: 1, name: "Peito" }, { id: 2, name: "Costas" }];
+const page = (exercises: Exercise[], nextCursor: string | null = null) => Response.json({ exercises, nextCursor });
+
 describe("catalogSubtitle", () => {
-  it("counts the catalog and its starters, or the matches", () => {
-    expect(catalogSubtitle(catalog, false)).toBe("3 exercícios · 2 padrão");
-    expect(catalogSubtitle([catalog[0]], true)).toBe("1 exercício encontrado");
+  it("counts the matches, as a lower bound while more pages remain", () => {
+    expect(catalogSubtitle(3, false)).toBe("3 exercícios encontrados");
+    expect(catalogSubtitle(1, false)).toBe("1 exercício encontrado");
+    expect(catalogSubtitle(30, true)).toBe("Mais de 30 exercícios encontrados");
   });
 });
 
 describe("ExercisesScreen", () => {
-  it("lists the catalog, filters it by muscle group and opens an exercise", async () => {
+  it("asks for a search first, lists a muscle group and opens an exercise", async () => {
     bff = mockBff({
-      "GET /api/exercises": ({ url }) => Response.json(url.searchParams.get("muscleGroupId") === "2" ? [catalog[1]] : catalog),
-      "GET /api/muscle-groups": [{ id: 1, name: "Peito" }, { id: 2, name: "Costas" }],
+      "GET /api/exercises": ({ url }) => page(url.searchParams.get("muscleGroupId") === "2" ? [catalog[1]] : catalog),
+      "GET /api/muscle-groups": groups,
     });
     await renderScreen(<ExercisesScreen />);
-    expect(await screen.findByText("3 exercícios · 2 padrão")).toBeOnTheScreen();
-    await fireEvent.press(screen.getByRole("button", { name: "Costas" }));
+    expect(await screen.findByText("Busque um exercício")).toBeOnTheScreen();
+    expect(bff.calls.some((c) => c.route === "GET /api/exercises")).toBe(false);
+    await fireEvent.press(await screen.findByRole("button", { name: "Costas" }));
     expect(await screen.findByText("1 exercício encontrado")).toBeOnTheScreen();
     expect(screen.queryByRole("button", { name: "Supino Reto" })).toBeNull();
     await fireEvent.press(screen.getByRole("button", { name: "Puxada Alta" }));
     expect(mockRouter.push).toHaveBeenCalledWith("/exercicios/2");
+    await fireEvent.press(screen.getByRole("button", { name: "Todos" }));
+    expect(await screen.findByText("Busque um exercício")).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole("button", { name: "Novo exercício" }));
     expect(mockRouter.push).toHaveBeenCalledWith("/exercicios/novo");
   });
 
-  it("searches on the server and offers to clear an empty result", async () => {
+  it("searches on the server from 3 letters and offers to clear an empty result", async () => {
     bff = mockBff({
-      "GET /api/exercises": ({ url }) => Response.json(url.searchParams.get("q") === "zzz" ? [] : catalog),
+      "GET /api/exercises": ({ url }) => page(url.searchParams.get("q") === "zzz" ? [] : catalog),
       "GET /api/muscle-groups": [],
     });
     await renderScreen(<ExercisesScreen />);
-    await screen.findByText("3 exercícios · 2 padrão");
     await fireEvent.changeText(screen.getByPlaceholderText("Buscar exercício"), "zzz");
     expect(await screen.findByText("Nenhum exercício encontrado")).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole("button", { name: "Limpar busca" }));
-    expect(await screen.findByText("3 exercícios · 2 padrão")).toBeOnTheScreen();
+    expect(await screen.findByText("Busque um exercício")).toBeOnTheScreen();
+  });
+
+  it("loads the next page when the list reaches its end", async () => {
+    bff = mockBff({
+      "GET /api/exercises": ({ url }) => (url.searchParams.get("cursor") === "30" ? page([catalog[2]]) : page(catalog.slice(0, 2), "30")),
+      "GET /api/muscle-groups": groups,
+    });
+    await renderScreen(<ExercisesScreen />);
+    await fireEvent.press(await screen.findByRole("button", { name: "Peito" }));
+    expect(await screen.findByText("Mais de 2 exercícios encontrados")).toBeOnTheScreen();
+    await fireEvent(screen.getByTestId("exercise-list"), "onEndReached");
+    expect(await screen.findByText("3 exercícios encontrados")).toBeOnTheScreen();
+    expect(screen.getByRole("button", { name: "Rosca Alternada" })).toBeOnTheScreen();
+  });
+
+  it("never fetches more once back at the prompt", async () => {
+    const searches: string[] = [];
+    bff = mockBff({
+      "GET /api/exercises": ({ url }) => {
+        searches.push(url.search);
+        return page(catalog.slice(0, 2), "30");
+      },
+      "GET /api/muscle-groups": groups,
+    });
+    await renderScreen(<ExercisesScreen />);
+    await fireEvent.press(await screen.findByRole("button", { name: "Peito" }));
+    await screen.findByText("Mais de 2 exercícios encontrados");
+    await fireEvent.press(screen.getByRole("button", { name: "Todos" }));
+    await screen.findByText("Busque um exercício");
+    await fireEvent(screen.getByTestId("exercise-list"), "onEndReached");
+    expect(searches).toEqual(["?muscleGroupId=1"]);
   });
 
   it("shows the error state when the first load fails", async () => {
     bff = mockBff({ "GET /api/exercises": bffError(503, "UPSTREAM_UNAVAILABLE"), "GET /api/muscle-groups": [] });
     await renderScreen(<ExercisesScreen />);
+    await fireEvent.changeText(screen.getByPlaceholderText("Buscar exercício"), "sup");
     expect(await screen.findByRole("button", { name: /Tentar novamente/ })).toBeOnTheScreen();
   });
 });

@@ -1,6 +1,6 @@
 /**
  * Generated from vertice-bff's OpenAPI document. Do not edit by hand.
- * Source:    herbertpdl/vertice-bff@382192dcce1fe77bb369afca2dcfc4ccb0ebcfb7:docs/openapi.json
+ * Source:    herbertpdl/vertice-bff@c84b5bf77aaadd52d8edfcafa9dbfbec089f5bc5:docs/openapi.json
  * Spec:      vertice-bff 0.1.0 (OpenAPI 3.1.0)
  * Generator: openapi-typescript@7.13.0
  *
@@ -188,7 +188,7 @@ export interface paths {
         put?: never;
         /**
          * Choose a password with a first-access token
-         * @description Public: no token needed. The token comes from `POST /clients` or `POST /clients/{id}/setup-token`. An unknown, expired (72h) or used token is 400 `INVALID_SETUP_TOKEN`. Failed attempts are rate limited.
+         * @description Public: no token needed. The token comes from `POST /clients` or `POST /clients/{id}/setup-token`. An unknown, expired (72h) or used token is 400 `INVALID_SETUP_TOKEN`. Failed attempts are rate limited. On success the answer says whose first access it was (`role`, `email`), never before the token is used: the web shows a CLIENT the “use the app” screen with the email filled in. No session is created; log in normally.
          */
         post: operations["setupPassword"];
         delete?: never;
@@ -297,8 +297,8 @@ export interface paths {
             cookie?: never;
         };
         /**
-         * List the exercise catalog
-         * @description Roles: TRAINER, ADMIN. A trainer sees the starter set and their own exercises; an ADMIN the starter set only. In upstream order: do not re-sort client-side. An empty `muscleGroupId` or `q` means no filter.
+         * One page of the exercise catalog
+         * @description Roles: TRAINER, ADMIN. A trainer sees the starter set and their own exercises; an ADMIN the starter set only. In upstream order: do not re-sort client-side. An empty `muscleGroupId` or `q` means no filter. Always paged (30 by default, at most 50): follow `nextCursor` with the same filter for more.
          */
         get: operations["listExercises"];
         put?: never;
@@ -654,7 +654,7 @@ export interface paths {
         };
         /**
          * The “do a workout” screen in one call
-         * @description Roles: TRAINER, CLIENT. Starts (or resumes) the week’s log and merges in what was recorded last time per set (`lastPerformed`) and this session’s (`current`). A CLIENT’s `clientId` is ignored; a TRAINER must pass the client of the workout’s plan. 409 when no log exists for an earlier week (logs are only started in the current one).
+         * @description Roles: CLIENT. Starts (or resumes) the week’s log and merges in what was recorded last time per set (`lastPerformed`) and this session’s (`current`). The caller’s own session: CLIENT only (a trainer reads logs through `GET /workout-logs`). 409 when no log exists for an earlier week (logs are only started in the current one).
          */
         get: operations["getWorkoutSession"];
         put?: never;
@@ -1072,6 +1072,12 @@ export interface components {
             /** @description Part of the shared, read-only starter set. */
             isStarter: boolean;
         };
+        ExercisePage: {
+            /** @description In upstream order: do not re-sort client-side. */
+            exercises: components["schemas"]["Exercise"][];
+            /** @description Send back as `cursor` (same filter) for the next page; `null` on the last page. */
+            nextCursor: string | null;
+        };
         ExerciseRequest: {
             name: string;
             /** @default  */
@@ -1174,6 +1180,12 @@ export interface components {
         PasswordSetupRequest: {
             token: string;
             newPassword: string;
+        };
+        PasswordSetupResult: {
+            /** @description Whose first access it was: the web shows a CLIENT the “use the app” screen. */
+            role: components["schemas"]["Role"];
+            /** @description The account’s email, so the client can be sent to the app with it filled in. */
+            email: string;
         };
         PasswordSetupToken: {
             /** @description Single-use, URL-safe. Shown once: upstream only stores its hash. */
@@ -1863,12 +1875,14 @@ export interface operations {
             };
         };
         responses: {
-            /** @description Password set; log in normally. No body. */
-            204: {
+            /** @description Password set: the account’s role and email. */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
-                content?: never;
+                content: {
+                    "application/json": components["schemas"]["PasswordSetupResult"];
+                };
             };
             /** @description A malformed path id, query or body (`VALIDATION_ERROR` with field `details`), or a route-specific 400 code. */
             400: {
@@ -2307,6 +2321,10 @@ export interface operations {
                 muscleGroupId?: number;
                 /** @description Case-insensitive name search, trimmed. */
                 q?: string;
+                /** @description Page size; 30 when absent. */
+                limit?: number;
+                /** @description `nextCursor` of the previous page. Opaque; a malformed one is a 400. */
+                cursor?: string;
             };
             header?: never;
             path?: never;
@@ -2314,13 +2332,13 @@ export interface operations {
         };
         requestBody?: never;
         responses: {
-            /** @description The exercises. */
+            /** @description One page of exercises. */
             200: {
                 headers: {
                     [name: string]: unknown;
                 };
                 content: {
-                    "application/json": components["schemas"]["Exercise"][];
+                    "application/json": components["schemas"]["ExercisePage"];
                 };
             };
             /** @description A malformed path id, query or body (`VALIDATION_ERROR` with field `details`), or a route-specific 400 code. */
@@ -4017,8 +4035,6 @@ export interface operations {
             query?: {
                 /** @description A business date, and a Monday. Defaults to the current week’s Monday in America/Sao_Paulo. */
                 weekStartDate?: string;
-                /** @description Required for a TRAINER. */
-                clientId?: number;
             };
             header?: never;
             path: {

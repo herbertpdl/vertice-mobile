@@ -1,4 +1,3 @@
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 
@@ -9,10 +8,9 @@ import { SearchField } from "@/components/ui/SearchField";
 import { Sheet } from "@/components/ui/Sheet";
 import { Spinner } from "@/components/ui/Spinner";
 import { Text } from "@/components/ui/Text";
-import { exercisesQueryKey, fetchExercises } from "@/lib/api/exercises";
 import type { Exercise } from "@/lib/api/types";
 import { useMuscleGroups } from "@/lib/useCatalog";
-import { useDebouncedValue } from "@/lib/useDebouncedValue";
+import { useExerciseSearch } from "@/lib/useExerciseSearch";
 import { MAX_EXERCISES } from "@/lib/workoutEditor/model";
 import { space } from "@/theme";
 
@@ -31,19 +29,14 @@ export type AddExerciseSheetProps = {
  * M - Adicionar Exercício (Sheet): search, muscle-group chips, the catalog as M Exercise Pick
  * Cards (several at once), "Adicionar N". Picking stops at what the workout still takes — the
  * 20-exercise cap. Remount it (a new `key`) per opening, so every opening starts empty.
+ * Nothing is fetched until 3+ letters or a group (lazy-exercise-search); then one page at a time,
+ * "Carregar mais" fetching the next (the sheet body is a plain ScrollView).
  */
 export function AddExerciseSheet({ visible, onClose, onAdd, remaining }: AddExerciseSheetProps) {
   const [search, setSearch] = useState("");
   const [muscleGroupId, setMuscleGroupId] = useState<number | null>(null);
   const [picked, setPicked] = useState<Exercise[]>([]);
-  const q = useDebouncedValue(search);
-
-  const list = useQuery({
-    queryKey: exercisesQueryKey({ muscleGroupId, q }),
-    queryFn: ({ signal }) => fetchExercises({ muscleGroupId, q }, { signal }),
-    placeholderData: keepPreviousData,
-    enabled: visible,
-  });
+  const list = useExerciseSearch(search, muscleGroupId, { enabled: visible });
   const groups = useMuscleGroups({ enabled: visible });
 
   const full = picked.length >= remaining;
@@ -84,7 +77,11 @@ export function AddExerciseSheet({ visible, onClose, onAdd, remaining }: AddExer
           O treino pode ter até {MAX_EXERCISES} exercícios.
         </Text>
       ) : null}
-      {list.data === undefined ? (
+      {list.idle ? (
+        <Text variant="body" color="textSecondary" align="center" style={styles.empty}>
+          Digite ao menos 3 letras ou escolha um grupo muscular.
+        </Text>
+      ) : list.exercises === undefined ? (
         list.isError ? (
           <ErrorState onRetry={() => void list.refetch()} retrying={list.isFetching} />
         ) : (
@@ -92,13 +89,13 @@ export function AddExerciseSheet({ visible, onClose, onAdd, remaining }: AddExer
             <Spinner accessibilityLabel="Carregando exercícios" />
           </View>
         )
-      ) : list.data.length === 0 ? (
+      ) : list.exercises.length === 0 ? (
         <Text variant="body" color="textSecondary" align="center" style={styles.empty}>
           Nenhum exercício encontrado.
         </Text>
       ) : (
         <View style={styles.list}>
-          {list.data.map((exercise) => {
+          {list.exercises.map((exercise) => {
             const selected = picked.some((e) => e.id === exercise.id);
             return (
               <ExerciseCard
@@ -110,6 +107,14 @@ export function AddExerciseSheet({ visible, onClose, onAdd, remaining }: AddExer
               />
             );
           })}
+          {list.hasNextPage || list.isFetchNextPageError ? (
+            <Button
+              label={list.isFetchNextPageError ? "Tentar carregar mais" : "Carregar mais"}
+              variant="secondary"
+              loading={list.isFetchingNextPage}
+              onPress={() => void list.fetchNextPage()}
+            />
+          ) : null}
         </View>
       )}
     </Sheet>
