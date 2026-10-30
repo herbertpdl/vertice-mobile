@@ -86,6 +86,24 @@ describe("ExercisesScreen", () => {
     expect(screen.getByRole("button", { name: "Rosca Alternada" })).toBeOnTheScreen();
   });
 
+  it("never fetches more once back at the prompt", async () => {
+    const searches: string[] = [];
+    bff = mockBff({
+      "GET /api/exercises": ({ url }) => {
+        searches.push(url.search);
+        return page(catalog.slice(0, 2), "30");
+      },
+      "GET /api/muscle-groups": groups,
+    });
+    await renderScreen(<ExercisesScreen />);
+    await fireEvent.press(await screen.findByRole("button", { name: "Peito" }));
+    await screen.findByText("Mais de 2 exercícios encontrados");
+    await fireEvent.press(screen.getByRole("button", { name: "Todos" }));
+    await screen.findByText("Busque um exercício");
+    await fireEvent(screen.getByTestId("exercise-list"), "onEndReached");
+    expect(searches).toEqual(["?muscleGroupId=1"]);
+  });
+
   it("shows the error state when the first load fails", async () => {
     bff = mockBff({ "GET /api/exercises": bffError(503, "UPSTREAM_UNAVAILABLE"), "GET /api/muscle-groups": [] });
     await renderScreen(<ExercisesScreen />);

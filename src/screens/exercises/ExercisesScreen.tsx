@@ -128,7 +128,8 @@ export function ExercisesScreen() {
             )
           }
           onEndReached={() => {
-            if (list.hasNextPage && !list.isFetchingNextPage && !list.isError) void list.fetchNextPage();
+            // `fetchNextPage` ignores `enabled`: while idle it would fetch an unfiltered first page.
+            if (!list.idle && list.hasNextPage && !list.isFetchingNextPage && !list.isError) void list.fetchNextPage();
           }}
           onEndReachedThreshold={0.5}
           ListFooterComponent={

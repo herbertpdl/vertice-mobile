@@ -23,8 +23,9 @@ export function useExerciseSearch(search: string, muscleGroupId: number | null, 
     initialPageParam: null as string | null,
     getNextPageParam: (last) => last.nextCursor,
     enabled: enabled && filter.enabled,
+    // Never while idle: the prompt carries no rows, not even placeholder ones.
     placeholderData: (previousData, previousQuery) =>
-      previousQuery && hashKey(previousQuery.queryKey) === shownKey.current ? previousData : undefined,
+      filter.enabled && previousQuery && hashKey(previousQuery.queryKey) === shownKey.current ? previousData : undefined,
   });
   const idle = !filter.enabled;
   useEffect(() => {
