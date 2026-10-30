@@ -86,10 +86,7 @@ describe("StudentDetailScreen", () => {
   it("charts the max weight per week for the chosen exercise", async () => {
     bff = mockBff(
       routes({
-        "GET /api/exercises": {
-          exercises: [{ id: 5, name: "Supino Reto", description: "", videoUrl: "", muscleGroups: [], isStarter: false }],
-          nextCursor: null,
-        },
+        "GET /api/exercises/with-progress": [{ id: 5, name: "Supino Reto" }],
         "GET /api/exercises/5/progress": [
           { weekStartDate: "2026-09-07", weight: 42.5 },
           { weekStartDate: "2026-09-14", weight: 50 },
@@ -104,6 +101,15 @@ describe("StudentDetailScreen", () => {
     await fireEvent.press(screen.getByRole("radio", { name: "Supino Reto" }));
     expect(await screen.findByLabelText("semana de 07/09: 42,5 kg, semana de 14/09: 50 kg")).toBeOnTheScreen();
     expect(bff.calls.find((c) => c.route === "GET /api/exercises/5/progress")).toBeDefined();
+  });
+
+  it("says when the student has no recorded loads, without offering the catalog", async () => {
+    bff = mockBff(routes({ "GET /api/exercises/with-progress": [] }));
+    await renderScreen(<StudentDetailScreen />);
+    await fireEvent.press(await screen.findByRole("tab", { name: "Progresso" }));
+    expect(await screen.findByText("Sem registros de carga")).toBeOnTheScreen();
+    expect(screen.getByRole("button", { name: "Exercício: Selecione um exercício" })).toBeDisabled();
+    expect(bff.calls.some((c) => c.route === "GET /api/exercises")).toBe(false);
   });
 
   it("edits the student without sending the masked CPF", async () => {

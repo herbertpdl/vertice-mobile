@@ -1,11 +1,9 @@
 import { mockBff, type BffMock } from "@/test/bff";
 
-import { exerciseSearch, fetchAllExercises } from "./exercises";
+import { exerciseSearch, fetchProgressExercises } from "./exercises";
 
 let bff: BffMock;
 afterEach(() => bff?.restore());
-
-const row = (id: number) => ({ id, name: `E${id}`, description: "", videoUrl: "", muscleGroups: [], isStarter: true });
 
 describe("exerciseSearch", () => {
   it("stays idle with no text and no group, and below 3 letters", () => {
@@ -23,23 +21,17 @@ describe("exerciseSearch", () => {
   });
 });
 
-describe("fetchAllExercises", () => {
-  it("follows nextCursor until the last page, 50 at a time", async () => {
+describe("fetchProgressExercises", () => {
+  it("asks for the student's exercises with progress, one request", async () => {
     const searches: string[] = [];
     bff = mockBff({
-      "GET /api/exercises": ({ url }) => {
+      "GET /api/exercises/with-progress": ({ url }) => {
         searches.push(url.search);
-        return Response.json(
-          url.searchParams.get("cursor") === "50"
-            ? { exercises: [row(3)], nextCursor: null }
-            : { exercises: [row(1), row(2)], nextCursor: "50" },
-        );
+        return Response.json([{ id: 9, name: "Supino" }]);
       },
     });
 
-    const all = await fetchAllExercises();
-
-    expect(all.map((e) => e.id)).toEqual([1, 2, 3]);
-    expect(searches).toEqual(["?limit=50", "?cursor=50&limit=50"]);
+    await expect(fetchProgressExercises(4)).resolves.toEqual([{ id: 9, name: "Supino" }]);
+    expect(searches).toEqual(["?clientId=4"]);
   });
 });
