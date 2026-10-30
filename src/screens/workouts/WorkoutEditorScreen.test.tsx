@@ -234,7 +234,7 @@ describe("WorkoutEditorScreen — new", () => {
   const newRoutes: BffRoutes = {
     "GET /api/training-plans/7": plan,
     "GET /api/clients": [{ id: 3, name: "Marina Costa" }],
-    "GET /api/exercises": [supino, crucifixo],
+    "GET /api/exercises": { exercises: [supino, crucifixo], nextCursor: null },
     "GET /api/muscle-groups": [],
   };
 
@@ -250,6 +250,7 @@ describe("WorkoutEditorScreen — new", () => {
     expect(screen.getByRole("button", { name: "Salvar treino" })).toBeDisabled();
     await fireEvent.changeText(screen.getByLabelText("Nome do treino"), "Treino C");
     await fireEvent.press(screen.getByRole("button", { name: "Adicionar exercício" }));
+    await fireEvent.changeText(screen.getByLabelText("Buscar exercício"), "cru");
     await fireEvent.press(await screen.findByRole("checkbox", { name: "Crucifixo" }));
     await fireEvent.press(screen.getByRole("button", { name: "Adicionar 1" }));
     await fireEvent.press(screen.getByRole("button", { name: "Adicionar série em Crucifixo" }));

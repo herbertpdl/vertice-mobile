@@ -31,7 +31,7 @@ import {
 } from "@/components/ui";
 import { apiErrorMessage } from "@/lib/api/errorMessages";
 import { dashboardQueryKey } from "@/lib/api/dashboard";
-import { exerciseProgressQueryKey, exercisesQueryKey, fetchExerciseProgress, fetchExercises } from "@/lib/api/exercises";
+import { allExercisesQueryKey, exerciseProgressQueryKey, fetchAllExercises, fetchExerciseProgress } from "@/lib/api/exercises";
 import { feedbackQueryKey, fetchFeedback } from "@/lib/api/feedback";
 import { endStudentRelationship, fetchStudentOverview, studentQueryKey, studentsQueryKey } from "@/lib/api/students";
 import { fetchTrainingPlans, trainingPlansQueryKey } from "@/lib/api/trainingPlans";
@@ -288,7 +288,9 @@ function ProgressTab({
   exerciseId: string | null;
   onExerciseChange: (id: string) => void;
 }) {
-  const exercises = useQuery({ queryKey: exercisesQueryKey({}), queryFn: () => fetchExercises() });
+  // Still every exercise, walked page by page: this dropdown is out of lazy-exercise-search's
+  // scope until it becomes a searchable picker (spec §6).
+  const exercises = useQuery({ queryKey: allExercisesQueryKey, queryFn: ({ signal }) => fetchAllExercises({ signal }) });
   const progress = useQuery({
     queryKey: exerciseProgressQueryKey(Number(exerciseId), clientId),
     queryFn: () => fetchExerciseProgress(Number(exerciseId), clientId),

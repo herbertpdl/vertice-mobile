@@ -1,51 +1,49 @@
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
-import { Dumbbell, Plus, SearchX } from "lucide-react-native";
+import { Plus, Search, SearchX } from "lucide-react-native";
 import { useState } from "react";
 import { FlatList, RefreshControl, ScrollView, StyleSheet, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { ExerciseCard } from "@/components/domain";
 import { Screen, tabScreenBottomPadding } from "@/components/layout";
-import { Chip, EmptyState, ErrorState, IconButton, SearchField, Skeleton, StatusBanner, Text } from "@/components/ui";
-import { exercisesQueryKey, fetchExercises } from "@/lib/api/exercises";
+import { Chip, EmptyState, ErrorState, IconButton, SearchField, Skeleton, Spinner, StatusBanner, Text } from "@/components/ui";
 import type { Exercise } from "@/lib/api/types";
 import { useIsOffline } from "@/lib/network";
 import { useMuscleGroups } from "@/lib/useCatalog";
-import { useDebouncedValue } from "@/lib/useDebouncedValue";
+import { useExerciseSearch } from "@/lib/useExerciseSearch";
 import { usePullToRefresh } from "@/lib/usePullToRefresh";
 import { colors, radius, screenPaddingHorizontal, sizes, space } from "@/theme";
 
-/** "48 exercícios · 32 padrão", or the match count while a search or group narrows the list. */
-export function catalogSubtitle(exercises: Exercise[], narrowed: boolean): string {
-  const count = exercises.length;
-  if (narrowed) return count === 1 ? "1 exercício encontrado" : `${count} exercícios encontrados`;
-  const starters = exercises.filter((e) => e.isStarter).length;
-  return `${count === 1 ? "1 exercício" : `${count} exercícios`} · ${starters} padrão`;
+/**
+ * The match count of the pages loaded so far. With more pages to come only a lower bound is
+ * known (the list is never loaded whole), so it says "Mais de N".
+ */
+export function catalogSubtitle(count: number, hasMore: boolean): string {
+  if (hasMore) return `Mais de ${count} exercícios encontrados`;
+  return count === 1 ? "1 exercício encontrado" : `${count} exercícios encontrados`;
 }
 
-/** M - Catálogo de Exercícios (+ Loading): search, muscle-group chips, the catalog, "Novo exercício". */
+/**
+ * M - Catálogo de Exercícios (+ Loading): search, muscle-group chips, the catalog, "Novo exercício".
+ * Never the whole catalog: nothing until 3+ letters or a group (lazy-exercise-search), then one
+ * page at a time as the list nears its end.
+ */
 export function ExercisesScreen() {
   const insets = useSafeAreaInsets();
   const offline = useIsOffline();
   const [search, setSearch] = useState("");
   const [muscleGroupId, setMuscleGroupId] = useState<number | null>(null);
-  const q = useDebouncedValue(search);
-  const list = useQuery({
-    queryKey: exercisesQueryKey({ muscleGroupId, q }),
-    queryFn: ({ signal }) => fetchExercises({ muscleGroupId, q }, { signal }),
-    placeholderData: keepPreviousData,
-  });
+  const list = useExerciseSearch(search, muscleGroupId);
   const groups = useMuscleGroups();
-  const pull = usePullToRefresh(() => Promise.all([list.refetch(), groups.refetch()]));
+  const pull = usePullToRefresh(() => Promise.all([list.idle ? undefined : list.refetch(), groups.refetch()]));
   const retry = {
     label: "Tentar",
     onPress: () => {
-      void list.refetch();
+      if (list.isFetchNextPageError) void list.fetchNextPage();
+      else if (!list.idle) void list.refetch();
       void groups.refetch();
     },
   };
-  const narrowed = q.trim() !== "" || muscleGroupId !== null;
   const clear = () => {
     setSearch("");
     setMuscleGroupId(null);
@@ -58,11 +56,15 @@ export function ExercisesScreen() {
           <Text variant="title" accessibilityRole="header">
             Exercícios
           </Text>
-          {list.isError && list.data === undefined ? null : list.data === undefined ? (
+          {list.idle ? (
+            <Text variant="body" color="textSecondary">
+              Busque por nome ou escolha um grupo
+            </Text>
+          ) : list.isError && list.exercises === undefined ? null : list.exercises === undefined ? (
             <Skeleton.Line width={sizes.skeletonSectionWidth} />
           ) : (
             <Text variant="body" color="textSecondary">
-              {catalogSubtitle(list.data, narrowed)}
+              {catalogSubtitle(list.exercises.length, list.hasNextPage)}
             </Text>
           )}
         </View>
@@ -90,40 +92,51 @@ export function ExercisesScreen() {
       header={
         offline ? (
           <StatusBanner kind="offline" action={retry} />
-        ) : list.isError && list.data !== undefined ? (
+        ) : list.isError && list.exercises !== undefined ? (
           <StatusBanner kind="error" action={retry} />
         ) : undefined
       }
     >
-      {list.isError && list.data === undefined ? (
+      {!list.idle && list.isError && list.exercises === undefined ? (
         <View style={styles.padded}>
           {header}
           <ErrorState onRetry={retry.onPress} retrying={list.isFetching} />
         </View>
       ) : (
         <FlatList<Exercise>
-          data={list.data ?? []}
+          testID="exercise-list"
+          data={list.exercises ?? []}
           keyExtractor={(exercise) => String(exercise.id)}
           renderItem={({ item }) => <ExerciseCard exercise={item} onPress={() => router.push(`/exercicios/${item.id}`)} />}
           ListHeaderComponent={header}
           ListEmptyComponent={
-            list.data === undefined ? (
+            list.idle ? (
+              <EmptyState
+                icon={Search}
+                title="Busque um exercício"
+                message="Digite ao menos 3 letras ou escolha um grupo muscular."
+              />
+            ) : list.exercises === undefined ? (
               <CatalogSkeleton />
-            ) : narrowed ? (
+            ) : (
               <EmptyState
                 icon={SearchX}
                 title="Nenhum exercício encontrado"
                 message="Tente outro termo ou grupo muscular, ou limpe a busca."
                 action={{ label: "Limpar busca", onPress: clear }}
               />
-            ) : (
-              <EmptyState
-                icon={Dumbbell}
-                title="Nenhum exercício ainda"
-                message="Cadastre exercícios para montar os treinos dos seus alunos."
-                action={{ label: "Novo exercício", onPress: () => router.push("/exercicios/novo") }}
-              />
             )
+          }
+          onEndReached={() => {
+            if (list.hasNextPage && !list.isFetchingNextPage && !list.isError) void list.fetchNextPage();
+          }}
+          onEndReachedThreshold={0.5}
+          ListFooterComponent={
+            list.isFetchingNextPage ? (
+              <View style={styles.more}>
+                <Spinner accessibilityLabel="Carregando mais exercícios" />
+              </View>
+            ) : null
           }
           contentContainerStyle={[styles.list, { paddingBottom: tabScreenBottomPadding(insets.bottom) }]}
           keyboardShouldPersistTaps="handled"
@@ -168,6 +181,7 @@ const styles = StyleSheet.create({
   titleCol: { flex: 1, gap: sizes.rowLinesGap },
   chips: { gap: space[2] },
   skeleton: { gap: sizes.cardListGap },
+  more: { paddingVertical: space[4], alignItems: "center" },
   skeletonCard: {
     flexDirection: "row",
     alignItems: "center",

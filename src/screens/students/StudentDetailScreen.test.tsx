@@ -86,7 +86,10 @@ describe("StudentDetailScreen", () => {
   it("charts the max weight per week for the chosen exercise", async () => {
     bff = mockBff(
       routes({
-        "GET /api/exercises": [{ id: 5, name: "Supino Reto", description: "", videoUrl: "", muscleGroups: [], isStarter: false }],
+        "GET /api/exercises": {
+          exercises: [{ id: 5, name: "Supino Reto", description: "", videoUrl: "", muscleGroups: [], isStarter: false }],
+          nextCursor: null,
+        },
         "GET /api/exercises/5/progress": [
           { weekStartDate: "2026-09-07", weight: 42.5 },
           { weekStartDate: "2026-09-14", weight: 50 },
