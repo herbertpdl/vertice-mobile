@@ -82,6 +82,40 @@ describe("AddExerciseSheet", () => {
     expect(screen.queryByRole("button", { name: "Carregar mais" })).toBeNull();
   });
 
+  it("never shows an older search's rows after the prompt", async () => {
+    let release = (_: Response) => {};
+    const supLoading = new Promise<Response>((resolve) => (release = resolve));
+    bff = mockBff({
+      "GET /api/exercises": ({ url }) => (url.searchParams.get("q") === "sup" ? supLoading : page([catalog[2]])),
+      "GET /api/muscle-groups": groups,
+    });
+    await renderScreen(<AddExerciseSheet visible onClose={() => {}} onAdd={() => {}} remaining={20} />);
+    await fireEvent.press(await screen.findByRole("button", { name: "Costas" }));
+    await screen.findByRole("checkbox", { name: "Puxada Alta" });
+    await fireEvent.press(screen.getByRole("button", { name: "Todos" }));
+    await screen.findByText(hint);
+    await fireEvent.changeText(screen.getByLabelText("Buscar exercício"), "sup");
+    await pause();
+    expect(screen.queryByText(hint)).toBeNull();
+    expect(screen.queryByRole("checkbox", { name: "Puxada Alta" })).toBeNull();
+    expect(screen.getByLabelText("Carregando exercícios")).toBeOnTheScreen();
+    await act(async () => release(page([catalog[0]])));
+    expect(await screen.findByRole("checkbox", { name: "Supino Reto" })).toBeOnTheScreen();
+  });
+
+  it("lists a row once when a page repeats the previous page's last one", async () => {
+    bff = mockBff({
+      "GET /api/exercises": ({ url }) =>
+        url.searchParams.get("cursor") === "30" ? page([catalog[1], catalog[2]]) : page(catalog.slice(0, 2), "30"),
+      "GET /api/muscle-groups": groups,
+    });
+    await renderScreen(<AddExerciseSheet visible onClose={() => {}} onAdd={() => {}} remaining={20} />);
+    await fireEvent.press(await screen.findByRole("button", { name: "Peito" }));
+    await fireEvent.press(await screen.findByRole("button", { name: "Carregar mais" }));
+    await screen.findByRole("checkbox", { name: "Puxada Alta" });
+    expect(screen.getAllByRole("checkbox").map((c) => c.props.accessibilityLabel)).toEqual(["Supino Reto", "Crucifixo", "Puxada Alta"]);
+  });
+
   it("stops picking at what the workout still takes", async () => {
     bff = mockBff({ "GET /api/exercises": page(catalog), "GET /api/muscle-groups": groups });
     await renderScreen(<AddExerciseSheet visible onClose={() => {}} onAdd={() => {}} remaining={1} />);
