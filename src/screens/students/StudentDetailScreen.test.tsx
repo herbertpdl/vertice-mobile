@@ -112,6 +112,24 @@ describe("StudentDetailScreen", () => {
     expect(bff.calls.some((c) => c.route === "GET /api/exercises")).toBe(false);
   });
 
+  it("offers a retry when the exercise options fail to load", async () => {
+    let failing = true;
+    bff = mockBff(
+      routes({
+        "GET /api/exercises/with-progress": () =>
+          failing ? bffError(503, "UPSTREAM_UNAVAILABLE") : Response.json([{ id: 5, name: "Supino Reto" }]),
+      }),
+    );
+    await renderScreen(<StudentDetailScreen />);
+    await fireEvent.press(await screen.findByRole("tab", { name: "Progresso" }));
+    const retry = await screen.findByRole("button", { name: "Tentar novamente" });
+    failing = false;
+    await fireEvent.press(retry);
+    const picker = screen.getByRole("button", { name: "Exercício: Selecione um exercício" });
+    await waitFor(() => expect(picker).toBeEnabled());
+    expect(screen.queryByRole("button", { name: "Tentar novamente" })).toBeNull();
+  });
+
   it("edits the student without sending the masked CPF", async () => {
     jest.replaceProperty(Platform, "OS", "android");
     bff = mockBff(routes({ "PATCH /api/clients/7": { ...overview.student, name: "Marina C." } }));

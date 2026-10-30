@@ -309,7 +309,8 @@ function ProgressTab({
         options={(exercises.data ?? []).map((exercise) => ({ value: String(exercise.id), label: exercise.name }))}
         disabled={!exercises.data?.length}
       />
-      {exercises.isError ? (
+      {exercises.data === undefined && exercises.isError ? (
+        // Only before anything loaded: a failed background refetch keeps the options and chart.
         <ErrorState onRetry={() => void exercises.refetch()} retrying={exercises.isFetching} />
       ) : exercises.data?.length === 0 ? (
         <EmptyState
