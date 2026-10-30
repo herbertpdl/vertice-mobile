@@ -31,7 +31,7 @@ import {
 } from "@/components/ui";
 import { apiErrorMessage } from "@/lib/api/errorMessages";
 import { dashboardQueryKey } from "@/lib/api/dashboard";
-import { allExercisesQueryKey, exerciseProgressQueryKey, fetchAllExercises, fetchExerciseProgress } from "@/lib/api/exercises";
+import { exerciseProgressQueryKey, fetchExerciseProgress, fetchProgressExercises, progressExercisesQueryKey } from "@/lib/api/exercises";
 import { feedbackQueryKey, fetchFeedback } from "@/lib/api/feedback";
 import { endStudentRelationship, fetchStudentOverview, studentQueryKey, studentsQueryKey } from "@/lib/api/students";
 import { fetchTrainingPlans, trainingPlansQueryKey } from "@/lib/api/trainingPlans";
@@ -288,9 +288,12 @@ function ProgressTab({
   exerciseId: string | null;
   onExerciseChange: (id: string) => void;
 }) {
-  // Still every exercise, walked page by page: this dropdown is out of lazy-exercise-search's
-  // scope until it becomes a searchable picker (spec §6).
-  const exercises = useQuery({ queryKey: allExercisesQueryKey, queryFn: ({ signal }) => fetchAllExercises({ signal }) });
+  // Only the exercises this student has recorded loads for, most recent first (spec:
+  // progress-exercise-picker): never the catalog, most of which would chart nothing.
+  const exercises = useQuery({
+    queryKey: progressExercisesQueryKey(clientId),
+    queryFn: ({ signal }) => fetchProgressExercises(clientId, { signal }),
+  });
   const progress = useQuery({
     queryKey: exerciseProgressQueryKey(Number(exerciseId), clientId),
     queryFn: () => fetchExerciseProgress(Number(exerciseId), clientId),
@@ -304,9 +307,18 @@ function ProgressTab({
         value={exerciseId}
         onChange={setExerciseId}
         options={(exercises.data ?? []).map((exercise) => ({ value: String(exercise.id), label: exercise.name }))}
-        disabled={exercises.data === undefined}
+        disabled={!exercises.data?.length}
       />
-      {exerciseId === null ? (
+      {exercises.data === undefined && exercises.isError ? (
+        // Only before anything loaded: a failed background refetch keeps the options and chart.
+        <ErrorState onRetry={() => void exercises.refetch()} retrying={exercises.isFetching} />
+      ) : exercises.data?.length === 0 ? (
+        <EmptyState
+          icon={ChartNoAxesColumn}
+          title="Sem registros de carga"
+          message="A evolução aparece quando o aluno concluir um treino registrando a carga."
+        />
+      ) : exerciseId === null ? (
         <EmptyState icon={ChartNoAxesColumn} title="Escolha um exercício" message="Veja a evolução da carga máxima por semana." />
       ) : progress.data === undefined ? (
         progress.isError ? (
