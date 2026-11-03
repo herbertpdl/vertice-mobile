@@ -101,6 +101,12 @@
       "typedRoutes": true,
       "reactCompiler": true
     },
-    "backgroundColor": "#0A0E14"
+    "backgroundColor": "#0A0E14",
+    "extra": {
+      "eas": {
+        "projectId": "b670be6e-21e0-472a-a91d-30d82455a3bd"
+      }
+    },
+    "owner": "vertice-fit"
   }
 }
