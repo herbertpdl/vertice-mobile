@@ -122,7 +122,9 @@ drift check stays green.
   (`<Name>/<Name>.tsx`, `index.ts`, `<Name>.test.tsx`), imported through the folder index.
 - **Builds and monitoring**: `eas.json` has `development` / `preview` / `production` profiles;
   each build runs `npm run env:check` (`eas-build-post-install`), which applies `env.ts`'s release
-  rules (https, no local hosts) before building. Crash reporting is Sentry (`src/lib/monitoring.ts`),
+  rules (https, no local hosts) before building. The production service URLs are in `eas.json`
+  (`EXPO_PUBLIC_BFF_URL=https://api.vertice.fit`, `EXPO_PUBLIC_WEB_URL=https://www.vertice.fit`):
+  they ship inside every binary, so change them only with a migration plan for installed versions. Crash reporting is Sentry (`src/lib/monitoring.ts`),
   on only in release builds with `EXPO_PUBLIC_SENTRY_DSN`; reports never carry the app's data
   (no user, no payloads, no touch breadcrumbs, e-mails/CPFs/tokens scrubbed) — keep it that way.
   Source-map upload needs `SENTRY_ORG`, `SENTRY_PROJECT` and `SENTRY_AUTH_TOKEN` as EAS secrets.
