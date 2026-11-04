@@ -36,11 +36,16 @@
       "env": {
         "EXPO_PUBLIC_APP_ENV": "production",
         "EXPO_PUBLIC_BFF_URL": "https://api.vertice.fit",
-        "EXPO_PUBLIC_WEB_URL": "https://www.vertice.fit"
+        "EXPO_PUBLIC_WEB_URL": "https://www.vertice.fit",
+        "SENTRY_DISABLE_AUTO_UPLOAD": "true"
       }
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        "ascAppId": "6830342756"
+      }
+    }
   }
 }
