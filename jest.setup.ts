@@ -37,7 +37,10 @@ jest.mock("expo-clipboard", () => ({ setStringAsync: jest.fn(async () => true) }
 // module under Jest. Each call is a jest.fn a test can inspect.
 jest.mock("expo-notifications", () => ({
   SchedulableTriggerInputTypes: { TIME_INTERVAL: "timeInterval" },
+  AndroidImportance: { HIGH: 5 },
+  AndroidNotificationVisibility: { PUBLIC: 1 },
   setNotificationHandler: jest.fn(),
+  setNotificationChannelAsync: jest.fn(async () => null),
   getPermissionsAsync: jest.fn(async () => ({ status: "granted", canAskAgain: true })),
   requestPermissionsAsync: jest.fn(async () => ({ status: "granted", canAskAgain: true })),
   scheduleNotificationAsync: jest.fn(async () => "notification-id"),

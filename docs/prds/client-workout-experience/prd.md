@@ -182,7 +182,8 @@ product promises them.
 - R47. The client cannot pause, skip, shorten or lengthen the countdown.
 - R48. Ticking another set, or moving to another exercise, ends the running countdown (and starts
   the newly ticked set's rest, per R45).
-- R49. When the countdown ends while the app is open, the phone vibrates and plays a sound.
+- R49. When the countdown ends while the app is open, the phone vibrates strongly (three long
+  pulses, noticeable in a gym) and plays a chime, unless its sound is off.
 - R50. When the countdown ends while the app is in the background or the phone is locked, the
   client gets a phone notification saying the rest is over.
 - R51. When the client has not allowed notifications, only the in-app alert happens.

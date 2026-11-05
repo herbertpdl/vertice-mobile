@@ -1,8 +1,7 @@
 import { onlineManager } from "@tanstack/react-query";
 import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
 import * as Notifications from "expo-notifications";
-import * as Haptics from "expo-haptics";
-import { AppState, Platform } from "react-native";
+import { AppState, Platform, Vibration } from "react-native";
 
 import { ApiError } from "@/lib/api/client";
 import { apiErrorMessage } from "@/lib/api/errorMessages";
@@ -58,6 +57,9 @@ function modalOnDismiss(title: string): (() => void) | undefined {
 }
 
 let bff: BffMock;
+beforeEach(() => {
+  jest.spyOn(Vibration, "vibrate").mockImplementation(() => {});
+});
 // The client app's layout opens the signed-in client's outbox (§3.4); the screens are tested without it.
 beforeEach(() => openOutbox(7, () => {}));
 afterEach(() => {
@@ -402,7 +404,7 @@ describe("WorkoutSessionScreen", () => {
     await act(async () => {
       jest.advanceTimersByTime(60_250);
     });
-    expect(Haptics.notificationAsync).toHaveBeenCalledTimes(1);
+    expect(Vibration.vibrate).toHaveBeenCalledTimes(1);
 
     await fireEvent.press(screen.getByRole("checkbox", { name: "Série 2 feita" }));
     await waitFor(() => expect(Notifications.scheduleNotificationAsync).toHaveBeenCalledTimes(2));
@@ -419,7 +421,7 @@ describe("WorkoutSessionScreen", () => {
     await act(async () => {
       jest.advanceTimersByTime(61_000);
     });
-    expect(Haptics.notificationAsync).not.toHaveBeenCalled();
+    expect(Vibration.vibrate).not.toHaveBeenCalled();
     expect(screen.queryByLabelText(/^Descanso:/)).toBeNull();
   });
 

@@ -91,7 +91,10 @@
       [
         "expo-notifications",
         {
-          "color": "#00E5FF"
+          "color": "#00E5FF",
+          "sounds": [
+            "./assets/sounds/rest-done.wav"
+          ]
         }
       ],
       "expo-asset",

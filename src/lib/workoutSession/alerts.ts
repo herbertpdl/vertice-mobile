@@ -1,14 +1,14 @@
 import { setAudioModeAsync, useAudioPlayer } from "expo-audio";
-import * as Haptics from "expo-haptics";
 import * as Notifications from "expo-notifications";
 import { useEffect, useRef } from "react";
+import { Platform, Vibration } from "react-native";
 
 import type { Timer } from "./engine";
 
 /**
  * The rest alert (PRD R49–R51): a phone notification scheduled for the rest's end, for when the
- * app is in the background or the phone is locked; vibration and a short chime when the rest ends
- * with the app open. While the app is open the notification itself stays silent and hidden (the
+ * app is in the background or the phone is locked; three long vibrations and a chime when the rest
+ * ends with the app open (in a gym, a light tap goes unnoticed). While the app is open the notification itself stays silent and hidden (the
  * in-app alert is the one alert). No permission, no notification: the in-app alert still plays.
  */
 Notifications.setNotificationHandler({
@@ -21,6 +21,15 @@ Notifications.setNotificationHandler({
 });
 
 const REST_SOUND = require("@/assets/sounds/rest-done.wav");
+/** The same chime as a notification sound: the file `sounds` bundles in app.json. */
+const REST_SOUND_FILE = "rest-done.wav";
+const REST_CHANNEL = "rest-timer";
+
+/**
+ * Three long pulses. Android reads the array as wait/vibrate times; on iOS each entry after the
+ * leading 0 is the pause before the next fixed-length vibration of the system's motor.
+ */
+const ALERT_VIBRATION = Platform.OS === "android" ? [0, 600, 250, 600, 250, 600] : [0, 800, 800];
 
 let asked = false;
 
@@ -31,6 +40,18 @@ export async function ensureNotificationPermission(): Promise<boolean> {
   if (asked || !current.canAskAgain) return false;
   asked = true;
   return (await Notifications.requestPermissionsAsync()).status === "granted";
+}
+
+/** Android takes the sound and vibration from the channel, which must exist before scheduling. */
+async function ensureRestChannel() {
+  if (Platform.OS !== "android") return;
+  await Notifications.setNotificationChannelAsync(REST_CHANNEL, {
+    name: "Descanso",
+    importance: Notifications.AndroidImportance.HIGH,
+    sound: REST_SOUND_FILE,
+    vibrationPattern: ALERT_VIBRATION,
+    lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+  });
 }
 
 /** "Hora da série 4 de Puxada frontal" — what the notification says. */
@@ -55,9 +76,10 @@ export function useRestNotification(rest: Timer | null, notice: RestNotice | und
         // Measured once the permission prompt is gone, so the time it was up isn't added.
         const seconds = Math.ceil((rest.endsAt - now()) / 1000);
         if (!granted || cancelled || seconds <= 0) return;
+        await ensureRestChannel();
         const id = await Notifications.scheduleNotificationAsync({
-            content: { title: notice.title, body: notice.body, sound: true },
-          trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds },
+          content: { title: notice.title, body: notice.body, sound: REST_SOUND_FILE },
+          trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds, channelId: REST_CHANNEL },
         });
         if (cancelled) void Notifications.cancelScheduledNotificationAsync(id);
         else scheduled.current = id;
@@ -78,7 +100,7 @@ export function dismissRestNotifications() {
 }
 
 /**
- * The in-app alert: vibration plus the chime, respecting the silent switch and mixing with the
+ * The in-app alert: vibration, plus the chime unless the silent switch is on, mixing with the
  * client's music (R49).
  */
 export function useRestAlert(): () => void {
@@ -87,7 +109,7 @@ export function useRestAlert(): () => void {
     void setAudioModeAsync({ playsInSilentMode: false, interruptionMode: "mixWithOthers" });
   }, []);
   return () => {
-    void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    Vibration.vibrate(ALERT_VIBRATION);
     void player.seekTo(0).then(() => player.play());
   };
 }
