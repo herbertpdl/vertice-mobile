@@ -149,11 +149,11 @@ with a footer, a short form sheet (`NewStudentSheet`) and a tall one (`EditProfi
 
 **Plan.** Both built on `react-native-reanimated` and `react-native-svg`, already in the app.
 - **Level 1, exercise done:** a check drawn inside a ring at the centre of the screen, in `success`,
-  with a soft expanding ring and a light haptic. Under a second, `pointerEvents="none"`, so it never
+  and a light haptic. Under a second, `pointerEvents="none"`, so it never
   blocks the next set.
 - **Level 2, workout done:** full screen, only after a feedback is sent (not on "Pular"), online or
-  queued offline. The Vertice mark's colours: a burst of `primary` and `success` sparks around a
-  drawn trophy disc, "Treino concluído!" and a success haptic. It goes home when it ends, or on tap,
+  queued offline. The Vertice mark inside a drawn ring, a burst of `primary` and `success` sparks,
+  "Treino concluído!" and a success haptic. It goes home when it ends, or on tap,
   and the existing toast still shows there (a queued client needs "será enviado quando a conexão
   voltar").
 - Reduce Motion: a plain fade, no burst. Hidden from the accessibility tree with an announcement

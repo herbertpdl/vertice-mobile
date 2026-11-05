@@ -49,7 +49,9 @@ jest.mock("expo-notifications", () => ({
 }));
 jest.mock("expo-haptics", () => ({
   NotificationFeedbackType: { Success: "success" },
+  ImpactFeedbackStyle: { Light: "light" },
   notificationAsync: jest.fn(async () => undefined),
+  impactAsync: jest.fn(async () => undefined),
 }));
 jest.mock("expo-audio", () => {
   const player = { play: jest.fn(), seekTo: jest.fn(async () => undefined) };

@@ -1,5 +1,5 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { router, useLocalSearchParams } from "expo-router";
+import { router, Stack, useLocalSearchParams } from "expo-router";
 import { Trophy } from "lucide-react-native";
 import { useState } from "react";
 import { Keyboard, StyleSheet, View } from "react-native";
@@ -43,8 +43,12 @@ export function WorkoutFeedbackScreen() {
       setSentMessage(answer === null ? "Seu feedback será enviado quando a conexão voltar." : "Feedback enviado ao seu treinador.");
     },
   });
-  const submit = useSingleFlight(() => send.mutateAsync().catch(() => {}));
-  const skip = () => router.replace("/aluno");
+  const celebrating = sentMessage !== null;
+  // Sent is final: a second send would be a second feedback.
+  const submit = useSingleFlight(() => (celebrating ? Promise.resolve() : send.mutateAsync().catch(() => {})));
+  const skip = () => {
+    if (!celebrating) router.replace("/aluno");
+  };
   const celebrated = () => {
     router.replace("/aluno");
     if (sentMessage !== null) toast.show(sentMessage);
@@ -52,56 +56,65 @@ export function WorkoutFeedbackScreen() {
 
   return (
     <>
-      <Screen
-        contentStyle={styles.content}
-        footer={
-          <View style={styles.footer}>
-            <Button label="Enviar feedback" disabled={rating === null} loading={send.isPending} onPress={() => void submit()} />
-            <Button label="Pular" variant="ghost" disabled={send.isPending} onPress={skip} />
-          </View>
-        }
+      {/* The swipe back would leave without `celebrated`, losing the toast. */}
+      <Stack.Screen options={{ gestureEnabled: !celebrating }} />
+      <View
+        style={styles.flex}
+        accessibilityElementsHidden={celebrating}
+        importantForAccessibility={celebrating ? "no-hide-descendants" : "auto"}
       >
-        <View style={styles.hero}>
-          <View style={styles.icon}>
-            <Trophy size={34} color={colors.success} />
+        <Screen
+          contentStyle={styles.content}
+          footer={
+            <View style={styles.footer}>
+              <Button label="Enviar feedback" disabled={rating === null} loading={send.isPending} onPress={() => void submit()} />
+              <Button label="Pular" variant="ghost" disabled={send.isPending} onPress={skip} />
+            </View>
+          }
+        >
+          <View style={styles.hero}>
+            <View style={styles.icon}>
+              <Trophy size={34} color={colors.success} />
+            </View>
+            <Text variant="title" accessibilityRole="header" align="center">
+              Treino concluído!
+            </Text>
+            {params.name === undefined ? null : (
+              <Text variant="body" color="textSecondary" align="center">
+                {[params.name, params.summary].filter(Boolean).join(" · ")}
+              </Text>
+            )}
           </View>
-          <Text variant="title" accessibilityRole="header" align="center">
-            Treino concluído!
-          </Text>
-          {params.name === undefined ? null : (
-            <Text variant="body" color="textSecondary" align="center">
-              {[params.name, params.summary].filter(Boolean).join(" · ")}
-            </Text>
-          )}
-        </View>
-        <View style={styles.card}>
-          <View style={styles.question}>
-            <Text variant="headingSm" weight="semibold">
-              Como foi o treino?
-            </Text>
-            <Text variant="caption" color="textSecondary">
-              Seu treinador vai ver sua resposta.
-            </Text>
+          <View style={styles.card}>
+            <View style={styles.question}>
+              <Text variant="headingSm" weight="semibold">
+                Como foi o treino?
+              </Text>
+              <Text variant="caption" color="textSecondary">
+                Seu treinador vai ver sua resposta.
+              </Text>
+            </View>
+            <RatingScale value={rating} onChange={setRating} />
           </View>
-          <RatingScale value={rating} onChange={setRating} />
-        </View>
-        <TextArea
-          label="Quer contar algo ao seu treinador? (opcional)"
-          placeholder="Ex.: senti dor no ombro, a carga ficou leve…"
-          value={text}
-          onChangeText={setText}
-          maxLength={MAX_TEXT}
-        />
-        {send.isError ? (
-          <Banner message={apiErrorMessage(send.error, "Não foi possível enviar. Tente novamente.")} />
-        ) : null}
-      </Screen>
+          <TextArea
+            label="Quer contar algo ao seu treinador? (opcional)"
+            placeholder="Ex.: senti dor no ombro, a carga ficou leve…"
+            value={text}
+            onChangeText={setText}
+            maxLength={MAX_TEXT}
+          />
+          {send.isError ? (
+            <Banner message={apiErrorMessage(send.error, "Não foi possível enviar. Tente novamente.")} />
+          ) : null}
+        </Screen>
+      </View>
       {sentMessage === null ? null : <WorkoutCelebration onDone={celebrated} />}
     </>
   );
 }
 
 const styles = StyleSheet.create({
+  flex: { flex: 1 },
   content: { paddingTop: space[6], gap: space[6] },
   hero: { alignItems: "center", gap: space[3] },
   icon: {

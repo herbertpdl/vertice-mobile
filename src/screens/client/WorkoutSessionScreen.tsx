@@ -282,7 +282,7 @@ function SessionView({ snapshot, restored }: { snapshot: WorkoutSession; restore
         key: doneChecks.current,
         announcement: next === undefined ? "Exercício concluído." : `Exercício concluído. Próximo: ${next.exercise.name}.`,
       });
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
     }
     sent.current = { ...sent.current, [setId]: weight };
     save({ kind: "recordSet", logId, exerciseSetId: setId, weight, reps: set.reps });

@@ -11,6 +11,7 @@ import { WorkoutFeedbackScreen } from "./WorkoutFeedbackScreen";
 const mockReplace = jest.fn();
 jest.mock("expo-router", () => ({
   router: { replace: (...args: unknown[]) => mockReplace(...args) },
+  Stack: { Screen: () => null },
   useLocalSearchParams: () => ({ logId: "500", name: "Treino C", summary: "22 de 22 séries" }),
 }));
 
@@ -42,7 +43,8 @@ describe("WorkoutFeedbackScreen", () => {
         jest.advanceTimersByTime(CELEBRATION_MS);
       });
       expect(mockReplace).toHaveBeenCalledWith("/aluno");
-      expect(screen.getByText("Feedback enviado ao seu treinador.")).toBeOnTheScreen();
+      // In the app the route has been replaced by now; here the modal celebration still hides the toast.
+      expect(screen.getByText("Feedback enviado ao seu treinador.", { includeHiddenElements: true })).toBeOnTheScreen();
     } finally {
       jest.useRealTimers();
     }
@@ -80,7 +82,7 @@ describe("WorkoutFeedbackScreen", () => {
       await fireEvent.press(screen.getByRole("radio", { name: "Fácil" }));
       await fireEvent.press(screen.getByRole("button", { name: "Enviar feedback" }));
       await continueHome();
-      expect(await screen.findByText("Seu feedback será enviado quando a conexão voltar.")).toBeOnTheScreen();
+      expect(await screen.findByText("Seu feedback será enviado quando a conexão voltar.", { includeHiddenElements: true })).toBeOnTheScreen();
       expect(mockReplace).toHaveBeenCalledWith("/aluno");
       expect(bff.calls).toHaveLength(0);
       await act(async () => onlineManager.setOnline(true));

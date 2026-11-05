@@ -1,6 +1,6 @@
 import * as Haptics from "expo-haptics";
 import { useEffect } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { BackHandler, Pressable, StyleSheet, View } from "react-native";
 import Animated, {
   Easing,
   useAnimatedProps,
@@ -26,8 +26,9 @@ const VIEW_BOX = 100;
 const RING_RADIUS = 46;
 const RING_LENGTH = 2 * Math.PI * RING_RADIUS;
 const SPARKS = 16;
-/** The app's accents, in turn around the burst. */
-const SPARK_COLORS = [colors.primary, colors.success, colors.secondary];
+const SPARK_COLORS = [colors.primary, colors.success];
+/** `LogoMark` draws its glyph at the top of a square frame: this brings it to the ring's centre. */
+const MARK_CENTRING = 0.152;
 
 /** How long it stays before moving on by itself. */
 export const CELEBRATION_MS = 2400;
@@ -40,7 +41,8 @@ function Spark({ index, burst }: { index: number; burst: SharedValue<number> }) 
   const style = useAnimatedStyle(() => {
     const at = burst.get();
     return {
-      opacity: at < 0.6 ? 1 : (1 - at) / 0.4,
+      // Hidden until it starts: at rest they'd all sit stacked behind the mark.
+      opacity: at === 0 ? 0 : at < 0.6 ? 1 : (1 - at) / 0.4,
       transform: [
         { translateX: Math.cos(angle) * reach * at },
         { translateY: Math.sin(angle) * reach * at },
@@ -49,7 +51,7 @@ function Spark({ index, burst }: { index: number; burst: SharedValue<number> }) 
       ],
     };
   });
-  return <Animated.View style={[styles.spark, { backgroundColor: SPARK_COLORS[index % SPARK_COLORS.length] }, style]} />;
+  return <Animated.View testID="celebration-spark" style={[styles.spark, { backgroundColor: SPARK_COLORS[index % SPARK_COLORS.length] }, style]} />;
 }
 
 export type WorkoutCelebrationProps = {
@@ -81,13 +83,23 @@ export function WorkoutCelebration({ onDone }: WorkoutCelebrationProps) {
       title.set(withDelay(380, withTiming(1, { duration: 300, easing: EASE_OUT })));
     }
     const timer = setTimeout(onDone, reduceMotion ? CELEBRATION_REDUCED_MS : CELEBRATION_MS);
-    return () => clearTimeout(timer);
+    // Back moves on like a tap, so it can't leave the screen without `onDone`.
+    const back = BackHandler.addEventListener("hardwareBackPress", () => {
+      onDone();
+      return true;
+    });
+    return () => {
+      clearTimeout(timer);
+      back.remove();
+    };
     // One run per mount.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const layer = useAnimatedStyle(() => ({ opacity: fade.get() }));
-  const markStyle = useAnimatedStyle(() => ({ transform: [{ scale: mark.get() }] }));
+  const markStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: sizes.celebrationMark * MARK_CENTRING }, { scale: mark.get() }],
+  }));
   const titleStyle = useAnimatedStyle(() => ({
     opacity: title.get(),
     transform: [{ translateY: (1 - title.get()) * space[2] }],
@@ -95,8 +107,14 @@ export function WorkoutCelebration({ onDone }: WorkoutCelebrationProps) {
   const ringProps = useAnimatedProps(() => ({ strokeDashoffset: RING_LENGTH * (1 - ring.get()) }));
 
   return (
-    <Animated.View style={[styles.layer, layer]}>
-      <Pressable style={styles.fill} onPress={onDone} accessibilityRole="button" accessibilityLabel="Treino concluído! Continuar">
+    <Animated.View style={[styles.layer, layer]} accessibilityViewIsModal>
+      <Pressable
+        style={styles.fill}
+        onPress={onDone}
+        accessibilityRole="button"
+        accessibilityLabel="Treino concluído! Continuar"
+        accessibilityLiveRegion="polite"
+      >
         <View style={styles.centre}>
           {reduceMotion ? null : Array.from({ length: SPARKS }, (_, i) => <Spark key={i} index={i} burst={burst} />)}
           <Svg width={sizes.celebrationRing} height={sizes.celebrationRing} viewBox={`0 0 ${VIEW_BOX} ${VIEW_BOX}`}>
