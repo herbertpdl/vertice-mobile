@@ -74,9 +74,14 @@ describe("weekProgress", () => {
     expect(progress(workouts, [log(1, "2026-10-19T11:00:00Z"), log(2, "2026-10-19T12:00:00Z")])).toEqual({ done: 1, total: 4 });
   });
 
-  it("counts every day trained, whichever workout it was", () => {
-    const redo = { ...log(1, "2026-10-21T11:00:00Z"), id: 11 };
-    expect(progress(workouts, [log(1, "2026-10-19T11:00:00Z"), redo])).toEqual({ done: 2, total: 4 });
+  it("counts every day trained", () => {
+    expect(progress(workouts, [log(1, "2026-10-19T11:00:00Z"), log(2, "2026-10-21T11:00:00Z")])).toEqual({ done: 2, total: 4 });
+  });
+
+  it("counts a redo's day only: the session it replaced is not in the week list", () => {
+    const week = clientWeek(workouts, [log(1, "2026-10-21T11:00:00Z")], "2026-10-19", "2026-10-23");
+    expect(week[0].state).not.toBe("done");
+    expect(weekProgress(workouts, week)).toEqual({ done: 1, total: 4 });
   });
 
   it("takes workouts sharing a weekday as one training day", () => {
@@ -88,8 +93,8 @@ describe("weekProgress", () => {
   });
 
   it("raises the total when the client trains more days than the plan has", () => {
-    const plan = [w(1, "MONDAY")];
-    expect(progress(plan, [log(1, "2026-10-19T11:00:00Z"), { ...log(1, "2026-10-20T11:00:00Z"), id: 11 }])).toEqual({ done: 2, total: 2 });
+    const plan = [w(1, "MONDAY"), w(2, "MONDAY")];
+    expect(progress(plan, [log(1, "2026-10-19T11:00:00Z"), log(2, "2026-10-20T11:00:00Z")])).toEqual({ done: 2, total: 2 });
   });
 });
 

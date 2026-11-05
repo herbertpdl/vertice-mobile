@@ -106,7 +106,8 @@ product promises them.
   weekday the workout belongs to — Monday's workout done on Friday marks Friday), today, pending
   (a workout exists, nothing finished that day), or rest (no workout that weekday). Under it,
   "2 de 5 dias de treino concluídos" counts those done days out of the plan's training days (two
-  workouts on one day are one day; a day trained beyond the plan raises the total).
+  workouts on one day are one day; a day trained beyond the plan raises the total; a redo counts
+  its own day, since the session it replaced leaves the week, R22).
 - R7. When the active plan has no workouts, "Começar treino" is disabled and a message says the
   trainer has not added workouts yet.
 - R8. When a session is in progress this week, the main button reads "Continuar treino" and opens
