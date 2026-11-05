@@ -28,6 +28,15 @@ describe("Sheet", () => {
     expect(JSON.stringify(screen.toJSON())).toContain('"text":"Concluir"');
   });
 
+  it("keeps a focused field in view inside the lifted panel", async () => {
+    await render(
+      <Sheet visible onClose={jest.fn()} title="Novo aluno">
+        <Text>Campos</Text>
+      </Sheet>,
+    );
+    expect(JSON.stringify(screen.toJSON())).toContain('"bottomOffset":16');
+  });
+
   it("can't be dismissed while not dismissible", async () => {
     const onClose = jest.fn();
     await render(

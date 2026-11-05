@@ -1,6 +1,7 @@
 import { X } from "lucide-react-native";
 import type { ReactNode } from "react";
-import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, View } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
 import Animated, { SlideInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -122,9 +123,10 @@ export function Sheet({ title, footer, scroll = true, children, ...modal }: Shee
         />
       </View>
       {scroll ? (
-        <ScrollView style={styles.scroll} keyboardShouldPersistTaps="handled" bounces={false}>
+        // The panel is already lifted over the bar: the offset is only the gap under the field.
+        <KeyboardAwareScrollView style={styles.scroll} bottomOffset={space[4]} keyboardShouldPersistTaps="handled" bounces={false}>
           {body}
-        </ScrollView>
+        </KeyboardAwareScrollView>
       ) : (
         body
       )}
