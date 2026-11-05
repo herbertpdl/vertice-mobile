@@ -93,7 +93,7 @@
         {
           "color": "#00E5FF",
           "sounds": [
-            "./assets/sounds/rest-done.wav"
+            "./assets/sounds/rest_done.wav"
           ]
         }
       ],

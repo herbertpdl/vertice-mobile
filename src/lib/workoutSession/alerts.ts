@@ -20,9 +20,9 @@ Notifications.setNotificationHandler({
   }),
 });
 
-const REST_SOUND = require("@/assets/sounds/rest-done.wav");
+const REST_SOUND = require("@/assets/sounds/rest_done.wav");
 /** The same chime as a notification sound: the file `sounds` bundles in app.json. */
-const REST_SOUND_FILE = "rest-done.wav";
+const REST_SOUND_FILE = "rest_done.wav";
 const REST_CHANNEL = "rest-timer";
 
 /**
