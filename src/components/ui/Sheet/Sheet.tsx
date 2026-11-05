@@ -1,7 +1,6 @@
 import { X } from "lucide-react-native";
 import type { ReactNode } from "react";
-import { KeyboardAvoidingView, Modal, Platform, Pressable, StyleSheet, View } from "react-native";
-import { KeyboardAwareScrollView } from "react-native-keyboard-controller";
+import { KeyboardAvoidingView, Modal, Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
 import Animated, { SlideInDown } from "react-native-reanimated";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -10,6 +9,8 @@ import { colors, overlay, radius, screenPaddingHorizontal, sizes, space } from "
 import { IconButton } from "../IconButton";
 import { KeyboardBar } from "../KeyboardBar";
 import { Text } from "../Text";
+
+import { useRevealFocusedInput } from "./useRevealFocusedInput";
 
 export type SheetModalProps = {
   visible: boolean;
@@ -105,6 +106,7 @@ export type SheetProps = Omit<SheetModalProps, "accessibilityLabel" | "gap"> & {
 
 /** M Bottom Sheet: grabber, 20/700 title with a close button, content, optional footer. */
 export function Sheet({ title, footer, scroll = true, children, ...modal }: SheetProps) {
+  const reveal = useRevealFocusedInput(space[4]);
   const body = <View style={styles.content}>{children}</View>;
   return (
     <SheetModal {...modal} accessibilityLabel={title}>
@@ -123,10 +125,9 @@ export function Sheet({ title, footer, scroll = true, children, ...modal }: Shee
         />
       </View>
       {scroll ? (
-        // The panel is already lifted over the bar: the offset is only the gap under the field.
-        <KeyboardAwareScrollView style={styles.scroll} bottomOffset={space[4]} keyboardShouldPersistTaps="handled" bounces={false}>
+        <ScrollView {...reveal} style={styles.scroll} keyboardShouldPersistTaps="handled" bounces={false}>
           {body}
-        </KeyboardAwareScrollView>
+        </ScrollView>
       ) : (
         body
       )}
