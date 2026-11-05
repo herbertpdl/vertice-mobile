@@ -83,6 +83,10 @@ export const sizes = {
   tabItemRadius: 22,
   tabItemGap: 3,
   /** M Bottom Sheet grabber. */
+  /** The exercise-done check, and the workout celebration's ring and mark. */
+  celebrationCheck: 120,
+  celebrationRing: 168,
+  celebrationMark: 84,
   grabberWidth: 36,
   grabberHeight: 5,
   /** M Bottom Sheet content gap between fields. */

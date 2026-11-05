@@ -1,6 +1,7 @@
 import { onlineManager } from "@tanstack/react-query";
 import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
 
+import { CELEBRATION_MS } from "@/components/ui/Celebration";
 import { mockBff, type BffMock } from "@/test/bff";
 import { renderScreen } from "@/test/render";
 import { clearWorkoutData, openOutbox } from "@/lib/workoutSession/outbox";
@@ -10,6 +11,7 @@ import { WorkoutFeedbackScreen } from "./WorkoutFeedbackScreen";
 const mockReplace = jest.fn();
 jest.mock("expo-router", () => ({
   router: { replace: (...args: unknown[]) => mockReplace(...args) },
+  Stack: { Screen: () => null },
   useLocalSearchParams: () => ({ logId: "500", name: "Treino C", summary: "22 de 22 séries" }),
 }));
 
@@ -22,7 +24,40 @@ afterEach(() => {
   jest.clearAllMocks();
 });
 
+/** Waits for the celebration that follows sending, and taps past it. */
+async function continueHome() {
+  await fireEvent.press(await screen.findByRole("button", { name: "Treino concluído! Continuar" }));
+}
+
 describe("WorkoutFeedbackScreen", () => {
+  it("celebrates only after sending, then goes home by itself with the toast", async () => {
+    jest.useFakeTimers();
+    try {
+      bff = mockBff({ "POST /api/workout-logs/500/feedback": { id: 1 } });
+      await renderScreen(<WorkoutFeedbackScreen />);
+      await fireEvent.press(screen.getByRole("radio", { name: "Difícil" }));
+      await fireEvent.press(screen.getByRole("button", { name: "Enviar feedback" }));
+      await screen.findByRole("button", { name: "Treino concluído! Continuar" });
+      expect(mockReplace).not.toHaveBeenCalled();
+      await act(async () => {
+        jest.advanceTimersByTime(CELEBRATION_MS);
+      });
+      expect(mockReplace).toHaveBeenCalledWith("/aluno");
+      // In the app the route has been replaced by now; here the modal celebration still hides the toast.
+      expect(screen.getByText("Feedback enviado ao seu treinador.", { includeHiddenElements: true })).toBeOnTheScreen();
+    } finally {
+      jest.useRealTimers();
+    }
+  });
+
+  it("doesn't celebrate when the client skips", async () => {
+    bff = mockBff({});
+    await renderScreen(<WorkoutFeedbackScreen />);
+    await fireEvent.press(screen.getByRole("button", { name: "Pular" }));
+    expect(screen.queryByRole("button", { name: "Treino concluído! Continuar" })).toBeNull();
+    expect(mockReplace).toHaveBeenCalledWith("/aluno");
+  });
+
   it("needs a rating, then sends it with the optional comment", async () => {
     bff = mockBff({
       "POST /api/workout-logs/500/feedback": { id: 1, workoutLogId: 500, workoutId: 12, trainingPlanId: 1, clientId: 7, text: "Pesado", rating: "HARD", replaced: false, createdAt: "2026-10-21T11:00:00Z" },
@@ -34,7 +69,8 @@ describe("WorkoutFeedbackScreen", () => {
     await fireEvent.press(screen.getByRole("radio", { name: "Difícil" }));
     await fireEvent.changeText(screen.getByLabelText("Quer contar algo ao seu treinador? (opcional)"), "  Pesado  ");
     await fireEvent.press(screen.getByRole("button", { name: "Enviar feedback" }));
-    await waitFor(() => expect(mockReplace).toHaveBeenCalledWith("/aluno"));
+    await continueHome();
+    expect(mockReplace).toHaveBeenCalledWith("/aluno");
     expect(bff.calls.find((c) => c.route === "POST /api/workout-logs/500/feedback")?.body).toEqual({ rating: "HARD", text: "Pesado", clientKey: expect.any(String) });
   });
 
@@ -45,7 +81,8 @@ describe("WorkoutFeedbackScreen", () => {
       await renderScreen(<WorkoutFeedbackScreen />);
       await fireEvent.press(screen.getByRole("radio", { name: "Fácil" }));
       await fireEvent.press(screen.getByRole("button", { name: "Enviar feedback" }));
-      expect(await screen.findByText("Seu feedback será enviado quando a conexão voltar.")).toBeOnTheScreen();
+      await continueHome();
+      expect(await screen.findByText("Seu feedback será enviado quando a conexão voltar.", { includeHiddenElements: true })).toBeOnTheScreen();
       expect(mockReplace).toHaveBeenCalledWith("/aluno");
       expect(bff.calls).toHaveLength(0);
       await act(async () => onlineManager.setOnline(true));

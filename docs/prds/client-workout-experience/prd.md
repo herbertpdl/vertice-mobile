@@ -63,7 +63,8 @@ product promises them.
 7. After the last exercise, "Próximo" becomes "Finalizar treino". They tap it.
 8. The feedback step opens: they pick one of five emojis, optionally write a comment, and send it
    (or skip).
-9. They return to Início, where today's day is marked done in the week strip.
+9. If they sent the feedback, a short celebration plays. They return to Início, where today's day
+   is marked done in the week strip.
 
 ### 3.2 Client: no workout today
 
@@ -230,6 +231,9 @@ product promises them.
 - R67. Sending feedback requires a rating.
 - R68. A comment is optional and holds up to 2,000 characters.
 - R69. The client can skip the feedback step with "Pular".
+- R69a. Sending the feedback, online or queued, plays a full-screen celebration before Início (a tap
+  skips it); skipping the feedback doesn't. Completing an exercise shows a brief animated check that
+  never blocks the screen. Both respect the system's Reduce Motion setting.
 - R70. Feedback can only be given in the feedback step right after finishing; a skipped session has
   no feedback.
 - R71. The trainer sees the rating emoji next to the feedback everywhere feedback appears today, in

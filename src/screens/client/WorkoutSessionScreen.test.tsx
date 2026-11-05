@@ -1,8 +1,10 @@
 import { onlineManager } from "@tanstack/react-query";
 import { act, fireEvent, screen, waitFor } from "@testing-library/react-native";
 import * as Notifications from "expo-notifications";
+import * as Haptics from "expo-haptics";
 import { AppState, Platform, Vibration } from "react-native";
 
+import { EXERCISE_DONE_MS } from "@/components/ui/Celebration";
 import { ApiError } from "@/lib/api/client";
 import { apiErrorMessage } from "@/lib/api/errorMessages";
 import type { WorkoutSession } from "@/lib/api/types";
@@ -439,6 +441,54 @@ describe("WorkoutSessionScreen", () => {
     expect(screen.queryByLabelText(/^Descanso:/)).toBeNull();
     await act(async () => {});
     expect(Notifications.scheduleNotificationAsync).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the check when an exercise is done, naming the next one, and not on a set before it", async () => {
+    jest.useFakeTimers({ now: new Date("2026-10-21T10:00:00Z") });
+    bff = mockBff({ "GET /api/workouts/12/session": workout(), "POST /api/workout-sessions/500/sets": setLog(11, "40") });
+    await renderScreen(<WorkoutSessionScreen />);
+    await fireEvent.press(await screen.findByRole("checkbox", { name: "Série 1 feita" }));
+    expect(screen.queryByTestId("exercise-done-check")).toBeNull();
+    expect(Haptics.impactAsync).not.toHaveBeenCalled();
+
+    await fireEvent.press(screen.getByRole("checkbox", { name: "Série 2 feita" }));
+    expect(screen.getByTestId("exercise-done-check")).toBeOnTheScreen();
+    expect(screen.getByLabelText("Exercício concluído. Próximo: Prancha.")).toBeOnTheScreen();
+    expect(Haptics.impactAsync).toHaveBeenCalledTimes(1);
+    await act(async () => {
+      jest.advanceTimersByTime(EXERCISE_DONE_MS);
+    });
+    expect(screen.queryByTestId("exercise-done-check")).toBeNull();
+  });
+
+  it("shows the check again when a set of a finished exercise is unticked and ticked back", async () => {
+    jest.useFakeTimers({ now: new Date("2026-10-21T10:00:00Z") });
+    bff = mockBff({
+      "GET /api/workouts/12/session": workout(),
+      "POST /api/workout-sessions/500/sets": setLog(11, "40"),
+      "DELETE /api/workout-sessions/500/sets/12": {},
+    });
+    await renderScreen(<WorkoutSessionScreen />);
+    await fireEvent.press(await screen.findByRole("checkbox", { name: "Série 1 feita" }));
+    await fireEvent.press(screen.getByRole("checkbox", { name: "Série 2 feita" }));
+    await act(async () => {
+      jest.advanceTimersByTime(EXERCISE_DONE_MS);
+    });
+    await fireEvent.press(screen.getByRole("button", { name: "Exercício anterior" }));
+    await fireEvent.press(screen.getByRole("checkbox", { name: "Série 2 feita" }));
+    expect(screen.queryByTestId("exercise-done-check")).toBeNull();
+    await fireEvent.press(screen.getByRole("checkbox", { name: "Série 2 feita" }));
+    expect(screen.getByTestId("exercise-done-check")).toBeOnTheScreen();
+    expect(Haptics.impactAsync).toHaveBeenCalledTimes(2);
+  });
+
+  it("shows no check for sets already done when the session reopens", async () => {
+    const done = workout();
+    done.exercises[0].sets = done.exercises[0].sets.map((s) => ({ ...s, current: setLog(s.id, "40") }));
+    bff = mockBff({ "GET /api/workouts/12/session": done });
+    await renderScreen(<WorkoutSessionScreen />);
+    await screen.findByText("Prancha");
+    expect(screen.queryByTestId("exercise-done-check")).toBeNull();
   });
 
   it("closes a sheet about the exercise when a hold behind it moves on", async () => {
