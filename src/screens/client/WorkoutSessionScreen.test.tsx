@@ -410,6 +410,30 @@ describe("WorkoutSessionScreen", () => {
     await waitFor(() => expect(Notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith("notification-id"));
   });
 
+  it("moves past an unfinished exercise, which stays open, and finishes from the only one left", async () => {
+    bff = mockBff({ "GET /api/workouts/12/session": workout(), "POST /api/workout-sessions/500/sets": setLog(21, "") });
+    await renderScreen(<WorkoutSessionScreen />);
+    await screen.findByText("Remada");
+    await fireEvent.press(screen.getByRole("button", { name: "Próximo exercício" }));
+    expect(screen.getByText("Prancha")).toBeOnTheScreen();
+    expect(screen.getByText("EXERCÍCIO 2 DE 2")).toBeOnTheScreen();
+    expect(bff.calls.some((c) => c.route === "POST /api/workout-sessions/500/sets")).toBe(false);
+
+    await fireEvent.press(screen.getByRole("button", { name: "Próximo exercício" }));
+    expect(screen.getByText("Remada")).toBeOnTheScreen();
+    expect(screen.getByRole("checkbox", { name: "Série 1 feita" })).not.toBeChecked();
+  });
+
+  it("offers to finish, with the confirmation, on the only exercise still open", async () => {
+    const single = session([{ id: 1, order: 1, name: "Remada", sets: [set(11, 1)] }]);
+    bff = mockBff({ "GET /api/workouts/12/session": single });
+    await renderScreen(<WorkoutSessionScreen />);
+    await screen.findByText("Remada");
+    expect(screen.queryByRole("button", { name: "Próximo exercício" })).toBeNull();
+    await fireEvent.press(screen.getByRole("button", { name: "Finalizar treino" }));
+    expect(await screen.findByText(/Você ainda tem 1 série não concluída/)).toBeOnTheScreen();
+  });
+
   it("gives no in-app alert for a rest that ended while the app was away", async () => {
     jest.useFakeTimers({ now: new Date("2026-10-21T10:00:00Z") });
     bff = mockBff({ "GET /api/workouts/12/session": workout(), "POST /api/workout-sessions/500/sets": setLog(11, "40") });
