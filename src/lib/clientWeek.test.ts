@@ -1,6 +1,6 @@
 import type { Workout, WorkoutLog } from "@/lib/api/types";
 
-import { clientWeek, finishedCount, homeAction, inProgressLog } from "./clientWeek";
+import { clientWeek, homeAction, inProgressLog, weekProgress } from "./clientWeek";
 
 const w = (id: number, dayOfWeek: Workout["dayOfWeek"]): Workout => ({ id, name: `Treino ${id}`, trainingPlanId: 1, dayOfWeek });
 const log = (workoutId: number, completedAt = "", startedAt = "2026-10-19T10:00:00Z"): WorkoutLog => ({
@@ -64,7 +64,32 @@ describe("clientWeek", () => {
 
   it("ignores logs that were started and not finished", () => {
     expect(clientWeek(workouts, [log(3)], "2026-10-19", "2026-10-21")[3].state).toBe("pending");
-    expect(finishedCount(workouts, [log(3), log(1, "2026-10-19T11:00:00Z")])).toBe(1);
+  });
+});
+
+describe("weekProgress", () => {
+  const progress = (plan: Workout[], logs: WorkoutLog[]) => weekProgress(plan, clientWeek(plan, logs, "2026-10-19", "2026-10-23"));
+
+  it("counts days, not workouts: two on one day are one day", () => {
+    expect(progress(workouts, [log(1, "2026-10-19T11:00:00Z"), log(2, "2026-10-19T12:00:00Z")])).toEqual({ done: 1, total: 4 });
+  });
+
+  it("counts every day trained, whichever workout it was", () => {
+    const redo = { ...log(1, "2026-10-21T11:00:00Z"), id: 11 };
+    expect(progress(workouts, [log(1, "2026-10-19T11:00:00Z"), redo])).toEqual({ done: 2, total: 4 });
+  });
+
+  it("takes workouts sharing a weekday as one training day", () => {
+    expect(progress([w(1, "MONDAY"), w(2, "MONDAY"), w(3, "FRIDAY")], [])).toEqual({ done: 0, total: 2 });
+  });
+
+  it("ignores a session not finished", () => {
+    expect(progress(workouts, [log(3), log(1, "2026-10-19T11:00:00Z")])).toEqual({ done: 1, total: 4 });
+  });
+
+  it("raises the total when the client trains more days than the plan has", () => {
+    const plan = [w(1, "MONDAY")];
+    expect(progress(plan, [log(1, "2026-10-19T11:00:00Z"), { ...log(1, "2026-10-20T11:00:00Z"), id: 11 }])).toEqual({ done: 2, total: 2 });
   });
 });
 
