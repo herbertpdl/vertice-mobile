@@ -33,6 +33,13 @@ jest.mock("@react-native-community/netinfo", () =>
 
 jest.mock("expo-clipboard", () => ({ setStringAsync: jest.fn(async () => true) }));
 
+// The rest's Live Activity (`RestActivity`): no widget extension under Jest.
+jest.mock("@expo/ui/swift-ui", () => ({}));
+jest.mock("@expo/ui/swift-ui/modifiers", () => ({}));
+jest.mock("expo-widgets", () => {
+  const factory = { start: jest.fn(), getInstances: jest.fn(() => []) };
+  return { createLiveActivity: jest.fn(() => factory), __factory: factory };
+});
 // The workout session's rest alerts (client spec §3.5): no native notification, haptic or audio
 // module under Jest. Each call is a jest.fn a test can inspect.
 jest.mock("expo-notifications", () => ({
@@ -45,7 +52,8 @@ jest.mock("expo-notifications", () => ({
   requestPermissionsAsync: jest.fn(async () => ({ status: "granted", canAskAgain: true })),
   scheduleNotificationAsync: jest.fn(async () => "notification-id"),
   cancelScheduledNotificationAsync: jest.fn(async () => undefined),
-  dismissAllNotificationsAsync: jest.fn(async () => undefined),
+  getPresentedNotificationsAsync: jest.fn(async () => []),
+  dismissNotificationAsync: jest.fn(async () => undefined),
 }));
 jest.mock("expo-haptics", () => ({
   NotificationFeedbackType: { Success: "success" },

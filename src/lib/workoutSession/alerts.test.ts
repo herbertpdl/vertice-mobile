@@ -4,7 +4,7 @@ import * as Notifications from "expo-notifications";
 import { Platform, Vibration } from "react-native";
 
 import appConfig from "../../../app.json";
-import { useRestAlert, useRestNotification } from "./alerts";
+import { dismissRestNotifications, useRestAlert, useRestNotification } from "./alerts";
 
 const player = (Audio as unknown as { __player: { play: jest.Mock; seekTo: jest.Mock } }).__player;
 const NOW = 1_000_000;
@@ -33,6 +33,16 @@ describe("useRestAlert", () => {
   });
 });
 
+describe("dismissRestNotifications", () => {
+  it("clears only the rest's own notifications, leaving the running countdown", async () => {
+    const delivered = (identifier: string, kind?: string) => ({ request: { identifier, content: { data: { kind } } } });
+    jest.mocked(Notifications.getPresentedNotificationsAsync).mockResolvedValueOnce([delivered("rest-1", "rest"), delivered("other")] as never);
+    dismissRestNotifications();
+    await waitFor(() => expect(Notifications.dismissNotificationAsync).toHaveBeenCalledWith("rest-1"));
+    expect(Notifications.dismissNotificationAsync).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("useRestNotification", () => {
   const original = Platform.OS;
   afterEach(() => {
@@ -43,7 +53,7 @@ describe("useRestNotification", () => {
     await renderHook(() => useRestNotification(rest, notice, () => NOW));
     await waitFor(() =>
       expect(Notifications.scheduleNotificationAsync).toHaveBeenCalledWith({
-        content: { ...notice, sound: "rest_done.wav" },
+        content: { ...notice, sound: "rest_done.wav", data: { kind: "rest" } },
         trigger: { type: "timeInterval", seconds: 60, channelId: "rest-timer" },
       }),
     );

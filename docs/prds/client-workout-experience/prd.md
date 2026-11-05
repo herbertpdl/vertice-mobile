@@ -196,7 +196,11 @@ product promises them.
   pulses, noticeable in a gym) and plays a chime, unless its sound is off.
 - R50. When the countdown ends while the app is in the background or the phone is locked, the
   client gets a phone notification saying the rest is over.
-- R51. When the client has not allowed notifications, only the in-app alert happens.
+- R50a. While the countdown runs, it also shows on the locked screen and keeps counting with the
+  app in the background: a Live Activity on iPhone, an ongoing notification on Android. It's gone
+  when the rest ends, and on iPhone says the rest is over until the client returns.
+- R51. When the client has not allowed notifications, only the in-app alert happens, with no
+  countdown on Android. On iPhone the countdown is governed by the Live Activities setting.
 - R52. A set prescribed by duration (a timed hold) has an "Iniciar" button that counts down the
   prescribed duration.
 - R53. When a hold countdown ends, the set is ticked and its rest countdown starts (R46a applies

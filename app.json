@@ -98,7 +98,15 @@
         }
       ],
       "expo-asset",
-      "expo-sqlite"
+      "expo-sqlite",
+      [
+        "expo-widgets",
+        {
+          "bundleIdentifier": "com.vertice.mobile.ExpoWidgetsTarget",
+          "groupIdentifier": "group.com.vertice.mobile",
+          "widgets": []
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

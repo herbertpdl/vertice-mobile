@@ -1,0 +1,9 @@
+{
+  "name": "rest-countdown",
+  "version": "1.0.0",
+  "description": "The rest countdown on Android's lock screen: an ongoing notification with a chronometer.",
+  "license": "UNLICENSED",
+  "author": "Vertice",
+  "homepage": "https://github.com/herbertpdl/vertice-mobile",
+  "private": true
+}

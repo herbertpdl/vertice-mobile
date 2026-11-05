@@ -24,6 +24,7 @@ const REST_SOUND = require("@/assets/sounds/rest_done.wav");
 /** The same chime as a notification sound: the file `sounds` bundles in app.json. */
 const REST_SOUND_FILE = "rest_done.wav";
 const REST_CHANNEL = "rest-timer";
+const REST_NOTIFICATION = "rest";
 
 /**
  * Three long pulses. Android reads the array as wait/vibrate times; on iOS each entry after the
@@ -78,7 +79,7 @@ export function useRestNotification(rest: Timer | null, notice: RestNotice | und
         if (!granted || cancelled || seconds <= 0) return;
         await ensureRestChannel();
         const id = await Notifications.scheduleNotificationAsync({
-          content: { title: notice.title, body: notice.body, sound: REST_SOUND_FILE },
+          content: { title: notice.title, body: notice.body, sound: REST_SOUND_FILE, data: { kind: REST_NOTIFICATION } },
           trigger: { type: Notifications.SchedulableTriggerInputTypes.TIME_INTERVAL, seconds, channelId: REST_CHANNEL },
         });
         if (cancelled) void Notifications.cancelScheduledNotificationAsync(id);
@@ -96,7 +97,12 @@ export function useRestNotification(rest: Timer | null, notice: RestNotice | und
 
 /** Clears a rest notification already delivered while the app was away (it's stale once back). */
 export function dismissRestNotifications() {
-  void Notifications.dismissAllNotificationsAsync();
+  // Only those: dismissing all would take the running rest's countdown off Android's lock screen.
+  void Notifications.getPresentedNotificationsAsync().then((presented) => {
+    for (const { request } of presented) {
+      if (request.content.data?.kind === REST_NOTIFICATION) void Notifications.dismissNotificationAsync(request.identifier);
+    }
+  });
 }
 
 /**
