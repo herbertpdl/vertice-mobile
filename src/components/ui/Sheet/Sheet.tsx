@@ -10,6 +10,8 @@ import { IconButton } from "../IconButton";
 import { KeyboardBar } from "../KeyboardBar";
 import { Text } from "../Text";
 
+import { useRevealFocusedInput } from "./useRevealFocusedInput";
+
 export type SheetModalProps = {
   visible: boolean;
   /** Backdrop tap, Android back, and the close button. Not called while `dismissible` is false. */
@@ -104,6 +106,7 @@ export type SheetProps = Omit<SheetModalProps, "accessibilityLabel" | "gap"> & {
 
 /** M Bottom Sheet: grabber, 20/700 title with a close button, content, optional footer. */
 export function Sheet({ title, footer, scroll = true, children, ...modal }: SheetProps) {
+  const reveal = useRevealFocusedInput(space[4]);
   const body = <View style={styles.content}>{children}</View>;
   return (
     <SheetModal {...modal} accessibilityLabel={title}>
@@ -122,7 +125,7 @@ export function Sheet({ title, footer, scroll = true, children, ...modal }: Shee
         />
       </View>
       {scroll ? (
-        <ScrollView style={styles.scroll} keyboardShouldPersistTaps="handled" bounces={false}>
+        <ScrollView {...reveal} style={styles.scroll} keyboardShouldPersistTaps="handled" bounces={false}>
           {body}
         </ScrollView>
       ) : (

@@ -135,14 +135,14 @@ field as it grows, but they lay out differently.
   height. `scroll={false}` screens keep theirs. `bottomOffset` is the bar's height plus the footer's
   measured height plus a gap, so a field can't settle behind the footer.
 - **`Sheet`.** `SheetModal` keeps its `KeyboardAvoidingView` and item 3's offset: it's the only thing
-  lifting the bottom-anchored panel. The footer stays in the panel. The scroll view becomes the aware
-  one with a small `bottomOffset`: the bar is already cleared by the lift and the footer sits below
-  the scroll frame.
+  lifting the bottom-anchored panel. The footer stays in the panel. The scroll view stays a plain
+  one, with `useRevealFocusedInput`: the aware view measures the field while the panel is still
+  lifting, and on the simulator it left a short sheet blank and hid the field in a tall one.
 
 Check that pull to refresh still works on `Screen`.
 
 **Tests.** `Screen` renders the aware scroll view with the offset and keeps `refreshControl`;
-`SheetModal` keeps its `KeyboardAvoidingView`. Simulator check on the feedback screen, a trainer form
+`useRevealFocusedInput` scrolls down, up, not at all, and follows the focus. Simulator check on the feedback screen, a trainer form
 with a footer, a short form sheet (`NewStudentSheet`) and a tall one (`EditProfileSheet`).
 
 ## Item 8 — completion animations
