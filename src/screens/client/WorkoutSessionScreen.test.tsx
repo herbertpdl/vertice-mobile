@@ -393,7 +393,8 @@ describe("WorkoutSessionScreen", () => {
 
   it("schedules the rest's notification, cancels it on the next tick, and alerts when the rest ends live", async () => {
     jest.useFakeTimers({ now: new Date("2026-10-21T10:00:00Z") });
-    bff = mockBff({ "GET /api/workouts/12/session": workout(), "POST /api/workout-sessions/500/sets": setLog(11, "40") });
+    const three = session([{ id: 1, order: 1, name: "Remada", sets: [set(11, 1), set(12, 2), set(13, 3)] }]);
+    bff = mockBff({ "GET /api/workouts/12/session": three, "POST /api/workout-sessions/500/sets": setLog(11, "40") });
     await renderScreen(<WorkoutSessionScreen />);
     await fireEvent.press(await screen.findByRole("checkbox", { name: "Série 1 feita" }));
     await waitFor(() =>
@@ -408,7 +409,7 @@ describe("WorkoutSessionScreen", () => {
 
     await fireEvent.press(screen.getByRole("checkbox", { name: "Série 2 feita" }));
     await waitFor(() => expect(Notifications.scheduleNotificationAsync).toHaveBeenCalledTimes(2));
-    await fireEvent.press(screen.getByRole("button", { name: "Próximo exercício" }));
+    await fireEvent.press(screen.getByRole("checkbox", { name: "Série 3 feita" }));
     await waitFor(() => expect(Notifications.cancelScheduledNotificationAsync).toHaveBeenCalledWith("notification-id"));
   });
 
@@ -424,6 +425,52 @@ describe("WorkoutSessionScreen", () => {
     await fireEvent.press(screen.getByRole("button", { name: "Próximo exercício" }));
     expect(screen.getByText("Remada")).toBeOnTheScreen();
     expect(screen.getByRole("checkbox", { name: "Série 1 feita" })).not.toBeChecked();
+  });
+
+  it("goes to the next exercise after the last set, with no rest or notification", async () => {
+    bff = mockBff({ "GET /api/workouts/12/session": workout(), "POST /api/workout-sessions/500/sets": setLog(11, "40") });
+    await renderScreen(<WorkoutSessionScreen />);
+    await fireEvent.press(await screen.findByRole("checkbox", { name: "Série 1 feita" }));
+    expect(screen.getByLabelText(/^Descanso:/)).toBeOnTheScreen();
+    await waitFor(() => expect(Notifications.scheduleNotificationAsync).toHaveBeenCalledTimes(1));
+
+    await fireEvent.press(screen.getByRole("checkbox", { name: "Série 2 feita" }));
+    expect(screen.getByText("Prancha")).toBeOnTheScreen();
+    expect(screen.queryByLabelText(/^Descanso:/)).toBeNull();
+    await act(async () => {});
+    expect(Notifications.scheduleNotificationAsync).toHaveBeenCalledTimes(1);
+  });
+
+  it("closes a sheet about the exercise when a hold behind it moves on", async () => {
+    jest.useFakeTimers({ now: new Date("2026-10-21T10:00:00Z") });
+    const hold = set(11, 1, { reps: 0, durationSeconds: 30, strategy: "ISOMETRIC_HOLD" });
+    bff = mockBff({
+      "GET /api/workouts/12/session": session([
+        { id: 1, order: 1, name: "Prancha", sets: [hold] },
+        { id: 2, order: 2, name: "Remada", sets: [set(21, 1)] },
+      ]),
+      "POST /api/workout-sessions/500/sets": setLog(11, ""),
+      "GET /api/exercises/1/progress": [],
+    });
+    await renderScreen(<WorkoutSessionScreen />);
+    await fireEvent.press(await screen.findByRole("button", { name: "Iniciar a série 1" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Ver progresso" }));
+    expect(screen.getByLabelText("Progresso · Prancha")).toBeOnTheScreen();
+    await act(async () => {
+      jest.advanceTimersByTime(30_250);
+    });
+    expect(screen.getByText("Remada")).toBeOnTheScreen();
+    expect(screen.queryByLabelText("Progresso · Prancha")).toBeNull();
+  });
+
+  it("stays put after the workout's last set, offering to finish", async () => {
+    const single = session([{ id: 1, order: 1, name: "Remada", sets: [set(11, 1)] }]);
+    bff = mockBff({ "GET /api/workouts/12/session": single, "POST /api/workout-sessions/500/sets": setLog(11, "") });
+    await renderScreen(<WorkoutSessionScreen />);
+    await fireEvent.press(await screen.findByRole("checkbox", { name: "Série 1 feita" }));
+    expect(screen.getByText("Remada")).toBeOnTheScreen();
+    expect(screen.queryByLabelText(/^Descanso:/)).toBeNull();
+    expect(screen.getByRole("button", { name: "Finalizar treino" })).toBeOnTheScreen();
   });
 
   it("offers to finish, with the confirmation, on the only exercise still open", async () => {
