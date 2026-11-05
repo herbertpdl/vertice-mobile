@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { ChartColumn, ChevronLeft, CirclePlay, Ellipsis, List, Repeat, RotateCcw, Trash2 } from "lucide-react-native";
 import { useEffect, useEffectEvent, useReducer, useRef, useState } from "react";
-import { AppState, Platform, Pressable, StyleSheet, View } from "react-native";
+import { AppState, Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import { ExerciseListSheet, ProgressSheet, StrategySheet, VideoSheet, WorkoutPickerSheet } from "@/components/domain";
 import { NavBar, Screen } from "@/components/layout";
@@ -241,6 +241,12 @@ function SessionView({ snapshot, restored }: { snapshot: WorkoutSession; restore
   const exercise = currentExercise(state);
   const current = currentSetId(state);
 
+  // Each exercise opens at its top, however far down the last one's sets were.
+  const scroll = useRef<ScrollView>(null);
+  useEffect(() => {
+    scroll.current?.scrollTo({ y: 0, animated: false });
+  }, [state.exerciseIndex]);
+
   // ---- timers -----------------------------------------------------------------------------------
   const running = state.rest !== null || state.hold !== null;
   /** What was last sent per set, so a weight edit on a ticked set is re-recorded once. */
@@ -273,7 +279,10 @@ function SessionView({ snapshot, restored }: { snapshot: WorkoutSession; restore
   const onClock = useEffectEvent((at: number) => {
     setNow(at);
     if (state.hold !== null && at >= state.hold.endsAt) {
+      // A hold can end behind a sheet about this exercise: if it moves on, the sheet would change under them.
+      const moves = sessionReducer(state, { type: "tick", setId: state.hold.setId, now: at }).exerciseIndex !== state.exerciseIndex;
       if (!tickSet(state.hold.setId, at)) dispatch({ type: "stopHold" });
+      else if (moves && (overlay === "video" || overlay === "progress" || overlay === "strategy")) setOverlay(null);
     } else if (state.rest !== null && at >= state.rest.endsAt) {
       // JS timers stop in the background: an end first seen on return already had its notification.
       // Once per rest, even if another tick lands before the end is rendered.
@@ -487,6 +496,7 @@ function SessionView({ snapshot, restored }: { snapshot: WorkoutSession; restore
   return (
     <>
       <Screen
+        scrollRef={scroll}
         header={
           <>
             <NavBar

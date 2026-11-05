@@ -104,14 +104,23 @@ function findSet(state: SessionState, setId: number) {
   return undefined;
 }
 
-/** Ticks a set and starts its rest (none when the rest is 0): R45, R46, R48. */
+/**
+ * Ticks a set and starts its rest (none when the rest is 0): R45, R46, R48. The tick that completes
+ * an exercise rests nowhere: it moves to the next open exercise, or stays when none is left (R46a).
+ */
 function tick(state: SessionState, setId: number, now: number): SessionState {
   const found = findSet(state, setId);
   if (found === undefined) return state;
+  const ticked: Record<number, true> = { ...state.ticked, [setId]: true };
+  if (found.exercise.sets.every((set) => ticked[set.id])) {
+    const exercises = orderedExercises(state.snapshot);
+    const from = exercises.findIndex((exercise) => exercise.id === found.exercise.id);
+    return { ...state, ticked, hold: null, rest: null, exerciseIndex: nextOpenIndex(exercises, ticked, from) ?? state.exerciseIndex };
+  }
   const rest = restSecondsFor(found.set, found.exercise);
   return {
     ...state,
-    ticked: { ...state.ticked, [setId]: true },
+    ticked,
     hold: null,
     rest: rest > 0 ? { setId, startedAt: now, endsAt: now + rest * 1000 } : null,
   };
