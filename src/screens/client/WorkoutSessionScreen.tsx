@@ -3,7 +3,8 @@ import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
 import { ChartColumn, ChevronLeft, CirclePlay, Ellipsis, List, Repeat, RotateCcw, Trash2 } from "lucide-react-native";
 import { useEffect, useEffectEvent, useReducer, useRef, useState } from "react";
-import { AppState, Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
+import { AppState, Platform, Pressable, StyleSheet, View } from "react-native";
+import type { KeyboardAwareScrollViewRef } from "react-native-keyboard-controller";
 
 import { ExerciseListSheet, ProgressSheet, StrategySheet, VideoSheet, WorkoutPickerSheet } from "@/components/domain";
 import { NavBar, Screen } from "@/components/layout";
@@ -248,7 +249,7 @@ function SessionView({ snapshot, restored }: { snapshot: WorkoutSession; restore
   const current = currentSetId(state);
 
   // Each exercise opens at its top, however far down the last one's sets were.
-  const scroll = useRef<ScrollView>(null);
+  const scroll = useRef<KeyboardAwareScrollViewRef>(null);
   useEffect(() => {
     scroll.current?.scrollTo({ y: 0, animated: false });
   }, [state.exerciseIndex]);
