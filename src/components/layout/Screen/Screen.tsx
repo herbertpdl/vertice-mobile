@@ -1,8 +1,9 @@
-import { useState, type ReactNode } from "react";
+import { useState, type ReactNode, type Ref } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
   RefreshControl,
+  ScrollView,
   StyleSheet,
   View,
   type StyleProp,
@@ -31,6 +32,8 @@ export type ScreenProps = {
   /** A tab screen: the content scrolls under the floating tab bar, so it pads for it. */
   inTabs?: boolean;
   contentStyle?: StyleProp<ViewStyle>;
+  /** The content's scroll view, to bring it back to the top when what it shows changes. */
+  scrollRef?: Ref<ScrollView>;
 };
 
 /**
@@ -49,6 +52,7 @@ export function Screen({
   onRefresh,
   inTabs = false,
   contentStyle,
+  scrollRef,
 }: ScreenProps) {
   const insets = useSafeAreaInsets();
   const [footerHeight, setFooterHeight] = useState(0);
@@ -85,6 +89,7 @@ export function Screen({
     <View style={[styles.root, { paddingTop: insets.top }]}>
       {header}
       <KeyboardAwareScrollView
+        ref={scrollRef}
         style={styles.flex}
         contentContainerStyle={[styles.content, { paddingBottom: bottom }, contentStyle]}
         // What covers the content over the keyboard: the bar and the footer. The footer's own bottom

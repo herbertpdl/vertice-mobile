@@ -1,16 +1,17 @@
 import {
-  allTicked,
   clockText,
   currentSetId,
   initSession,
   initialWeight,
   inputToWeight,
+  onLastOpenExercise,
   pendingSets,
   secondsLeft,
   sessionReducer,
   stepRows,
   timerProgress,
   weightToInput,
+  type SessionState,
 } from "./engine";
 import { session, set, setLog } from "./fixtures";
 
@@ -65,8 +66,8 @@ describe("sessionReducer", () => {
     state = sessionReducer(state, { type: "tick", setId: 11, now: NOW });
     expect(state.rest).toEqual({ setId: 11, startedAt: NOW, endsAt: NOW + 90_000 });
     expect(currentSetId(state)).toBe(12);
-    state = sessionReducer(state, { type: "tick", setId: 12, now: NOW + 5000 });
-    expect(state.rest).toEqual({ setId: 12, startedAt: NOW + 5000, endsAt: NOW + 65_000 });
+    const other = sessionReducer(initSession(snapshot()), { type: "tick", setId: 12, now: NOW + 5000 });
+    expect(other.rest).toEqual({ setId: 12, startedAt: NOW + 5000, endsAt: NOW + 65_000 });
   });
 
   it("ends the running rest when another set is ticked or the exercise changes (R48)", () => {
@@ -82,21 +83,114 @@ describe("sessionReducer", () => {
     expect(state.rest).toBeNull();
   });
 
-  it("moves to the first exercise, in order, with a set left (R39)", () => {
-    let state = sessionReducer(initSession(snapshot()), { type: "goTo", index: 1 });
-    state = sessionReducer(state, { type: "tick", setId: 21, now: NOW });
-    state = sessionReducer(state, { type: "next" });
-    expect(state.exerciseIndex).toBe(0);
+  describe("completing an exercise (R46a)", () => {
+    const three = () =>
+      session([
+        { id: 1, order: 1, name: "Remada", sets: [set(11, 1), set(12, 2)] },
+        { id: 2, order: 2, name: "Prancha", sets: [set(21, 1, { reps: 0, durationSeconds: 30, strategy: "ISOMETRIC_HOLD" }), set(22, 2, { reps: 0, durationSeconds: 30, strategy: "ISOMETRIC_HOLD" })] },
+        { id: 3, order: 3, name: "Agachamento", sets: [set(31, 1)] },
+      ]);
+    const tickAll = (state: SessionState, ids: number[]) => ids.reduce((s, setId) => sessionReducer(s, { type: "tick", setId, now: NOW }), state);
+
+    it("rests between sets, then moves on without a rest after the last one", () => {
+      const first = tickAll(initSession(three()), [11]);
+      expect(first.rest).not.toBeNull();
+      expect(first.exerciseIndex).toBe(0);
+      const done = tickAll(first, [12]);
+      expect(done.rest).toBeNull();
+      expect(done.exerciseIndex).toBe(1);
+    });
+
+    it("counts the set that completes it, whichever its position", () => {
+      const done = tickAll(initSession(three()), [12, 11]);
+      expect(done.rest).toBeNull();
+      expect(done.exerciseIndex).toBe(1);
+    });
+
+    it("moves on from a timed set the same way", () => {
+      let state = sessionReducer(tickAll(initSession(three()), [11, 12, 21]), { type: "startHold", setId: 22, now: NOW });
+      state = sessionReducer(state, { type: "holdEnded", now: NOW + 30_000 });
+      expect(state.hold).toBeNull();
+      expect(state.rest).toBeNull();
+      expect(state.exerciseIndex).toBe(2);
+    });
+
+    it("goes back to an exercise skipped earlier", () => {
+      const state = tickAll(sessionReducer(initSession(three()), { type: "goTo", index: 2 }), [31]);
+      expect(state.exerciseIndex).toBe(0);
+    });
+
+    it("moves on again when a set of a finished exercise is unticked and ticked back", () => {
+      let state = sessionReducer(tickAll(initSession(three()), [11, 12]), { type: "goTo", index: 0 });
+      state = sessionReducer(state, { type: "untick", setId: 12 });
+      state = sessionReducer(state, { type: "tick", setId: 12, now: NOW });
+      expect(state.rest).toBeNull();
+      expect(state.exerciseIndex).toBe(1);
+    });
+
+    it("does nothing else on the last open exercise: no rest, no move", () => {
+      const state = tickAll(initSession(three()), [11, 12, 21, 22, 31]);
+      expect(state.rest).toBeNull();
+      expect(state.exerciseIndex).toBe(2);
+      expect(pendingSets(state)).toBe(0);
+    });
+  });
+
+  describe("next (R39)", () => {
+    /** Three exercises of one set each, except the first with two. */
+    const three = () =>
+      session([
+        { id: 1, order: 1, name: "Remada", sets: [set(11, 1), set(12, 2)] },
+        { id: 2, order: 2, name: "Supino", sets: [set(21, 1)] },
+        { id: 3, order: 3, name: "Agachamento", sets: [set(31, 1)] },
+      ]);
+
+    it("moves on from an unfinished exercise, ticking nothing", () => {
+      let state = sessionReducer(initSession(three()), { type: "tick", setId: 11, now: NOW });
+      state = sessionReducer(state, { type: "next" });
+      expect(state.exerciseIndex).toBe(1);
+      expect(state.ticked).toEqual({ 11: true });
+      expect(stepRows(state).map((r) => r.state)).toEqual(["pending", "current", "pending"]);
+    });
+
+    it("skips an exercise already done", () => {
+      let state = sessionReducer(initSession(three()), { type: "goTo", index: 1 });
+      state = sessionReducer(state, { type: "tick", setId: 21, now: NOW });
+      state = sessionReducer(state, { type: "goTo", index: 0 });
+      state = sessionReducer(state, { type: "next" });
+      expect(state.exerciseIndex).toBe(2);
+    });
+
+    it("wraps to an exercise skipped earlier", () => {
+      let state = sessionReducer(initSession(three()), { type: "goTo", index: 2 });
+      state = sessionReducer(state, { type: "next" });
+      expect(state.exerciseIndex).toBe(0);
+    });
+
+    it("stays on the only open exercise, where the button finishes instead (R40)", () => {
+      let state = initSession(three());
+      expect(onLastOpenExercise(state)).toBe(false);
+      for (const id of [21, 31]) state = sessionReducer(state, { type: "tick", setId: id, now: NOW });
+      expect(onLastOpenExercise(state)).toBe(true);
+      expect(sessionReducer(state, { type: "next" }).exerciseIndex).toBe(0);
+    });
+
+    it("ends the running rest", () => {
+      let state = sessionReducer(initSession(three()), { type: "tick", setId: 11, now: NOW });
+      state = sessionReducer(state, { type: "next" });
+      expect(state.rest).toBeNull();
+    });
   });
 
   it("runs a hold, ticks the set when it ends, then rests (R52, R53)", () => {
-    let state = sessionReducer(initSession(snapshot()), { type: "goTo", index: 1 });
+    const hold = { reps: 0, durationSeconds: 30, strategy: "ISOMETRIC_HOLD" } as const;
+    let state = initSession(session([{ id: 2, order: 1, name: "Prancha", sets: [set(21, 1, hold), set(22, 2, hold)], rest: 45 }]));
     state = sessionReducer(state, { type: "startHold", setId: 21, now: NOW });
     expect(state.hold).toEqual({ setId: 21, startedAt: NOW, endsAt: NOW + 30_000 });
     state = sessionReducer(state, { type: "holdEnded", now: NOW + 30_000 });
     expect(state.ticked[21]).toBe(true);
     expect(state.hold).toBeNull();
-    expect(state.rest).toEqual({ setId: 21, startedAt: NOW + 30_000, endsAt: NOW + 75_000 });
+    expect(state.rest).toEqual({ setId: 21, startedAt: NOW + 30_000, endsAt: NOW + 90_000 });
   });
 
   it("ignores a hold on a set without a duration", () => {
@@ -107,7 +201,8 @@ describe("sessionReducer", () => {
   it("knows when every set is done (R40)", () => {
     let state = initSession(snapshot());
     for (const id of [11, 12, 21]) state = sessionReducer(state, { type: "tick", setId: id, now: NOW });
-    expect(allTicked(state)).toBe(true);
+    expect(pendingSets(state)).toBe(0);
+    expect(onLastOpenExercise(state)).toBe(true);
     expect(stepRows(state).map((r) => r.state)).toEqual(["done", "done"]);
   });
 

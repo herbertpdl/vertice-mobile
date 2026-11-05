@@ -71,6 +71,18 @@ function firstOpenIndex(exercises: WorkoutSessionExercise[], ticked: Record<numb
   return index === -1 ? Math.max(0, exercises.length - 1) : index;
 }
 
+/**
+ * The exercise "Próximo" goes to (R39): the first after `from` with a set not ticked, wrapping to
+ * the ones skipped earlier. Null when no other exercise is open.
+ */
+function nextOpenIndex(exercises: WorkoutSessionExercise[], ticked: Record<number, true>, from: number): number | null {
+  for (let step = 1; step < exercises.length; step++) {
+    const index = (from + step) % exercises.length;
+    if (exercises[index].sets.some((set) => !ticked[set.id])) return index;
+  }
+  return null;
+}
+
 export function initSession(snapshot: WorkoutSession): SessionState {
   const exercises = orderedExercises(snapshot);
   const ticked: Record<number, true> = {};
@@ -92,14 +104,23 @@ function findSet(state: SessionState, setId: number) {
   return undefined;
 }
 
-/** Ticks a set and starts its rest (none when the rest is 0): R45, R46, R48. */
+/**
+ * Ticks a set and starts its rest (none when the rest is 0): R45, R46, R48. The tick that completes
+ * an exercise rests nowhere: it moves to the next open exercise, or stays when none is left (R46a).
+ */
 function tick(state: SessionState, setId: number, now: number): SessionState {
   const found = findSet(state, setId);
   if (found === undefined) return state;
+  const ticked: Record<number, true> = { ...state.ticked, [setId]: true };
+  if (found.exercise.sets.every((set) => ticked[set.id])) {
+    const exercises = orderedExercises(state.snapshot);
+    const from = exercises.findIndex((exercise) => exercise.id === found.exercise.id);
+    return { ...state, ticked, hold: null, rest: null, exerciseIndex: nextOpenIndex(exercises, ticked, from) ?? state.exerciseIndex };
+  }
   const rest = restSecondsFor(found.set, found.exercise);
   return {
     ...state,
-    ticked: { ...state.ticked, [setId]: true },
+    ticked,
     hold: null,
     rest: rest > 0 ? { setId, startedAt: now, endsAt: now + rest * 1000 } : null,
   };
@@ -120,7 +141,7 @@ export function sessionReducer(state: SessionState, action: SessionAction): Sess
     case "next":
       return {
         ...state,
-        exerciseIndex: firstOpenIndex(orderedExercises(state.snapshot), state.ticked),
+        exerciseIndex: nextOpenIndex(orderedExercises(state.snapshot), state.ticked, state.exerciseIndex) ?? state.exerciseIndex,
         rest: null,
         hold: null,
       };
@@ -162,9 +183,9 @@ export function pendingSets(state: SessionState): number {
   return totalSets(state) - Object.keys(state.ticked).length;
 }
 
-/** Every set is ticked: "Próximo" becomes "Finalizar treino" (R40). */
-export function allTicked(state: SessionState): boolean {
-  return pendingSets(state) === 0;
+/** No other exercise is left to go to: "Próximo" becomes "Finalizar treino" (R40). */
+export function onLastOpenExercise(state: SessionState): boolean {
+  return nextOpenIndex(orderedExercises(state.snapshot), state.ticked, state.exerciseIndex) === null;
 }
 
 export type StepRow = { index: number; name: string; done: number; total: number; state: "pending" | "current" | "done" };

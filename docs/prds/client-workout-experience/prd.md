@@ -55,13 +55,16 @@ product promises them.
    Monday's workout on a Monday).
 3. The workout screen shows the first exercise: its name, the trainer's description, "Ver
    execução", and its sets with the prescribed values and a weight field.
-4. They do a set, adjust the weight if needed, and tick it. The rest timer starts.
+4. They do a set, adjust the weight if needed, and tick it. The rest timer starts, except after
+   the exercise's last set.
 5. When the rest ends, the app alerts them; they do the next set. Repeat.
-6. When the exercise's sets are done, they tap "Próximo" and the next exercise opens.
+6. Ticking the exercise's last set opens the next exercise, with no rest. "Próximo" also moves on
+   at any time, leaving the exercise open.
 7. After the last exercise, "Próximo" becomes "Finalizar treino". They tap it.
 8. The feedback step opens: they pick one of five emojis, optionally write a comment, and send it
    (or skip).
-9. They return to Início, where today's day is marked done in the week strip.
+9. If they sent the feedback, a short celebration plays. They return to Início, where today's day
+   is marked done in the week strip.
 
 ### 3.2 Client: no workout today
 
@@ -104,7 +107,10 @@ product promises them.
   button and a "Ver outros planos" link to Planos.
 - R6. The week strip marks each day as done (the client finished a workout on that date, whichever
   weekday the workout belongs to — Monday's workout done on Friday marks Friday), today, pending
-  (a workout exists, nothing finished that day), or rest (no workout that weekday).
+  (a workout exists, nothing finished that day), or rest (no workout that weekday). Under it,
+  "2 de 5 dias de treino concluídos" counts those done days out of the plan's training days (two
+  workouts on one day are one day; a day trained beyond the plan raises the total; a redo counts
+  its own day, since the session it replaced leaves the week, R22).
 - R7. When the active plan has no workouts, "Começar treino" is disabled and a message says the
   trainer has not added workouts yet.
 - R8. When a session is in progress this week, the main button reads "Continuar treino" and opens
@@ -167,9 +173,11 @@ product promises them.
 - R37. When a last-time weight exists, it is also shown next to the set as a hint ("Última vez:
   20 kg").
 - R38. A client can untick a set and edit its weight until the session is finished.
-- R39. "Próximo" moves to the first exercise, in the trainer's order, that still has an unticked
-  set.
-- R40. When every set is ticked, "Próximo" becomes "Finalizar treino".
+- R39. "Próximo" moves to the next exercise, in the trainer's order, that still has an unticked
+  set, wrapping to the ones skipped earlier. It marks nothing: an exercise left unfinished stays
+  open until its sets are ticked.
+- R40. When no other exercise has an unticked set, "Próximo" becomes "Finalizar treino" (with
+  sets left on the current exercise, R43 applies).
 - R41. "Ver todos" lists every exercise of the workout with how many of its sets are ticked, and
   lets the client jump to any of them.
 - R42. "Finalizar treino" is always reachable from "Ver todos", even with unticked sets.
@@ -177,18 +185,22 @@ product promises them.
 - R44. A finished session marks the workout done for the week; unticked sets are not recorded.
 
 ### 4.4 Rest and timed sets
-- R45. Ticking a set starts a rest countdown of the rest time the trainer set for that set.
+- R45. Ticking a set (other than one that completes its exercise, R46a) starts a rest countdown of the rest time the trainer set for that set.
 - R46. When the set's rest time is zero, no countdown starts.
+- R46a. Ticking the set that completes an exercise starts no countdown: the session moves to the
+  next exercise with an unticked set (as R39). With none left, nothing else happens.
 - R47. The client cannot pause, skip, shorten or lengthen the countdown.
 - R48. Ticking another set, or moving to another exercise, ends the running countdown (and starts
-  the newly ticked set's rest, per R45).
-- R49. When the countdown ends while the app is open, the phone vibrates and plays a sound.
+  the newly ticked set's rest, per R45 and R46a).
+- R49. When the countdown ends while the app is open, the phone vibrates strongly (three long
+  pulses, noticeable in a gym) and plays a chime, unless its sound is off.
 - R50. When the countdown ends while the app is in the background or the phone is locked, the
   client gets a phone notification saying the rest is over.
 - R51. When the client has not allowed notifications, only the in-app alert happens.
 - R52. A set prescribed by duration (a timed hold) has an "Iniciar" button that counts down the
   prescribed duration.
-- R53. When a hold countdown ends, the set is ticked and its rest countdown starts.
+- R53. When a hold countdown ends, the set is ticked and its rest countdown starts (R46a applies
+  when it completes the exercise, and a sheet about that exercise closes).
 - R54. A timed set can also be ticked by hand without using "Iniciar".
 
 ### 4.5 Offline
@@ -219,6 +231,9 @@ product promises them.
 - R67. Sending feedback requires a rating.
 - R68. A comment is optional and holds up to 2,000 characters.
 - R69. The client can skip the feedback step with "Pular".
+- R69a. Sending the feedback, online or queued, plays a full-screen celebration before Início (a tap
+  skips it); skipping the feedback doesn't. Completing an exercise shows a brief animated check that
+  never blocks the screen. Both respect the system's Reduce Motion setting.
 - R70. Feedback can only be given in the feedback step right after finishing; a skipped session has
   no feedback.
 - R71. The trainer sees the rating emoji next to the feedback everywhere feedback appears today, in
@@ -262,13 +277,13 @@ product promises them.
 | E17 | Client never did this workout and trainer prescribed 20 kg | Field starts at 20 | R36 |
 | E18 | Client never did it and trainer prescribed nothing | Field starts empty | R36 |
 | E19 | Client typed the wrong weight on a ticked set | Edits it (or unticks) before finishing | R38 |
-| E20 | Client picks exercise 4 out of order, then taps "Próximo" | Goes to the first exercise (in trainer order) with unticked sets, e.g. 1 | R39 |
+| E20 | Client picks exercise 4 out of order, then taps "Próximo" | Goes to the next exercise with unticked sets, e.g. 5, or wraps to 1 | R39 |
 | E21 | Client finishes with 4 sets unticked | Confirm "4 séries não concluídas"; finishing records only the ticked sets | R43, R44 |
 | E22 | Set has 0 s rest | No countdown | R46 |
-| E23 | Client ticks the next set during rest | Current countdown ends, the new set's rest starts | R48 |
+| E23 | Client ticks the next set during rest | Current countdown ends, the new set's rest starts (none if it completes the exercise) | R48, R46a |
 | E24 | Rest ends while the phone is locked | Notification | R50 |
 | E25 | Client denied notifications | In-app alert only | R51 |
-| E26 | Timed hold of 30 s | "Iniciar" counts down; set ticks itself; rest starts | R52, R53 |
+| E26 | Timed hold of 30 s | "Iniciar" counts down; set ticks itself; rest starts (none if it completes the exercise) | R52, R53, R46a |
 | E27 | Connection drops mid-workout | Training continues; banner; sent on reconnect | R56–R58 |
 | E28 | Client has no connection when opening a workout they never opened | Cannot open it; offline message | R55 |
 | E29 | Client opens the video during rest | Countdown keeps running and alerts when over | R60 |
