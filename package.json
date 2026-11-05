@@ -103,8 +103,7 @@
     "autolinking": {
       "android": {
         "exclude": [
-          "expo-widgets",
-          "@expo/ui"
+          "expo-widgets"
         ]
       }
     }
