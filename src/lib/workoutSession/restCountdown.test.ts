@@ -1,4 +1,6 @@
 import { renderHook, waitFor } from "@testing-library/react-native";
+import { existsSync } from "fs";
+import { join } from "path";
 import * as Notifications from "expo-notifications";
 import * as Widgets from "expo-widgets";
 import { Platform } from "react-native";
@@ -18,6 +20,16 @@ const render = (timer: typeof rest | null) =>
   renderHook(({ value }: { value: typeof rest | null }) => useRestCountdown(value, "Próxima: série 2", () => NOW), {
     initialProps: { value: timer },
   });
+
+describe("RestActivity's platform files", () => {
+  // Metro tries `.ts` before `.tsx`, so a `.ts` stub would replace the Live Activity on iOS too. Jest
+  // resolves these differently and the failure is silent, so nothing else would catch it.
+  it("share one extension, so iOS gets the real one", () => {
+    expect(existsSync(join(__dirname, "RestActivity.ios.tsx"))).toBe(true);
+    expect(existsSync(join(__dirname, "RestActivity.tsx"))).toBe(true);
+    expect(existsSync(join(__dirname, "RestActivity.ts"))).toBe(false);
+  });
+});
 
 describe("useRestCountdown on iOS", () => {
   it("starts an activity going stale when the rest ends", async () => {
