@@ -40,6 +40,7 @@ jest.mock("expo-widgets", () => {
   const factory = { start: jest.fn(), getInstances: jest.fn(() => []) };
   return { createLiveActivity: jest.fn(() => factory), __factory: factory };
 });
+jest.mock("react-native-keyboard-controller", () => require("react-native-keyboard-controller/jest"));
 // The workout session's rest alerts (client spec §3.5): no native notification, haptic or audio
 // module under Jest. Each call is a jest.fn a test can inspect.
 jest.mock("expo-notifications", () => ({

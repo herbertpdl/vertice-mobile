@@ -34,6 +34,7 @@ export { IconButton } from "./IconButton";
 export type { IconButtonVariant, IconButtonProps } from "./IconButton";
 export { InfoCard } from "./InfoCard";
 export type { InfoRowData, InfoCardProps } from "./InfoCard";
+export { KeyboardBar } from "./KeyboardBar";
 export { ListRow } from "./ListRow";
 export type { ListRowProps } from "./ListRow";
 export { Logo, LogoMark } from "./Logo";

@@ -83,6 +83,8 @@ export const sizes = {
   tabItemRadius: 22,
   tabItemGap: 3,
   /** M Bottom Sheet grabber. */
+  /** `KeyboardBar`: the library's toolbar height (`KEYBOARD_TOOLBAR_HEIGHT`). */
+  keyboardBarHeight: 42,
   /** The exercise-done check, and the workout celebration's ring and mark. */
   celebrationCheck: 120,
   celebrationRing: 168,

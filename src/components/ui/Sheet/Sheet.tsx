@@ -7,6 +7,7 @@ import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { colors, overlay, radius, screenPaddingHorizontal, sizes, space } from "@/theme";
 
 import { IconButton } from "../IconButton";
+import { KeyboardBar } from "../KeyboardBar";
 import { Text } from "../Text";
 
 export type SheetModalProps = {
@@ -54,7 +55,11 @@ export function SheetModal({
       onDismiss={onDismiss}
     >
       {/* "height" on Android: the modal is edge-to-edge, so adjustResize won't lift the panel. */}
-      <KeyboardAvoidingView style={styles.fill} behavior={Platform.OS === "ios" ? "padding" : "height"}>
+      <KeyboardAvoidingView
+        style={styles.fill}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={sizes.keyboardBarHeight}
+      >
         <Pressable
           style={[StyleSheet.absoluteFill, styles.backdrop]}
           onPress={close}
@@ -84,6 +89,7 @@ export function SheetModal({
           </View>
         </Animated.View>
       </KeyboardAvoidingView>
+      <KeyboardBar />
     </Modal>
   );
 }
