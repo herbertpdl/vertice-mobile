@@ -126,16 +126,24 @@ footer and a trainer sheet form.
 **Cause.** `KeyboardAvoidingView` shrinks the screen, but nothing scrolls to the focused field, and
 on the feedback screen the two footer buttons take the remaining space.
 
-**Plan.** `Screen` and `Sheet` scroll with `KeyboardAwareScrollView`, which covers every field and a
-multi-line field as it grows. Its default mode adds the keyboard's height as bottom space, so inside
-a frame a `KeyboardAvoidingView` already shrank it would compensate twice. Scrolling screens and
-sheets therefore drop the RN `KeyboardAvoidingView`, and the footer moves to a `KeyboardStickyView`
-opened by the bar's height. `scroll={false}` screens keep theirs. `bottomOffset` is the bar's height
-plus the footer's measured height plus a gap, so a field can't settle behind the footer. Check that
-pull to refresh still works on `Screen`.
+**Plan.** Both scroll with `KeyboardAwareScrollView`, which covers every field and a multi-line
+field as it grows, but they lay out differently.
 
-**Tests.** `Screen` renders the aware scroll view with the offset and keeps `refreshControl`.
-Simulator check on the feedback screen, a trainer form with a footer and a trainer sheet form.
+- **`Screen`.** The aware view's default mode adds the keyboard's height as bottom space, so inside
+  a frame a `KeyboardAvoidingView` already shrank it would compensate twice. Scrolling screens drop
+  the RN `KeyboardAvoidingView`, and the footer moves to a `KeyboardStickyView` opened by the bar's
+  height. `scroll={false}` screens keep theirs. `bottomOffset` is the bar's height plus the footer's
+  measured height plus a gap, so a field can't settle behind the footer.
+- **`Sheet`.** `SheetModal` keeps its `KeyboardAvoidingView` and item 3's offset: it's the only thing
+  lifting the bottom-anchored panel. The footer stays in the panel. The scroll view becomes the aware
+  one with a small `bottomOffset`: the bar is already cleared by the lift and the footer sits below
+  the scroll frame.
+
+Check that pull to refresh still works on `Screen`.
+
+**Tests.** `Screen` renders the aware scroll view with the offset and keeps `refreshControl`;
+`SheetModal` keeps its `KeyboardAvoidingView`. Simulator check on the feedback screen, a trainer form
+with a footer, a short form sheet (`NewStudentSheet`) and a tall one (`EditProfileSheet`).
 
 ## Item 8 — completion animations
 
