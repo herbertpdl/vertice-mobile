@@ -48,12 +48,12 @@ import {
   type OutboxOp,
 } from "@/lib/workoutSession/outbox";
 import {
-  allTicked,
   clockText,
   currentExercise,
   currentSetId,
   initSession,
   inputToWeight,
+  onLastOpenExercise,
   orderedExercises,
   pendingSets,
   secondsLeft,
@@ -470,7 +470,7 @@ function SessionView({ snapshot, restored }: { snapshot: WorkoutSession; restore
   }
 
   const index = state.exerciseIndex;
-  const last = allTicked(state);
+  const last = onLastOpenExercise(state);
   const video = youtubeVideoId(exercise.exercise.videoUrl) === null ? null : exercise.exercise.videoUrl;
   const restCaption = nextSet === undefined ? "Exercício concluído" : nextSetText(nextSet);
   const restTimer = (flat: boolean) =>
