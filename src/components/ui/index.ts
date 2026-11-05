@@ -11,6 +11,7 @@ export { buttonFill, Button } from "./Button";
 export type { ButtonVariant, ButtonProps } from "./Button";
 export { Calendar } from "./Calendar";
 export type { CalendarProps } from "./Calendar";
+export { ExerciseDoneCheck, WorkoutCelebration } from "./Celebration";
 export { Checkbox } from "./Checkbox";
 export type { CheckboxProps } from "./Checkbox";
 export { Chip } from "./Chip";

@@ -38,7 +38,10 @@ jest.mock("react-native-keyboard-controller", () => require("react-native-keyboa
 // module under Jest. Each call is a jest.fn a test can inspect.
 jest.mock("expo-notifications", () => ({
   SchedulableTriggerInputTypes: { TIME_INTERVAL: "timeInterval" },
+  AndroidImportance: { HIGH: 5 },
+  AndroidNotificationVisibility: { PUBLIC: 1 },
   setNotificationHandler: jest.fn(),
+  setNotificationChannelAsync: jest.fn(async () => null),
   getPermissionsAsync: jest.fn(async () => ({ status: "granted", canAskAgain: true })),
   requestPermissionsAsync: jest.fn(async () => ({ status: "granted", canAskAgain: true })),
   scheduleNotificationAsync: jest.fn(async () => "notification-id"),
@@ -47,7 +50,9 @@ jest.mock("expo-notifications", () => ({
 }));
 jest.mock("expo-haptics", () => ({
   NotificationFeedbackType: { Success: "success" },
+  ImpactFeedbackStyle: { Light: "light" },
   notificationAsync: jest.fn(async () => undefined),
+  impactAsync: jest.fn(async () => undefined),
 }));
 jest.mock("expo-audio", () => {
   const player = { play: jest.fn(), seekTo: jest.fn(async () => undefined) };

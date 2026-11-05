@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
 import { ChartColumn, ChevronLeft, CirclePlay, Ellipsis, List, Repeat, RotateCcw, Trash2 } from "lucide-react-native";
 import { useEffect, useEffectEvent, useReducer, useRef, useState } from "react";
-import { AppState, Platform, Pressable, StyleSheet, View } from "react-native";
+import { AppState, Platform, Pressable, ScrollView, StyleSheet, View } from "react-native";
 
 import { ExerciseListSheet, ProgressSheet, StrategySheet, VideoSheet, WorkoutPickerSheet } from "@/components/domain";
 import { NavBar, Screen } from "@/components/layout";
@@ -11,6 +12,7 @@ import {
   Button,
   ConfirmDialog,
   ErrorState,
+  ExerciseDoneCheck,
   RestTimer,
   Skeleton,
   StatusBanner,
@@ -48,12 +50,12 @@ import {
   type OutboxOp,
 } from "@/lib/workoutSession/outbox";
 import {
-  allTicked,
   clockText,
   currentExercise,
   currentSetId,
   initSession,
   inputToWeight,
+  onLastOpenExercise,
   orderedExercises,
   pendingSets,
   secondsLeft,
@@ -235,11 +237,20 @@ function SessionView({ snapshot, restored }: { snapshot: WorkoutSession; restore
   const [switchTo, setSwitchTo] = useState<Workout | null>(null);
   /** The set whose strategy sheet is open (kept while it animates out). */
   const [strategySet, setStrategySet] = useState<WorkoutSessionSet | null>(null);
+  /** Counts the exercises done since the check last showed; each one replays it. */
+  const [doneCheck, setDoneCheck] = useState<{ key: number; announcement: string } | null>(null);
+  const doneChecks = useRef(0);
   const alert = useRestAlert();
   const logId = snapshot.workoutLog.id;
   const exercises = orderedExercises(snapshot);
   const exercise = currentExercise(state);
   const current = currentSetId(state);
+
+  // Each exercise opens at its top, however far down the last one's sets were.
+  const scroll = useRef<ScrollView>(null);
+  useEffect(() => {
+    scroll.current?.scrollTo({ y: 0, animated: false });
+  }, [state.exerciseIndex]);
 
   // ---- timers -----------------------------------------------------------------------------------
   const running = state.rest !== null || state.hold !== null;
@@ -262,6 +273,17 @@ function SessionView({ snapshot, restored }: { snapshot: WorkoutSession; restore
     }
     dispatch({ type: "tick", setId, now: at });
     setNow(at);
+    const after = sessionReducer(state, { type: "tick", setId, now: at });
+    const owner = exercises.find((e) => e.sets.some((s) => s.id === setId));
+    if (owner?.sets.every((s) => after.ticked[s.id])) {
+      doneChecks.current += 1;
+      const next = after.exerciseIndex === state.exerciseIndex ? undefined : currentExercise(after);
+      setDoneCheck({
+        key: doneChecks.current,
+        announcement: next === undefined ? "Exercício concluído." : `Exercício concluído. Próximo: ${next.exercise.name}.`,
+      });
+      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    }
     sent.current = { ...sent.current, [setId]: weight };
     save({ kind: "recordSet", logId, exerciseSetId: setId, weight, reps: set.reps });
     return true;
@@ -273,7 +295,10 @@ function SessionView({ snapshot, restored }: { snapshot: WorkoutSession; restore
   const onClock = useEffectEvent((at: number) => {
     setNow(at);
     if (state.hold !== null && at >= state.hold.endsAt) {
+      // A hold can end behind a sheet about this exercise: if it moves on, the sheet would change under them.
+      const moves = sessionReducer(state, { type: "tick", setId: state.hold.setId, now: at }).exerciseIndex !== state.exerciseIndex;
       if (!tickSet(state.hold.setId, at)) dispatch({ type: "stopHold" });
+      else if (moves && (overlay === "video" || overlay === "progress" || overlay === "strategy")) setOverlay(null);
     } else if (state.rest !== null && at >= state.rest.endsAt) {
       // JS timers stop in the background: an end first seen on return already had its notification.
       // Once per rest, even if another tick lands before the end is rendered.
@@ -470,7 +495,7 @@ function SessionView({ snapshot, restored }: { snapshot: WorkoutSession; restore
   }
 
   const index = state.exerciseIndex;
-  const last = allTicked(state);
+  const last = onLastOpenExercise(state);
   const video = youtubeVideoId(exercise.exercise.videoUrl) === null ? null : exercise.exercise.videoUrl;
   const restCaption = nextSet === undefined ? "Exercício concluído" : nextSetText(nextSet);
   const restTimer = (flat: boolean) =>
@@ -487,6 +512,7 @@ function SessionView({ snapshot, restored }: { snapshot: WorkoutSession; restore
   return (
     <>
       <Screen
+        scrollRef={scroll}
         header={
           <>
             <NavBar
@@ -616,6 +642,9 @@ function SessionView({ snapshot, restored }: { snapshot: WorkoutSession; restore
         </View>
       </Screen>
 
+      {doneCheck === null ? null : (
+        <ExerciseDoneCheck key={doneCheck.key} announcement={doneCheck.announcement} onDone={() => setDoneCheck(null)} />
+      )}
       <ActionSheet
         visible={overlay === "actions"}
         onClose={() => setOverlay(null)}

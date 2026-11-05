@@ -47,10 +47,13 @@ export function clientWeek(workouts: Workout[], logs: WorkoutLog[], weekStart: s
   });
 }
 
-/** How many of the plan's workouts were finished this week. */
-export function finishedCount(workouts: Workout[], logs: WorkoutLog[]): number {
-  const finished = finishedIds(logs);
-  return workouts.filter((w) => finished.has(w.id)).length;
+/**
+ * "2 de 5 dias de treino": the days trained this week, as the strip marks them, out of the plan's
+ * training days. Training on an extra day raises the total too, so it never reads "6 de 5".
+ */
+export function weekProgress(workouts: Workout[], week: ClientWeekDay[]): { done: number; total: number } {
+  const done = week.filter((day) => day.state === "done").length;
+  return { done, total: Math.max(done, new Set(workouts.map((w) => w.dayOfWeek)).size) };
 }
 
 /** The week's session that was started and not finished, if any (the most recently started). */

@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { ReactNode, Ref } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -31,6 +31,8 @@ export type ScreenProps = {
   /** A tab screen: the content scrolls under the floating tab bar, so it pads for it. */
   inTabs?: boolean;
   contentStyle?: StyleProp<ViewStyle>;
+  /** The content's scroll view, to bring it back to the top when what it shows changes. */
+  scrollRef?: Ref<ScrollView>;
 };
 
 /**
@@ -48,6 +50,7 @@ export function Screen({
   onRefresh,
   inTabs = false,
   contentStyle,
+  scrollRef,
 }: ScreenProps) {
   const insets = useSafeAreaInsets();
   const bottom = inTabs ? tabScreenBottomPadding(insets.bottom) : footer === undefined ? insets.bottom + space[6] : space[6];
@@ -64,6 +67,7 @@ export function Screen({
       {header}
       {scroll ? (
         <ScrollView
+          ref={scrollRef}
           style={styles.flex}
           contentContainerStyle={[styles.content, { paddingBottom: bottom }, contentStyle]}
           keyboardShouldPersistTaps="handled"
