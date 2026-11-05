@@ -167,9 +167,11 @@ product promises them.
 - R37. When a last-time weight exists, it is also shown next to the set as a hint ("Última vez:
   20 kg").
 - R38. A client can untick a set and edit its weight until the session is finished.
-- R39. "Próximo" moves to the first exercise, in the trainer's order, that still has an unticked
-  set.
-- R40. When every set is ticked, "Próximo" becomes "Finalizar treino".
+- R39. "Próximo" moves to the next exercise, in the trainer's order, that still has an unticked
+  set, wrapping to the ones skipped earlier. It marks nothing: an exercise left unfinished stays
+  open until its sets are ticked.
+- R40. When no other exercise has an unticked set, "Próximo" becomes "Finalizar treino" (with
+  sets left on the current exercise, R43 applies).
 - R41. "Ver todos" lists every exercise of the workout with how many of its sets are ticked, and
   lets the client jump to any of them.
 - R42. "Finalizar treino" is always reachable from "Ver todos", even with unticked sets.
@@ -263,7 +265,7 @@ product promises them.
 | E17 | Client never did this workout and trainer prescribed 20 kg | Field starts at 20 | R36 |
 | E18 | Client never did it and trainer prescribed nothing | Field starts empty | R36 |
 | E19 | Client typed the wrong weight on a ticked set | Edits it (or unticks) before finishing | R38 |
-| E20 | Client picks exercise 4 out of order, then taps "Próximo" | Goes to the first exercise (in trainer order) with unticked sets, e.g. 1 | R39 |
+| E20 | Client picks exercise 4 out of order, then taps "Próximo" | Goes to the next exercise with unticked sets, e.g. 5, or wraps to 1 | R39 |
 | E21 | Client finishes with 4 sets unticked | Confirm "4 séries não concluídas"; finishing records only the ticked sets | R43, R44 |
 | E22 | Set has 0 s rest | No countdown | R46 |
 | E23 | Client ticks the next set during rest | Current countdown ends, the new set's rest starts | R48 |
