@@ -83,6 +83,8 @@ export const sizes = {
   tabItemRadius: 22,
   tabItemGap: 3,
   /** M Bottom Sheet grabber. */
+  /** `KeyboardBar`: the library's toolbar height (`KEYBOARD_TOOLBAR_HEIGHT`). */
+  keyboardBarHeight: 42,
   grabberWidth: 36,
   grabberHeight: 5,
   /** M Bottom Sheet content gap between fields. */

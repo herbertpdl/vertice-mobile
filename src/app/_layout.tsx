@@ -4,8 +4,10 @@ import * as SplashScreen from "expo-splash-screen";
 import { StatusBar } from "expo-status-bar";
 import { useEffect } from "react";
 import { StyleSheet, View } from "react-native";
+import { KeyboardProvider } from "react-native-keyboard-controller";
 
 import { ErrorState } from "@/components/ui/EmptyState";
+import { KeyboardBar } from "@/components/ui/KeyboardBar";
 import { ToastProvider } from "@/components/ui/Toast";
 import { AuthProvider, useAuth } from "@/lib/auth";
 import { initMonitoring, reportError } from "@/lib/monitoring";
@@ -31,15 +33,18 @@ export default function RootLayout() {
   if (!fontsReady) return null;
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <AuthProvider>
-        <ToastProvider>
-          {/* The app is dark-only (`userInterfaceStyle: "dark"` in app.json). */}
-          <StatusBar style="light" />
-          <RootStack />
-        </ToastProvider>
-      </AuthProvider>
-    </QueryClientProvider>
+    <KeyboardProvider>
+      <QueryClientProvider client={queryClient}>
+        <AuthProvider>
+          <ToastProvider>
+            {/* The app is dark-only (`userInterfaceStyle: "dark"` in app.json). */}
+            <StatusBar style="light" />
+            <RootStack />
+            <KeyboardBar />
+          </ToastProvider>
+        </AuthProvider>
+      </QueryClientProvider>
+    </KeyboardProvider>
   );
 }
 

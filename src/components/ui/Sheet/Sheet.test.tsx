@@ -19,6 +19,15 @@ describe("Sheet", () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it("brings its own keyboard bar, since a modal draws over the root's", async () => {
+    await render(
+      <Sheet visible onClose={jest.fn()} title="Novo aluno">
+        <Text>Campos</Text>
+      </Sheet>,
+    );
+    expect(JSON.stringify(screen.toJSON())).toContain('"text":"Concluir"');
+  });
+
   it("can't be dismissed while not dismissible", async () => {
     const onClose = jest.fn();
     await render(
