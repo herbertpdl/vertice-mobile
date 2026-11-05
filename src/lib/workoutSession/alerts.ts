@@ -33,14 +33,23 @@ const REST_NOTIFICATION = "rest";
 const ALERT_VIBRATION = Platform.OS === "android" ? [0, 600, 250, 600, 250, 600] : [0, 800, 800];
 
 let asked = false;
+/** The check in progress: the notification and the Android countdown both wait on the same answer. */
+let checking: Promise<boolean> | null = null;
 
-/** Asks once per app run, on the first rest; a denial is silent (R51). */
-export async function ensureNotificationPermission(): Promise<boolean> {
+async function checkNotificationPermission(): Promise<boolean> {
   const current = await Notifications.getPermissionsAsync();
   if (current.status === "granted") return true;
   if (asked || !current.canAskAgain) return false;
   asked = true;
   return (await Notifications.requestPermissionsAsync()).status === "granted";
+}
+
+/** Asks once per app run, on the first rest; a denial is silent (R51). */
+export function ensureNotificationPermission(): Promise<boolean> {
+  checking ??= checkNotificationPermission().finally(() => {
+    checking = null;
+  });
+  return checking;
 }
 
 /** Android takes the sound and vibration from the channel, which must exist before scheduling. */

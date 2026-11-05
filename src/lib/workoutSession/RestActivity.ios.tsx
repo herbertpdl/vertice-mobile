@@ -2,13 +2,7 @@ import { HStack, Image, Spacer, Text, VStack } from "@expo/ui/swift-ui";
 import { activityBackgroundTint, font, foregroundStyle, monospacedDigit, padding } from "@expo/ui/swift-ui/modifiers";
 import { createLiveActivity, type LiveActivityEnvironment } from "expo-widgets";
 
-export type RestActivityProps = {
-  /** Epoch ms. */
-  startedAt: number;
-  endsAt: number;
-  /** "Próxima: série 3 · 12 reps". */
-  caption: string;
-};
+import type { RestActivityProps } from "./RestActivity";
 
 /**
  * The rest on the lock screen and in the Dynamic Island. The system counts it down by itself, with

@@ -4,7 +4,7 @@ import * as Notifications from "expo-notifications";
 import { Platform, Vibration } from "react-native";
 
 import appConfig from "../../../app.json";
-import { dismissRestNotifications, useRestAlert, useRestNotification } from "./alerts";
+import { dismissRestNotifications, ensureNotificationPermission, useRestAlert, useRestNotification } from "./alerts";
 
 const player = (Audio as unknown as { __player: { play: jest.Mock; seekTo: jest.Mock } }).__player;
 const NOW = 1_000_000;
@@ -30,6 +30,14 @@ describe("useRestAlert", () => {
   it("keeps the chime subject to the silent switch, mixing with the client's music", async () => {
     await renderHook(() => useRestAlert());
     expect(Audio.setAudioModeAsync).toHaveBeenCalledWith({ playsInSilentMode: false, interruptionMode: "mixWithOthers" });
+  });
+});
+
+describe("ensureNotificationPermission", () => {
+  it("gives concurrent callers the same answer, from one check", async () => {
+    const [first, second] = await Promise.all([ensureNotificationPermission(), ensureNotificationPermission()]);
+    expect([first, second]).toEqual([true, true]);
+    expect(Notifications.getPermissionsAsync).toHaveBeenCalledTimes(1);
   });
 });
 

@@ -98,5 +98,15 @@
     "setupFilesAfterEnv": [
       "<rootDir>/jest.setup-after-env.ts"
     ]
+  },
+  "expo": {
+    "autolinking": {
+      "android": {
+        "exclude": [
+          "expo-widgets",
+          "@expo/ui"
+        ]
+      }
+    }
   }
 }

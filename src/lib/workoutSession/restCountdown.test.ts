@@ -1,4 +1,5 @@
-import { renderHook } from "@testing-library/react-native";
+import { renderHook, waitFor } from "@testing-library/react-native";
+import * as Notifications from "expo-notifications";
 import * as Widgets from "expo-widgets";
 import { Platform } from "react-native";
 
@@ -96,10 +97,29 @@ describe("useRestCountdown on Android", () => {
 
   it("posts the countdown, then takes it off, without touching Live Activities", async () => {
     const { rerender } = await render(rest);
-    expect(RestCountdownAndroid?.show).toHaveBeenCalledWith(rest.endsAt, "Descanso", "Próxima: série 2");
+    await waitFor(() => expect(RestCountdownAndroid?.show).toHaveBeenCalledWith(rest.endsAt, "Descanso", "Próxima: série 2"));
     jest.mocked(RestCountdownAndroid!.hide).mockClear();
     await rerender({ value: null });
     expect(RestCountdownAndroid?.hide).toHaveBeenCalled();
     expect(factory.start).not.toHaveBeenCalled();
+  });
+
+  it("waits for the first rest's permission prompt, and shows nothing if refused", async () => {
+    jest.mocked(Notifications.getPermissionsAsync).mockResolvedValueOnce({ status: "denied", canAskAgain: false } as never);
+    await render(rest);
+    await waitFor(() => expect(Notifications.getPermissionsAsync).toHaveBeenCalled());
+    await Promise.resolve();
+    expect(RestCountdownAndroid?.show).not.toHaveBeenCalled();
+  });
+
+  it("doesn't show a rest that ended while the permission was being asked", async () => {
+    let answer: (value: unknown) => void = () => {};
+    jest.mocked(Notifications.getPermissionsAsync).mockReturnValueOnce(new Promise((resolve) => (answer = resolve)) as never);
+    const { rerender } = await render(rest);
+    await rerender({ value: null });
+    answer({ status: "granted", canAskAgain: true });
+    await waitFor(() => expect(Notifications.getPermissionsAsync).toHaveBeenCalled());
+    await Promise.resolve();
+    expect(RestCountdownAndroid?.show).not.toHaveBeenCalled();
   });
 });

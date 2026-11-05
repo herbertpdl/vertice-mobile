@@ -4,6 +4,7 @@ import { Platform } from "react-native";
 import RestCountdownAndroid from "../../../modules/rest-countdown";
 
 import RestActivity from "./RestActivity";
+import { ensureNotificationPermission } from "./alerts";
 import type { Timer } from "./engine";
 
 /**
@@ -27,14 +28,13 @@ export function endRestCountdown() {
   });
 }
 
-function startRestCountdown(rest: Timer, caption: string) {
-  attempt(() => {
-    if (Platform.OS === "ios") {
-      RestActivity.start({ startedAt: rest.startedAt, endsAt: rest.endsAt, caption }, undefined, new Date(rest.endsAt));
-    } else {
-      RestCountdownAndroid?.show(rest.endsAt, "Descanso", caption);
-    }
-  });
+/** Android's needs the notification permission, which the first rest may still be asking for. */
+function showOnAndroid(rest: Timer, caption: string, cancelled: () => boolean) {
+  void ensureNotificationPermission()
+    .then((granted) => {
+      if (granted && !cancelled()) attempt(() => RestCountdownAndroid?.show(rest.endsAt, "Descanso", caption));
+    })
+    .catch(() => {});
 }
 
 /** Keeps the lock screen on the running rest: a new rest replaces it, no rest ends it. */
@@ -44,8 +44,16 @@ export function useRestCountdown(rest: Timer | null, caption: string, now: () =>
     if (rest === null || rest.endsAt <= now()) return;
     // A rest resumed after the app closed may still be up there.
     endRestCountdown();
-    startRestCountdown(rest, caption);
-    return endRestCountdown;
+    let cancelled = false;
+    if (Platform.OS === "ios") {
+      attempt(() => RestActivity.start({ startedAt: rest.startedAt, endsAt: rest.endsAt, caption }, undefined, new Date(rest.endsAt)));
+    } else {
+      showOnAndroid(rest, caption, () => cancelled);
+    }
+    return () => {
+      cancelled = true;
+      endRestCountdown();
+    };
     // It follows the rest itself (set and end time), not each render's objects.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [key]);
