@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-import { colors, screenPaddingHorizontal, space } from "@/theme";
+import { colors, screenPaddingHorizontal, sizes, space } from "@/theme";
 
 import { tabScreenBottomPadding } from "../TabBar";
 
@@ -61,6 +61,8 @@ export function Screen({
       // "height" on Android too: SDK 57 is edge-to-edge, so the window's adjustResize can't be
       // relied on to lift the content and footer above the keyboard.
       behavior={Platform.OS === "ios" ? "padding" : "height"}
+      // The footer stops above `KeyboardBar`, not under it.
+      keyboardVerticalOffset={sizes.keyboardBarHeight}
     >
       {header}
       {scroll ? (
