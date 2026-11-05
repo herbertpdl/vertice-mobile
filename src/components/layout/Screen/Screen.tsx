@@ -3,13 +3,12 @@ import {
   KeyboardAvoidingView,
   Platform,
   RefreshControl,
-  ScrollView,
   StyleSheet,
   View,
   type StyleProp,
   type ViewStyle,
 } from "react-native";
-import { KeyboardAwareScrollView, KeyboardStickyView } from "react-native-keyboard-controller";
+import { KeyboardAwareScrollView, KeyboardStickyView, type KeyboardAwareScrollViewRef } from "react-native-keyboard-controller";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { colors, screenPaddingHorizontal, sizes, space } from "@/theme";
@@ -33,7 +32,7 @@ export type ScreenProps = {
   inTabs?: boolean;
   contentStyle?: StyleProp<ViewStyle>;
   /** The content's scroll view, to bring it back to the top when what it shows changes. */
-  scrollRef?: Ref<ScrollView>;
+  scrollRef?: Ref<KeyboardAwareScrollViewRef>;
 };
 
 /**
