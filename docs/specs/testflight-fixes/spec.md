@@ -175,8 +175,9 @@ The main case is a locked phone, where JS doesn't run when the rest ends. So the
 with `staleDate = rest.endsAt` and its layout shows "Descanso terminou" from `isStale`, without the
 app. On launch and on foreground, any leftover activity whose rest is over is ended.
 
-**Off iOS.** The layout is `RestActivity.ios.tsx`, with a stub elsewhere: `@expo/ui/swift-ui` throws as
-soon as it loads off iOS, which broke the web export. Android excludes `expo-widgets` from
+**Off iOS.** The layout is `RestActivity.ios.tsx`, with a `.tsx` stub elsewhere: `@expo/ui/swift-ui`
+throws as soon as it loads off iOS, which broke the web export. The stub must not be `.ts`: Metro
+tries extensions in order, so it would beat `.ios.tsx` on iOS too (#74). Android excludes `expo-widgets` from
 autolinking, but not `@expo/ui`: `expo-router` loads it at import time there.
 
 **Android.** A local module posting an ongoing notification with a chronometer countdown, on its
@@ -222,4 +223,4 @@ and `pr-reviewer` approval, before merging.
 | 3 — keyboard "Concluir" bar | #69 | merged |
 | 6 — focused input stays visible | #70 | merged |
 | 8 — completion animations | #68 | merged |
-| 5 — rest timer on the lock screen | #71 | merged |
+| 5 — rest timer on the lock screen | #71, #74 | merged |

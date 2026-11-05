@@ -139,7 +139,9 @@ drift check stays green.
   on iOS (`RestActivity.ios.tsx`, `expo-widgets`; a signed extension target,
   `com.vertice.mobile.ExpoWidgetsTarget`, with the App Group `group.com.vertice.mobile`) and an
   ongoing notification on Android (local module `modules/rest-countdown/`). `@expo/ui/swift-ui`
-  throws as soon as it loads off iOS, so never import it outside a `.ios.tsx` file. Android excludes
+  throws as soon as it loads off iOS, so never import it outside a `.ios.tsx` file, and give a
+  platform file's stub the same extension (Metro tries `.ts` before `.tsx`, so a `.ts` stub would
+  win on iOS too, silently, with Jest still green). Android excludes
   `expo-widgets` from autolinking (`package.json`) but must keep `@expo/ui`: `expo-router` loads it at
   import time there, and removing it crashes on launch with every check green.
 - **Keyboard**: `react-native-keyboard-controller` (`KeyboardProvider` at the root). `KeyboardBar`
