@@ -1,4 +1,7 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
+import { KeyboardAvoidingView } from "react-native";
+
+import { sizes } from "@/theme";
 
 import { Text } from "../Text";
 
@@ -26,6 +29,17 @@ describe("Sheet", () => {
       </Sheet>,
     );
     expect(JSON.stringify(screen.toJSON())).toContain('"text":"Concluir"');
+  });
+
+  it("lifts the panel above the keyboard bar", async () => {
+    const avoiding = jest.spyOn(KeyboardAvoidingView.prototype, "render");
+    await render(
+      <Sheet visible onClose={jest.fn()} title="Novo aluno">
+        <Text>Campos</Text>
+      </Sheet>,
+    );
+    expect((avoiding.mock.contexts[0] as KeyboardAvoidingView).props.keyboardVerticalOffset).toBe(sizes.keyboardBarHeight);
+    avoiding.mockRestore();
   });
 
   it("can't be dismissed while not dismissible", async () => {
