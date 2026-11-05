@@ -106,7 +106,10 @@ product promises them.
   button and a "Ver outros planos" link to Planos.
 - R6. The week strip marks each day as done (the client finished a workout on that date, whichever
   weekday the workout belongs to — Monday's workout done on Friday marks Friday), today, pending
-  (a workout exists, nothing finished that day), or rest (no workout that weekday).
+  (a workout exists, nothing finished that day), or rest (no workout that weekday). Under it,
+  "2 de 5 dias de treino concluídos" counts those done days out of the plan's training days (two
+  workouts on one day are one day; a day trained beyond the plan raises the total; a redo counts
+  its own day, since the session it replaced leaves the week, R22).
 - R7. When the active plan has no workouts, "Começar treino" is disabled and a message says the
   trainer has not added workouts yet.
 - R8. When a session is in progress this week, the main button reads "Continuar treino" and opens
@@ -188,7 +191,8 @@ product promises them.
 - R47. The client cannot pause, skip, shorten or lengthen the countdown.
 - R48. Ticking another set, or moving to another exercise, ends the running countdown (and starts
   the newly ticked set's rest, per R45 and R46a).
-- R49. When the countdown ends while the app is open, the phone vibrates and plays a sound.
+- R49. When the countdown ends while the app is open, the phone vibrates strongly (three long
+  pulses, noticeable in a gym) and plays a chime, unless its sound is off.
 - R50. When the countdown ends while the app is in the background or the phone is locked, the
   client gets a phone notification saying the rest is over.
 - R51. When the client has not allowed notifications, only the in-app alert happens.

@@ -14,7 +14,7 @@ import { fetchFullWorkout, fullWorkoutQueryKey } from "@/lib/api/workouts";
 import { fetchWorkoutLogs, workoutLogsQueryKey, workoutLogsQueryPrefix } from "@/lib/api/workoutSessions";
 import { useMe } from "@/lib/auth";
 import { dayOfWeekOf, weekStartOf } from "@/lib/calendar";
-import { clientWeek, finishedCount, homeAction, isFinished, type HomeAction } from "@/lib/clientWeek";
+import { clientWeek, homeAction, isFinished, weekProgress, type HomeAction } from "@/lib/clientWeek";
 import { formatPlanRange, formatTimeOfDay, formatWeekdayDate, greetingFor, todayLocalIso } from "@/lib/format";
 import { DAY_ABBR, DAY_NAMES } from "@/lib/labels";
 import { useIsOffline } from "@/lib/network";
@@ -349,7 +349,7 @@ function HomeContent({
   });
   const week = clientWeek(plan.workouts, logs, weekStart, today);
   const total = plan.workouts.length;
-  const done = finishedCount(plan.workouts, logs);
+  const progress = weekProgress(plan.workouts, week);
   return (
     <>
       <ActivePlanCard
@@ -369,7 +369,9 @@ function HomeContent({
           }))}
         />
         <Text variant="caption" color="textSecondary">
-          {total === 0 ? "Nenhum treino programado esta semana" : `${done} de ${plural(total, "treino concluído", "treinos concluídos")}`}
+          {total === 0
+            ? "Nenhum treino programado esta semana"
+            : `${progress.done} de ${plural(progress.total, "dia de treino concluído", "dias de treino concluídos")}`}
         </Text>
       </View>
       <View style={styles.card}>
