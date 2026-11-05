@@ -10,7 +10,8 @@ export type RestActivityProps = {
 
 /**
  * Live Activities are iOS's (`RestActivity.ios.tsx`). This keeps `@expo/ui/swift-ui`, which throws
- * as soon as it loads anywhere else, out of the Android and web bundles.
+ * as soon as it loads anywhere else, out of the Android and web bundles. It must stay `.tsx`: Metro
+ * tries extensions in order, so a `.ts` file here would beat `.ios.tsx` on iOS too.
  */
 const RestActivity: Pick<LiveActivityFactory<RestActivityProps>, "start" | "getInstances"> = {
   start: () => {
