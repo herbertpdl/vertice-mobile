@@ -70,7 +70,7 @@ describe("ClientHomeScreen", () => {
     expect(screen.getByText("TREINO DE HOJE · QUA")).toBeOnTheScreen();
     expect(await screen.findByText("2 exercícios · 6 séries")).toBeOnTheScreen();
     expect(screen.getByLabelText(/^Esta semana: Segunda concluído, Terça descanso, Quarta hoje/)).toBeOnTheScreen();
-    expect(screen.getByText("1 de 3 treinos concluídos")).toBeOnTheScreen();
+    expect(screen.getByText("1 de 3 dias de treino concluídos")).toBeOnTheScreen();
     await fireEvent.press(screen.getByRole("button", { name: "Começar treino" }));
     expect(mockPush).toHaveBeenCalledWith("/aluno/treino/12");
     const weekCall = bff.calls.find((c) => c.route === "GET /api/workout-logs");
