@@ -33,6 +33,13 @@ jest.mock("@react-native-community/netinfo", () =>
 
 jest.mock("expo-clipboard", () => ({ setStringAsync: jest.fn(async () => true) }));
 
+// The rest's Live Activity (`RestActivity`): no widget extension under Jest.
+jest.mock("@expo/ui/swift-ui", () => ({}));
+jest.mock("@expo/ui/swift-ui/modifiers", () => ({}));
+jest.mock("expo-widgets", () => {
+  const factory = { start: jest.fn(), getInstances: jest.fn(() => []) };
+  return { createLiveActivity: jest.fn(() => factory), __factory: factory };
+});
 jest.mock("react-native-keyboard-controller", () => ({
   ...require("react-native-keyboard-controller/jest"),
   FocusedInputEvents: { addListener: jest.fn(() => ({ remove: jest.fn() })) },
@@ -49,7 +56,8 @@ jest.mock("expo-notifications", () => ({
   requestPermissionsAsync: jest.fn(async () => ({ status: "granted", canAskAgain: true })),
   scheduleNotificationAsync: jest.fn(async () => "notification-id"),
   cancelScheduledNotificationAsync: jest.fn(async () => undefined),
-  dismissAllNotificationsAsync: jest.fn(async () => undefined),
+  getPresentedNotificationsAsync: jest.fn(async () => []),
+  dismissNotificationAsync: jest.fn(async () => undefined),
 }));
 jest.mock("expo-haptics", () => ({
   NotificationFeedbackType: { Success: "success" },

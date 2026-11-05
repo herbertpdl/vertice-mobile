@@ -39,6 +39,7 @@ import { useIsOffline } from "@/lib/network";
 import { shouldRetry } from "@/lib/query-client";
 import { youtubeVideoId } from "@/lib/video";
 import { dismissRestNotifications, useRestAlert, useRestNotification } from "@/lib/workoutSession/alerts";
+import { useRestCountdown } from "@/lib/workoutSession/restCountdown";
 import {
   clearLocalSession,
   enqueue,
@@ -337,6 +338,8 @@ function SessionView({ snapshot, restored }: { snapshot: WorkoutSession; restore
       : { title: "Descanso terminou", body: `Hora da série ${nextSet.setNumber} de ${exercise.exercise.name}.` },
     () => Date.now(),
   );
+
+  useRestCountdown(state.rest, nextSet === undefined ? "Descanso" : nextSetText(nextSet), () => Date.now());
 
   // ---- saving -----------------------------------------------------------------------------------
 
