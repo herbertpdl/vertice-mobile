@@ -135,6 +135,18 @@ drift check stays green.
   keeps `Documents/SQLite` (the workout outbox, `expo-sqlite/kv-store`) out of iCloud backups;
   Android has `allowBackup: false` in `app.json`. Autolinked from `modules/`; a change needs a
   native rebuild.
+- **Rest countdown on the lock screen, `src/lib/workoutSession/restCountdown.ts`**: a Live Activity
+  on iOS (`RestActivity.ios.tsx`, `expo-widgets`; a signed extension target,
+  `com.vertice.mobile.ExpoWidgetsTarget`, with the App Group `group.com.vertice.mobile`) and an
+  ongoing notification on Android (local module `modules/rest-countdown/`). `@expo/ui/swift-ui`
+  throws as soon as it loads off iOS, so never import it outside a `.ios.tsx` file. Android excludes
+  `expo-widgets` from autolinking (`package.json`) but must keep `@expo/ui`: `expo-router` loads it at
+  import time there, and removing it crashes on launch with every check green.
+- **Keyboard**: `react-native-keyboard-controller` (`KeyboardProvider` at the root). `KeyboardBar`
+  renders at the root and in `SheetModal`, since a `Modal` draws over the root. Scrolling `Screen`s
+  use `KeyboardAwareScrollView`; sheets keep their `KeyboardAvoidingView` and a plain `ScrollView`
+  with `useRevealFocusedInput`, because the aware view measures while the panel is still lifting.
+  Jest can't see this: check keyboard layout changes on a simulator.
 - **Icons**: `lucide-react-native` (+ `react-native-svg` peer dep) mirrors `vertice-web-react`'s
   use of `lucide-react`, for icon parity between web and mobile.
 
