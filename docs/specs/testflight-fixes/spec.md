@@ -175,6 +175,11 @@ The main case is a locked phone, where JS doesn't run when the rest ends. So the
 with `staleDate = rest.endsAt` and its layout shows "Descanso terminou" from `isStale`, without the
 app. On launch and on foreground, any leftover activity whose rest is over is ended.
 
+**Off iOS.** The layout is `RestActivity.ios.tsx`, with a `.tsx` stub elsewhere: `@expo/ui/swift-ui`
+throws as soon as it loads off iOS, which broke the web export. The stub must not be `.ts`: Metro
+tries extensions in order, so it would beat `.ios.tsx` on iOS too (#74). Android excludes `expo-widgets` from
+autolinking, but not `@expo/ui`: `expo-router` loads it at import time there.
+
 **Android.** A local module posting an ongoing notification with a chronometer countdown, on its
 own low-importance silent channel (item 4's channel would sound at every rest start). It shows on
 the lock screen and dismisses itself at the end of the rest. Returning to the app today runs
@@ -210,3 +215,12 @@ and `pr-reviewer` approval, before merging.
 
 | Item | PR | Status |
 | --- | --- | --- |
+| Prerequisite: Expo patch drift | #65 | merged |
+| 2 — "Próximo exercício" always moves | #62 | merged |
+| 1 — last set moves on, no rest | #66 | merged |
+| 7 — week count in days | #63 | merged |
+| 4 — stronger rest alert | #64 | merged |
+| 3 — keyboard "Concluir" bar | #69 | merged |
+| 6 — focused input stays visible | #70 | merged |
+| 8 — completion animations | #68 | merged |
+| 5 — rest timer on the lock screen | #71, #74 | merged |
