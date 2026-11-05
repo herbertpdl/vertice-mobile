@@ -1,4 +1,5 @@
 import { fireEvent, render, screen } from "@testing-library/react-native";
+import { KeyboardAvoidingView } from "react-native";
 
 import { Text } from "@/components/ui/Text";
 import { sizes, space } from "@/theme";
@@ -40,5 +41,12 @@ describe("Screen", () => {
   it("leaves a screen that manages its own list without the aware scroll view", async () => {
     await render(<Screen scroll={false}>{null}</Screen>);
     expect(tree()).not.toContain("bottomOffset");
+  });
+
+  it("keeps a screen's footer clear of the keyboard bar", async () => {
+    const avoiding = jest.spyOn(KeyboardAvoidingView.prototype, "render");
+    await render(<Screen scroll={false} footer={<Text>Rodapé</Text>}>{null}</Screen>);
+    expect((avoiding.mock.contexts[0] as KeyboardAvoidingView).props.keyboardVerticalOffset).toBe(sizes.keyboardBarHeight);
+    avoiding.mockRestore();
   });
 });
