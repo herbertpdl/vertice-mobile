@@ -2,10 +2,10 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { router, useLocalSearchParams } from "expo-router";
 import { Trophy } from "lucide-react-native";
 import { useState } from "react";
-import { StyleSheet, View } from "react-native";
+import { Keyboard, StyleSheet, View } from "react-native";
 
 import { Screen } from "@/components/layout";
-import { Banner, Button, RatingScale, Text, TextArea, useToast } from "@/components/ui";
+import { Banner, Button, RatingScale, Text, TextArea, useToast, WorkoutCelebration } from "@/components/ui";
 import { apiErrorMessage } from "@/lib/api/errorMessages";
 import type { FeedbackRating } from "@/lib/api/types";
 import { workoutLogsQueryPrefix } from "@/lib/api/workoutSessions";
@@ -21,7 +21,7 @@ const MAX_TEXT = 2000;
 /**
  * A - Feedback do Treino (+ Preenchido): right after finishing (R65), one of five faces (required)
  * and an optional comment (R66–R68), or "Pular" (R69). Feedback can't be given later (R70), so
- * leaving goes home either way.
+ * leaving goes home either way; sending it celebrates first (R69a).
  */
 export function WorkoutFeedbackScreen() {
   const params = useLocalSearchParams<{ logId: string; name?: string; summary?: string }>();
@@ -30,6 +30,8 @@ export function WorkoutFeedbackScreen() {
   const toast = useToast();
   const [rating, setRating] = useState<FeedbackRating | null>(null);
   const [text, setText] = useState("");
+  /** Set once sent: the celebration plays, then this toast shows at home. */
+  const [sentMessage, setSentMessage] = useState<string | null>(null);
 
   const send = useMutation({
     // Through the outbox, after the session's finish (§3.4): offline it goes when the connection
@@ -37,58 +39,65 @@ export function WorkoutFeedbackScreen() {
     mutationFn: () => sendNow({ kind: "feedback", logId, rating: rating!, text: text.trim() }, SEND_WAIT_MS),
     onSuccess: (answer) => {
       void queryClient.invalidateQueries({ queryKey: workoutLogsQueryPrefix });
-      router.replace("/aluno");
-      toast.show(answer === null ? "Seu feedback será enviado quando a conexão voltar." : "Feedback enviado ao seu treinador.");
+      Keyboard.dismiss();
+      setSentMessage(answer === null ? "Seu feedback será enviado quando a conexão voltar." : "Feedback enviado ao seu treinador.");
     },
   });
   const submit = useSingleFlight(() => send.mutateAsync().catch(() => {}));
   const skip = () => router.replace("/aluno");
+  const celebrated = () => {
+    router.replace("/aluno");
+    if (sentMessage !== null) toast.show(sentMessage);
+  };
 
   return (
-    <Screen
-      contentStyle={styles.content}
-      footer={
-        <View style={styles.footer}>
-          <Button label="Enviar feedback" disabled={rating === null} loading={send.isPending} onPress={() => void submit()} />
-          <Button label="Pular" variant="ghost" disabled={send.isPending} onPress={skip} />
-        </View>
-      }
-    >
-      <View style={styles.hero}>
-        <View style={styles.icon}>
-          <Trophy size={34} color={colors.success} />
-        </View>
-        <Text variant="title" accessibilityRole="header" align="center">
-          Treino concluído!
-        </Text>
-        {params.name === undefined ? null : (
-          <Text variant="body" color="textSecondary" align="center">
-            {[params.name, params.summary].filter(Boolean).join(" · ")}
+    <>
+      <Screen
+        contentStyle={styles.content}
+        footer={
+          <View style={styles.footer}>
+            <Button label="Enviar feedback" disabled={rating === null} loading={send.isPending} onPress={() => void submit()} />
+            <Button label="Pular" variant="ghost" disabled={send.isPending} onPress={skip} />
+          </View>
+        }
+      >
+        <View style={styles.hero}>
+          <View style={styles.icon}>
+            <Trophy size={34} color={colors.success} />
+          </View>
+          <Text variant="title" accessibilityRole="header" align="center">
+            Treino concluído!
           </Text>
-        )}
-      </View>
-      <View style={styles.card}>
-        <View style={styles.question}>
-          <Text variant="headingSm" weight="semibold">
-            Como foi o treino?
-          </Text>
-          <Text variant="caption" color="textSecondary">
-            Seu treinador vai ver sua resposta.
-          </Text>
+          {params.name === undefined ? null : (
+            <Text variant="body" color="textSecondary" align="center">
+              {[params.name, params.summary].filter(Boolean).join(" · ")}
+            </Text>
+          )}
         </View>
-        <RatingScale value={rating} onChange={setRating} />
-      </View>
-      <TextArea
-        label="Quer contar algo ao seu treinador? (opcional)"
-        placeholder="Ex.: senti dor no ombro, a carga ficou leve…"
-        value={text}
-        onChangeText={setText}
-        maxLength={MAX_TEXT}
-      />
-      {send.isError ? (
-        <Banner message={apiErrorMessage(send.error, "Não foi possível enviar. Tente novamente.")} />
-      ) : null}
-    </Screen>
+        <View style={styles.card}>
+          <View style={styles.question}>
+            <Text variant="headingSm" weight="semibold">
+              Como foi o treino?
+            </Text>
+            <Text variant="caption" color="textSecondary">
+              Seu treinador vai ver sua resposta.
+            </Text>
+          </View>
+          <RatingScale value={rating} onChange={setRating} />
+        </View>
+        <TextArea
+          label="Quer contar algo ao seu treinador? (opcional)"
+          placeholder="Ex.: senti dor no ombro, a carga ficou leve…"
+          value={text}
+          onChangeText={setText}
+          maxLength={MAX_TEXT}
+        />
+        {send.isError ? (
+          <Banner message={apiErrorMessage(send.error, "Não foi possível enviar. Tente novamente.")} />
+        ) : null}
+      </Screen>
+      {sentMessage === null ? null : <WorkoutCelebration onDone={celebrated} />}
+    </>
   );
 }
 

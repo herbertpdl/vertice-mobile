@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import * as Haptics from "expo-haptics";
 import { router, useLocalSearchParams } from "expo-router";
 import { ChartColumn, ChevronLeft, CirclePlay, Ellipsis, List, Repeat, RotateCcw, Trash2 } from "lucide-react-native";
 import { useEffect, useEffectEvent, useReducer, useRef, useState } from "react";
@@ -11,6 +12,7 @@ import {
   Button,
   ConfirmDialog,
   ErrorState,
+  ExerciseDoneCheck,
   RestTimer,
   Skeleton,
   StatusBanner,
@@ -235,6 +237,9 @@ function SessionView({ snapshot, restored }: { snapshot: WorkoutSession; restore
   const [switchTo, setSwitchTo] = useState<Workout | null>(null);
   /** The set whose strategy sheet is open (kept while it animates out). */
   const [strategySet, setStrategySet] = useState<WorkoutSessionSet | null>(null);
+  /** Counts the exercises done since the check last showed; each one replays it. */
+  const [doneCheck, setDoneCheck] = useState<{ key: number; announcement: string } | null>(null);
+  const doneChecks = useRef(0);
   const alert = useRestAlert();
   const logId = snapshot.workoutLog.id;
   const exercises = orderedExercises(snapshot);
@@ -268,6 +273,17 @@ function SessionView({ snapshot, restored }: { snapshot: WorkoutSession; restore
     }
     dispatch({ type: "tick", setId, now: at });
     setNow(at);
+    const after = sessionReducer(state, { type: "tick", setId, now: at });
+    const owner = exercises.find((e) => e.sets.some((s) => s.id === setId));
+    if (owner?.sets.every((s) => after.ticked[s.id])) {
+      doneChecks.current += 1;
+      const next = after.exerciseIndex === state.exerciseIndex ? undefined : currentExercise(after);
+      setDoneCheck({
+        key: doneChecks.current,
+        announcement: next === undefined ? "Exercício concluído." : `Exercício concluído. Próximo: ${next.exercise.name}.`,
+      });
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    }
     sent.current = { ...sent.current, [setId]: weight };
     save({ kind: "recordSet", logId, exerciseSetId: setId, weight, reps: set.reps });
     return true;
@@ -626,6 +642,9 @@ function SessionView({ snapshot, restored }: { snapshot: WorkoutSession; restore
         </View>
       </Screen>
 
+      {doneCheck === null ? null : (
+        <ExerciseDoneCheck key={doneCheck.key} announcement={doneCheck.announcement} onDone={() => setDoneCheck(null)} />
+      )}
       <ActionSheet
         visible={overlay === "actions"}
         onClose={() => setOverlay(null)}
