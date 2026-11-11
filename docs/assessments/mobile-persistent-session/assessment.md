@@ -27,7 +27,7 @@ the screen just goes back and the next call shows "session expired" (M3).
 
 | Rule | Lands on | Notes |
 |---|---|---|
-| R1, R2 | `src/lib/api/auth.ts:13-23` (login, register) | Send the mobile-session indicator (bff B1). |
+| R1, R2 | `src/lib/api/auth.ts:13-23` (login, register) | Send the `X-Vertice-Client: mobile` header (bff B1). |
 | R3, R4 | new: renewal in `src/lib/auth/` | M1. |
 | R5 | n/a | Web only. |
 | R6, R7 | existing | One token per install, SecureStore `WHEN_UNLOCKED_THIS_DEVICE_ONLY` (`tokenStorage.test.ts:9-10`). |
@@ -77,11 +77,11 @@ Nothing found. Checked: only the token is persisted; storing its expiry next to 
 ### API contract and backward compatibility
 
 **M2 — Medium — new contract fields.**
-- What: login/register gain the mobile indicator and the session gains an expiry; a renewal route
+- What: login/register read a mobile-client header and the session gains an expiry; a renewal route
   is new (bff B1, B2).
 - Where: `src/lib/api/schema.ts` (generated), `src/lib/api/auth.ts`.
 - Recommendation: take the BFF change through `.bff-ref` → `npm run api:types` as usual; send the
-  indicator from both login and register.
+  header from login, register and renewal, in one place (the API client), never per screen.
 
 ### Security and privacy
 
@@ -121,12 +121,12 @@ Section 6.
 ### Rollout
 
 **M5 — Info — order.** Ships last, after vertice-api and vertice-bff. A build sending the
-indicator to an older BFF gets an 8h token (the field is ignored), so mis-ordering degrades to
+header to an older BFF gets an 8h token (the header is ignored), so mis-ordering degrades to
 today's behavior rather than breaking.
 
 ## 6. Testing strategy
 
-`AuthProvider` tests: login and register send the indicator; renewal on launch when the token is
+`AuthProvider` tests: login, register and renewal send the header; renewal on launch when the token is
 older than a day, not when fresher; no renewal offline; concurrent triggers renew once; a 401 on
 renewal signs out with `expired` and keeps drafts; "Sair" still clears. `ChangePasswordScreen`:
 success signs out with the new message (M3). Update `AuthProvider.tsx` comments and `CLAUDE.md`.
@@ -148,5 +148,5 @@ tests, docs. Risk concentrated in M1.
 ## 10. Inputs to the spec
 
 - [ ] Renewal: triggers, frequency, offline behavior, race guard (M1).
-- [ ] Contract sync and sending the indicator from login and register (M2).
+- [ ] Contract sync and sending the mobile-client header from login, register and renewal (M2).
 - [ ] What the phone shows after changing its own password (M3).
