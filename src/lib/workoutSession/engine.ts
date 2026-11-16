@@ -1,5 +1,6 @@
-import type { WorkoutSession, WorkoutSessionExercise, WorkoutSessionSet } from "@/lib/api/types";
-import { isTimed, restSecondsFor } from "@/lib/workoutText";
+import type { FullWorkoutExercise, WorkoutSession, WorkoutSessionExercise, WorkoutSessionSet } from "@/lib/api/types";
+import { videoThumbnailUrl } from "@/lib/video";
+import { isTimed, overviewSetsText, restSecondsFor } from "@/lib/workoutText";
 
 /**
  * The workout session as the client trains it (client spec §3.3, PRD R30–R54): a pure reducer and
@@ -66,7 +67,7 @@ export function initialWeight(set: WorkoutSessionSet): string {
 // ---- state --------------------------------------------------------------------------------------
 
 /** The first exercise, in order, with a set not ticked yet (R39); the last one when all are. */
-function firstOpenIndex(exercises: WorkoutSessionExercise[], ticked: Record<number, true>): number {
+export function firstOpenIndex(exercises: WorkoutSessionExercise[], ticked: Record<number, true>): number {
   const index = exercises.findIndex((exercise) => exercise.sets.some((set) => !ticked[set.id]));
   return index === -1 ? Math.max(0, exercises.length - 1) : index;
 }
@@ -83,7 +84,8 @@ function nextOpenIndex(exercises: WorkoutSessionExercise[], ticked: Record<numbe
   return null;
 }
 
-export function initSession(snapshot: WorkoutSession): SessionState {
+/** A new session's state; `exerciseIndex` is the exercise picked on the overview (else the first open one). */
+export function initSession(snapshot: WorkoutSession, exerciseIndex?: number): SessionState {
   const exercises = orderedExercises(snapshot);
   const ticked: Record<number, true> = {};
   const weights: Record<number, string> = {};
@@ -93,7 +95,8 @@ export function initSession(snapshot: WorkoutSession): SessionState {
       weights[set.id] = initialWeight(set);
     }
   }
-  return { snapshot, ticked, weights, exerciseIndex: firstOpenIndex(exercises, ticked), rest: null, hold: null };
+  const picked = exerciseIndex !== undefined && exerciseIndex >= 0 && exerciseIndex < exercises.length ? exerciseIndex : undefined;
+  return { snapshot, ticked, weights, exerciseIndex: picked ?? firstOpenIndex(exercises, ticked), rest: null, hold: null };
 }
 
 function findSet(state: SessionState, setId: number) {
@@ -190,7 +193,7 @@ export function onLastOpenExercise(state: SessionState): boolean {
 
 export type StepRow = { index: number; name: string; done: number; total: number; state: "pending" | "current" | "done" };
 
-/** The "Ver todos" rows (R41). */
+/** Per exercise: its sets done and whether it is done or current (the session's progress segments). */
 export function stepRows(state: SessionState): StepRow[] {
   return orderedExercises(state.snapshot).map((exercise, index) => {
     const done = exercise.sets.filter((set) => state.ticked[set.id]).length;
@@ -203,6 +206,59 @@ export function stepRows(state: SessionState): StepRow[] {
       state: done === total && total > 0 ? "done" : index === state.exerciseIndex ? "current" : "pending",
     };
   });
+}
+
+/**
+ * The overview's main button with a session in progress (workout overview PRD R16, R17, E7): the first
+ * exercise with an unticked set, else finishing.
+ */
+export function overviewMain(state: SessionState): { kind: "continue"; index: number } | { kind: "finish" } {
+  return pendingSets(state) > 0
+    ? { kind: "continue", index: firstOpenIndex(orderedExercises(state.snapshot), state.ticked) }
+    : { kind: "finish" };
+}
+
+/** What an overview row needs of an exercise: the fields a workout tree and a session share. */
+type OverviewExercise = Pick<FullWorkoutExercise, "id" | "order" | "exercise"> & {
+  sets: Pick<WorkoutSessionSet, "id" | "setNumber" | "reps" | "durationSeconds" | "strategy">[];
+};
+
+export type OverviewRow = {
+  /** 0-based, in the trainer's order. */
+  index: number;
+  name: string;
+  setsText: string;
+  thumbnail: string | null;
+  hasVideo: boolean;
+  muscleGroups: string[];
+  /** Absent before a session and on a workout finished this week (R20). */
+  progress?: { done: number; total: number; current: boolean };
+};
+
+/**
+ * The overview's rows (R8–R13) in the trainer's order, from the workout tree (no session yet) or
+ * the session (`progress`: its ticks and the exercise the client is on).
+ */
+export function overviewRows(
+  exercises: readonly OverviewExercise[],
+  progress?: { ticked: Record<number, true>; exerciseIndex: number },
+): OverviewRow[] {
+  return [...exercises]
+    .sort((a, b) => a.order - b.order)
+    .map((exercise, index) => {
+      const sets = [...exercise.sets].sort((a, b) => a.setNumber - b.setNumber);
+      const done = progress === undefined ? 0 : sets.filter((set) => progress.ticked[set.id]).length;
+      return {
+        index,
+        name: exercise.exercise.name,
+        setsText: overviewSetsText(sets),
+        thumbnail: videoThumbnailUrl(exercise.exercise.videoUrl),
+        hasVideo: exercise.exercise.videoUrl !== "",
+        muscleGroups: exercise.exercise.muscleGroups.map((group) => group.name),
+        progress:
+          progress === undefined ? undefined : { done, total: sets.length, current: index === progress.exerciseIndex && done < sets.length },
+      };
+    });
 }
 
 /** Whole seconds left on a timer at `now` (never negative). */

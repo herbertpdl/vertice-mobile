@@ -1,4 +1,5 @@
 import {
+  overviewSetsText,
   durationText,
   exerciseSummary,
   nextSetText,
@@ -96,5 +97,20 @@ describe("nextSetText", () => {
     expect(nextSetText({ setNumber: 2, reps: 10, durationSeconds: 0, strategy: "STRAIGHT" })).toBe("Próxima: série 2 · 10 reps");
     expect(nextSetText({ setNumber: 3, reps: 10, durationSeconds: 0, strategy: "DROPSET" })).toBe("Próxima: série 3 · 10 reps · Dropset");
     expect(nextSetText({ setNumber: 1, reps: 0, durationSeconds: 30, strategy: "ISOMETRIC_HOLD" })).toBe("Próxima: série 1 · 30 s · Isometria");
+  });
+});
+
+describe("overviewSetsText", () => {
+  const reps = (r: number) => ({ reps: r, durationSeconds: 0 });
+  const hold = (d: number) => ({ reps: 0, durationSeconds: d });
+  it("reads a workout overview row's sets (workout overview R10)", () => {
+    expect(overviewSetsText([reps(10), reps(10), reps(10)])).toBe("3 séries · 10 reps");
+    expect(overviewSetsText([reps(10), reps(8), reps(12), reps(10)])).toBe("4 séries · 8–12 reps");
+    expect(overviewSetsText([hold(45), hold(45), hold(45)])).toBe("3 × 45 s");
+    expect(overviewSetsText([hold(30), hold(45)])).toBe("2 séries");
+    expect(overviewSetsText([reps(10), hold(30)])).toBe("2 séries");
+    expect(overviewSetsText([reps(10), reps(0)])).toBe("2 séries");
+    expect(overviewSetsText([reps(12)])).toBe("1 série · 12 reps");
+    expect(overviewSetsText([])).toBe("0 séries");
   });
 });
