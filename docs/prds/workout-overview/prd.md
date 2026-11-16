@@ -5,7 +5,7 @@ Owner: hebertpdl@gmail.com
 Related: none — new requirement (changes how a workout is entered in
 `docs/prds/client-workout-experience/prd.md`, §3.1 and R13–R20, R25, R30, R39–R42),
 `docs/specs/client-workout-experience/spec.md`
-Spec: not yet written (will be `docs/specs/workout-overview/spec.md`)
+Spec: `docs/specs/workout-overview/spec.md` (implemented in #79)
 Design: design-ok — see §9
 
 ## 1. Summary
