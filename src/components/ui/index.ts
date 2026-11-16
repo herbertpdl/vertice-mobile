@@ -24,6 +24,8 @@ export { Divider } from "./Divider";
 export type { DividerProps } from "./Divider";
 export { EmptyState, ErrorState } from "./EmptyState";
 export type { EmptyStateProps, ErrorStateProps } from "./EmptyState";
+export { ExerciseOverviewRow } from "./ExerciseOverviewRow";
+export type { ExerciseOverviewRowProps } from "./ExerciseOverviewRow";
 export { ExerciseStepRow } from "./ExerciseStepRow";
 export type { ExerciseStepRowProps, ExerciseStepState } from "./ExerciseStepRow";
 export { ExerciseThumb } from "./ExerciseThumb";

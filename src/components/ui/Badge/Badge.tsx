@@ -66,19 +66,21 @@ export type TagProps = {
   label: string;
   /** Adds the `x` glyph; the whole tag becomes the remove button. */
   onRemove?: () => void;
+  /** The 22 pt tag of a list row (a muscle group on M Exercise Overview Row). */
+  compact?: boolean;
 };
 
 /** M Tag: a selected value inside a field (a chosen muscle group). */
-export function Tag({ label, onRemove }: TagProps) {
+export function Tag({ label, onRemove, compact = false }: TagProps) {
   const content = (
     <>
-      <Text variant="label" color="textPrimary" numberOfLines={1}>
+      <Text variant={compact ? "tiny" : "label"} color="textPrimary" numberOfLines={1}>
         {label}
       </Text>
       {onRemove === undefined ? null : <X size={14} color={colors.textSecondary} />}
     </>
   );
-  if (onRemove === undefined) return <View style={styles.tag}>{content}</View>;
+  if (onRemove === undefined) return <View style={[styles.tag, compact ? styles.tagCompact : null]}>{content}</View>;
   return (
     <Pressable
       accessibilityRole="button"
@@ -118,4 +120,5 @@ const styles = StyleSheet.create({
     alignItems: "center",
     gap: space[1],
   },
+  tagCompact: { height: sizes.tagHeightCompact, paddingHorizontal: space[2] },
 });

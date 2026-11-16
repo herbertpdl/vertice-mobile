@@ -55,6 +55,7 @@ import {
   TextField,
   TextLink,
   WeekDots,
+  ExerciseOverviewRow,
   ExerciseStepRow,
   RatingChip,
   RatingScale,
@@ -324,6 +325,9 @@ export default function KitScreen() {
           <ExerciseStepRow index={1} name="Remada curvada com barra" meta="4 de 4 séries" state="done" onPress={() => {}} />
           <ExerciseStepRow index={2} name="Puxada frontal aberta" meta="Em andamento · 2 de 4 séries" state="current" onPress={() => {}} />
           <ExerciseStepRow index={3} name="Remada baixa no cabo" meta="0 de 3 séries" state="pending" onPress={() => {}} />
+          <ExerciseOverviewRow position={1} name="Remada curvada com barra" setsText="4 séries · 8–10 reps" thumbnail={null} hasVideo={false} muscleGroups={["Costas"]} progress={{ done: 4, total: 4, current: false }} onPress={() => {}} />
+          <ExerciseOverviewRow position={2} name="Puxada frontal aberta" setsText="4 séries · 10–12 reps" thumbnail={null} hasVideo={false} muscleGroups={["Costas", "Ombros"]} progress={{ done: 2, total: 4, current: true }} onPress={() => {}} />
+          <ExerciseOverviewRow position={3} name="Prancha frontal" setsText="3 × 45 s" thumbnail={null} hasVideo={false} muscleGroups={["Abdômen"]} onPress={() => {}} />
           <WorkoutPickRow day="SEG" dayName="Segunda" name="Treino A — Peito/Tríceps" meta="Feito esta semana" state="done" onPress={() => {}} />
           <WorkoutPickRow day="QUA" dayName="Quarta" name="Treino B — Inferior" meta="7 exercícios" state="today" onPress={() => {}} />
           <WorkoutPickRow day="QUI" dayName="Quinta" name="Treino C — Costas e Bíceps" meta="6 exercícios" state="default" onPress={() => {}} />

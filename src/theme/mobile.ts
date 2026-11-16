@@ -37,6 +37,8 @@ export const sizes = {
   countPillPaddingHorizontal: 7,
   /** M Tag height. */
   tagHeight: 28,
+  /** M Tag inside a list row (M Exercise Overview Row's muscle groups). */
+  tagHeightCompact: 22,
   /** M Stat Card gap between label, value and helper. */
   statCardGap: 6,
   /** M Week Dot diameter and the gap in M Week Dots. */
