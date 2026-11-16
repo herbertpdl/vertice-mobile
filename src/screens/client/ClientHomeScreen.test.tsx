@@ -71,7 +71,7 @@ describe("ClientHomeScreen", () => {
     expect(await screen.findByText("2 exercícios · 6 séries")).toBeOnTheScreen();
     expect(screen.getByLabelText(/^Esta semana: Segunda concluído, Terça descanso, Quarta hoje/)).toBeOnTheScreen();
     expect(screen.getByText("1 de 3 dias de treino concluídos")).toBeOnTheScreen();
-    await fireEvent.press(screen.getByRole("button", { name: "Começar treino" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Ver treino" }));
     expect(mockPush).toHaveBeenCalledWith("/aluno/treino/12");
     const weekCall = bff.calls.find((c) => c.route === "GET /api/workout-logs");
     expect(weekCall).toBeDefined();
@@ -115,7 +115,7 @@ describe("ClientHomeScreen", () => {
     bff = mockBff(routes([monday, friday], []));
     await renderScreen(<ClientHomeScreen />);
     expect(await screen.findByText("Sem treino programado hoje")).toBeOnTheScreen();
-    await fireEvent.press(screen.getByRole("button", { name: "Começar treino" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Ver treino" }));
     expect(await screen.findByText("Hoje (quarta) não tem treino no seu plano. Escolha qual quer fazer.")).toBeOnTheScreen();
   });
 
@@ -123,7 +123,7 @@ describe("ClientHomeScreen", () => {
     bff = mockBff(routes([], []));
     await renderScreen(<ClientHomeScreen />);
     expect(await screen.findByText("Nenhum treino neste plano ainda")).toBeOnTheScreen();
-    expect(screen.getByRole("button", { name: "Começar treino" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Ver treino" })).toBeDisabled();
   });
 
   it("shows the empty state when no plan runs today", async () => {
@@ -158,7 +158,7 @@ describe("ClientHomeScreen", () => {
     await renderScreen(<ClientHomeScreen />);
     expect(await screen.findByText("Sem exercícios ainda — escolha outro treino do plano.")).toBeOnTheScreen();
     expect(screen.queryByText("Sem treino programado hoje")).toBeNull();
-    await fireEvent.press(screen.getByRole("button", { name: "Começar treino" }));
+    await fireEvent.press(screen.getByRole("button", { name: "Ver treino" }));
     expect(await screen.findByText("O treino de hoje ainda não tem exercícios. Escolha outro treino do plano.")).toBeOnTheScreen();
   });
 });

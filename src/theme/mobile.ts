@@ -37,6 +37,8 @@ export const sizes = {
   countPillPaddingHorizontal: 7,
   /** M Tag height. */
   tagHeight: 28,
+  /** M Tag inside a list row (M Exercise Overview Row's muscle groups). */
+  tagHeightCompact: 22,
   /** M Stat Card gap between label, value and helper. */
   statCardGap: 6,
   /** M Week Dot diameter and the gap in M Week Dots. */
@@ -216,8 +218,7 @@ export const sizes = {
   strategyLinkHeight: 32,
   /** M Rest Timer icon disc. */
   restTimerIcon: 44,
-  /** M Exercise Step Row height and index disc. */
-  stepRowHeight: 64,
+  /** The index disc of an exercise in a list (Detalhe do Treino). */
   stepRowIndex: 28,
   /** M Workout Pick Row day chip (52 × 60) and card height. */
   pickChipWidth: 52,
