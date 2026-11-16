@@ -647,3 +647,7 @@ The feedback screen shipped with the session once B7 merged.
   from backup at every launch, before expo-sqlite opens a database. It was checked on the
   simulator: the directory carries `com.apple.metadata:com_apple_backup_excludeItem`. Android has
   `allowBackup: false`.
+- 2026-11-16 — Every way into a workout now opens its overview first (workout overview PRD,
+  `docs/specs/workout-overview/spec.md`). The overview replaces the "Ver todos" sheet
+  (`ExerciseListSheet`, `ExerciseStepRow` removed), the session starts when an exercise is opened,
+  and the redo warning moved to opening an exercise of a finished workout.

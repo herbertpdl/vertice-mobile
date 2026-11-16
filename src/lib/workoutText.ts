@@ -97,3 +97,20 @@ export function exerciseSummary(exercise: Pick<FullWorkoutExercise, "sets" | "re
   }
   return parts.join(" · ");
 }
+
+/**
+ * An exercise's sets on the workout overview (workout overview PRD R10): "3 × 45 s" for one hold
+ * repeated, "4 séries · 10 reps", "4 séries · 8–10 reps", or "4 séries" when the sets differ in kind.
+ */
+export function overviewSetsText(sets: readonly Pick<ExerciseSet, "reps" | "durationSeconds">[]): string {
+  const count = `${sets.length} ${sets.length === 1 ? "série" : "séries"}`;
+  if (sets.length === 0) return count;
+  if (sets.every(isTimed)) {
+    const durations = new Set(sets.map((s) => s.durationSeconds));
+    return durations.size === 1 ? `${sets.length} × ${durationText(sets[0].durationSeconds)}` : count;
+  }
+  if (sets.some(isTimed) || sets.some((s) => s.reps <= 0)) return count;
+  const min = Math.min(...sets.map((s) => s.reps));
+  const max = Math.max(...sets.map((s) => s.reps));
+  return `${count} · ${min === max ? `${min} reps` : `${min}–${max} reps`}`;
+}

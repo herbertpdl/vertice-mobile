@@ -17,8 +17,6 @@ export { ExerciseCard } from "./ExerciseCard";
 export type { ExerciseCardProps } from "./ExerciseCard";
 export { ExerciseEditorCard } from "./ExerciseEditorCard";
 export type { ExerciseEditorCardProps } from "./ExerciseEditorCard";
-export { ExerciseListSheet, stepMeta } from "./ExerciseListSheet";
-export type { ExerciseListSheetProps } from "./ExerciseListSheet";
 export { FeedbackRow } from "./FeedbackRow";
 export type { FeedbackRowProps } from "./FeedbackRow";
 export { NewStudentSheet } from "./NewStudentSheet";

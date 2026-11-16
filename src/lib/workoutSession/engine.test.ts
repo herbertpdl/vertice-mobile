@@ -5,6 +5,8 @@ import {
   initialWeight,
   inputToWeight,
   onLastOpenExercise,
+  overviewMain,
+  overviewRows,
   pendingSets,
   secondsLeft,
   sessionReducer,
@@ -223,5 +225,50 @@ describe("timers", () => {
     expect(timerProgress(timer, NOW + 30_000)).toBe(0.5);
     expect(clockText(47)).toBe("0:47");
     expect(clockText(90)).toBe("1:30");
+  });
+});
+
+describe("workout overview", () => {
+  it("opens a new session on the exercise picked, else on the first open one", () => {
+    expect(initSession(snapshot(), 1).exerciseIndex).toBe(1);
+    expect(initSession(snapshot()).exerciseIndex).toBe(0);
+    expect(initSession(snapshot(), 7).exerciseIndex).toBe(0);
+  });
+
+  it("continues at the first exercise with a set left, then finishes (R16, R17)", () => {
+    let state = initSession(snapshot(), 1);
+    expect(overviewMain(state)).toEqual({ kind: "continue", index: 0 });
+    state = sessionReducer(state, { type: "tick", setId: 11, now: NOW });
+    state = sessionReducer(state, { type: "tick", setId: 12, now: NOW });
+    expect(overviewMain(state)).toEqual({ kind: "continue", index: 1 });
+    state = sessionReducer(state, { type: "tick", setId: 21, now: NOW });
+    expect(overviewMain(state)).toEqual({ kind: "finish" });
+  });
+
+  it("lists the exercises in the trainer's order, without progress before a session (R8–R13)", () => {
+    const s = snapshot();
+    s.exercises[0].exercise = { ...s.exercises[0].exercise, videoUrl: "https://youtu.be/dQw4w9WgXcQ", muscleGroups: [{ id: 3, name: "Abdômen" }] };
+    const rows = overviewRows(s.exercises);
+    expect(rows.map((r) => [r.index, r.name, r.setsText])).toEqual([
+      [0, "Remada", "2 séries · 12 reps"],
+      [1, "Prancha", "1 × 30 s"],
+    ]);
+    expect(rows[1]).toMatchObject({ hasVideo: true, muscleGroups: ["Abdômen"], thumbnail: "https://img.youtube.com/vi/dQw4w9WgXcQ/hqdefault.jpg" });
+    expect(rows[0]).toMatchObject({ hasVideo: false, thumbnail: null, progress: undefined });
+  });
+
+  it("counts each exercise's ticks and marks the one the client is on, until it's done", () => {
+    let state = initSession(snapshot());
+    state = sessionReducer(state, { type: "tick", setId: 11, now: NOW });
+    const progress = (st: SessionState) => overviewRows(st.snapshot.exercises, st).map((r) => r.progress);
+    expect(progress(state)).toEqual([
+      { done: 1, total: 2, current: true },
+      { done: 0, total: 1, current: false },
+    ]);
+    state = sessionReducer(state, { type: "tick", setId: 12, now: NOW });
+    expect(progress(state)).toEqual([
+      { done: 2, total: 2, current: false },
+      { done: 0, total: 1, current: true },
+    ]);
   });
 });
