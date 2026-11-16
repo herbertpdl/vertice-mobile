@@ -56,7 +56,6 @@ import {
   TextLink,
   WeekDots,
   ExerciseOverviewRow,
-  ExerciseStepRow,
   RatingChip,
   RatingScale,
   RestTimer,
@@ -322,9 +321,6 @@ export default function KitScreen() {
             timed={{ holding, remaining: "0:18", onHoldPress: () => setHolding((h) => !h) }}
           />
           <RestTimer remaining="0:47" progress={0.22} caption="Próxima: série 4 · Até a falha · Falha" />
-          <ExerciseStepRow index={1} name="Remada curvada com barra" meta="4 de 4 séries" state="done" onPress={() => {}} />
-          <ExerciseStepRow index={2} name="Puxada frontal aberta" meta="Em andamento · 2 de 4 séries" state="current" onPress={() => {}} />
-          <ExerciseStepRow index={3} name="Remada baixa no cabo" meta="0 de 3 séries" state="pending" onPress={() => {}} />
           <ExerciseOverviewRow position={1} name="Remada curvada com barra" setsText="4 séries · 8–10 reps" thumbnail={null} hasVideo={false} muscleGroups={["Costas"]} progress={{ done: 4, total: 4, current: false }} onPress={() => {}} />
           <ExerciseOverviewRow position={2} name="Puxada frontal aberta" setsText="4 séries · 10–12 reps" thumbnail={null} hasVideo={false} muscleGroups={["Costas", "Ombros"]} progress={{ done: 2, total: 4, current: true }} onPress={() => {}} />
           <ExerciseOverviewRow position={3} name="Prancha frontal" setsText="3 × 45 s" thumbnail={null} hasVideo={false} muscleGroups={["Abdômen"]} onPress={() => {}} />
