@@ -37,7 +37,7 @@ export function workoutSummary(full: FullWorkout | undefined): string {
   return `${plural(full.exercises.length, "exercício", "exercícios")} · ${plural(sets, "série", "séries")}`;
 }
 
-/** Where a workout is trained (PR 18 builds the session screen there). */
+/** A workout's overview, the way into training it (workout overview PRD R1). */
 function openSession(workout: Pick<Workout, "id">) {
   router.push(`/aluno/treino/${workout.id}`);
 }
@@ -82,7 +82,7 @@ export function todayCard(
           title: action.workout.name,
           detail: workoutSummary(ctx.fulls.get(action.workout.id)),
         },
-        action: { label: "Começar treino", onPress: () => openSession(action.workout) },
+        action: { label: "Ver treino", onPress: () => openSession(action.workout) },
       };
     case "done": {
       const log = ctx.logs.find((l) => isFinished(l) && action.workouts.some((w) => w.id === l.workoutId));
@@ -111,7 +111,7 @@ export function todayCard(
             title: `${action.today.length} treinos para hoje`,
             detail: "Escolha qual fazer.",
           },
-          action: { label: "Começar treino", onPress: () => ctx.openPicker({ workouts: action.today }) },
+          action: { label: "Ver treino", onPress: () => ctx.openPicker({ workouts: action.today }) },
         };
       }
       if (action.today.length === 1) {
@@ -125,7 +125,7 @@ export function todayCard(
             detail: "Sem exercícios ainda — escolha outro treino do plano.",
           },
           action: {
-            label: "Começar treino",
+            label: "Ver treino",
             onPress: () =>
               ctx.openPicker({
                 workouts: ctx.workouts,
@@ -143,7 +143,7 @@ export function todayCard(
           detail: "Você pode escolher outro treino do plano.",
         },
         action: {
-          label: "Começar treino",
+          label: "Ver treino",
           onPress: () =>
             ctx.openPicker({
               workouts: ctx.workouts,
@@ -160,7 +160,7 @@ export function todayCard(
           title: "Nenhum treino neste plano ainda",
           detail: "Seu treinador ainda não adicionou treinos. Volte mais tarde.",
         },
-        action: { label: "Começar treino", disabled: true, onPress: () => {} },
+        action: { label: "Ver treino", disabled: true, onPress: () => {} },
       };
   }
 }
