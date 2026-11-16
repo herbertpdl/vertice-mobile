@@ -73,8 +73,10 @@ as it does today.
   exercise, in the trainer's order, that has an unticked set.
 - R17. With a session in progress and no unticked set left, the main button reads "Finalizar
   treino" and finishes the workout as today.
-- R18. The overview has the workout actions menu ("Trocar treino", "Descartar treino"), with the
-  same confirmations as today.
+- R18. The overview has the workout actions menu. With a session in progress it offers "Trocar
+  treino" and "Descartar treino", with the same confirmations as today. Before a session (not
+  started, or finished this week) it offers only "Trocar treino", which opens the picked workout's
+  overview with no confirmation.
 
 ### 4.3 A workout already finished this week
 - R19. The overview of a workout finished this week shows a "Concluído esta semana" note.
@@ -104,6 +106,7 @@ as it does today.
 | E5 | The client opens the overview of a finished workout and goes back without opening an exercise. | Nothing changes; no warning appears and the finished session stays. | R4, R22 |
 | E6 | The plan has several workouts today, or none. | The client picks one in the picker as today, then the overview opens. | R1 |
 | E7 | The client ticks the last set of the last exercise with sets left. | No other exercise has sets left, so the exercise screen behaves as today (R40 of the client workout PRD); the overview's main button reads "Finalizar treino". | R17, R26 |
+| E8 | The client switches workouts from the overview of a workout not started or finished this week. | No confirmation; the picked workout's overview opens and no session is created. | R4, R18 |
 
 ## 6. Out of scope
 
@@ -125,6 +128,7 @@ as it does today.
 | What does a finished workout's overview show? | "Concluído esta semana" note, no progress, "Refazer treino". | (proposed, accepted) |
 | When does the redo warning appear? | When an exercise is opened. | Matches when a session begins. (proposed, accepted) |
 | Where are the workout actions? | On the overview and on the exercise screen. | Nothing is lost on the exercise screen. (proposed, accepted) |
+| What does ⋮ offer before a session? | "Trocar treino" only, with no confirmation. | Nothing to discard yet. (owner confirmed) |
 | What happens after an exercise's last set is ticked? | Unchanged: next exercise with sets left. | Keeps the flow fast during training. (proposed, accepted) |
 | What happens after picking a workout in the picker? | The overview opens. | Same as every other entry. (proposed, accepted) |
 | Edge cases E1–E3 | As listed. | Proposed defaults, accepted with the PRD. |
