@@ -10,8 +10,11 @@ import { apiErrorMessage } from "@/lib/api/errorMessages";
 import type { FullWorkout, WorkoutLog, WorkoutSession } from "@/lib/api/types";
 import { session, set, setLog } from "@/lib/workoutSession/fixtures";
 import { bffError, mockBff, type BffMock, type BffRoutes } from "@/test/bff";
-import { renderScreen } from "@/test/render";
+import { renderScreen, testQueryClient } from "@/test/render";
 import { initSession } from "@/lib/workoutSession/engine";
+import { workoutLogsQueryKey } from "@/lib/api/workoutSessions";
+import { weekStartOf } from "@/lib/calendar";
+import { todayLocalIso } from "@/lib/format";
 import { clearWorkoutData, enqueue, openOutbox, readLocalSession, saveLocalSession } from "@/lib/workoutSession/outbox";
 
 import { setHint, WorkoutSessionScreen } from "./WorkoutSessionScreen";
@@ -546,6 +549,28 @@ describe("WorkoutSessionScreen", () => {
     await renderScreen(<WorkoutSessionScreen />);
     expect(await screen.findByRole("button", { name: "Começar treino" })).toBeOnTheScreen();
     expect(readLocalSession()).toBeNull();
+    expect(bff.calls.some((c) => c.route === "GET /api/workouts/12/session")).toBe(false);
+  });
+
+  it("keeps the kept session when the week's refetch fails over a cached week without it", async () => {
+    saveLocalSession({ workoutId: 12, logId: 500, state: initSession(workout()), sent: {} });
+    const client = testQueryClient();
+    client.setQueryData(workoutLogsQueryKey(1, weekStartOf(todayLocalIso())), []);
+    bff = mockBff(routes(workout(), { "GET /api/workout-logs": bffError(500, "INTERNAL") }));
+    await renderScreen(<WorkoutSessionScreen />, client);
+    await waitFor(() => expect(bff.calls.some((c) => c.route === "GET /api/workout-logs")).toBe(true));
+    await act(async () => {});
+    expect(screen.getByRole("button", { name: "Continuar treino" })).toBeOnTheScreen();
+    expect(readLocalSession()?.logId).toBe(500);
+  });
+
+  it("starts nothing when the week's refetch fails over a cached week showing it in progress (R4)", async () => {
+    const client = testQueryClient();
+    client.setQueryData(workoutLogsQueryKey(1, weekStartOf(todayLocalIso())), [workout().workoutLog]);
+    bff = mockBff(routes(workout(), { "GET /api/workout-logs": bffError(500, "INTERNAL") }));
+    await renderScreen(<WorkoutSessionScreen />, client);
+    await waitFor(() => expect(bff.calls.some((c) => c.route === "GET /api/workout-logs")).toBe(true));
+    await act(async () => {});
     expect(bff.calls.some((c) => c.route === "GET /api/workouts/12/session")).toBe(false);
   });
 

@@ -176,7 +176,9 @@ export function WorkoutSessionScreen() {
     // Início's copy can be from before a session started or finished elsewhere.
     refetchOnMount: "always",
   });
-  const fresh = logs.isFetchedAfterMount ? logs.data : undefined;
+  // The server's answer since this screen opened. A failed refetch also counts as "fetched after
+  // mount" but leaves Início's cached copy in `data` (status "error"): that is no answer.
+  const fresh = logs.isFetchedAfterMount && logs.status === "success" ? logs.data : undefined;
   // A refusal of the workout (a 4xx: it or the trainer is gone), not a missing answer.
   const refused = tree.error instanceof ApiError && tree.error.status >= 400 && tree.error.status < 500;
   // The kept session was finished or discarded elsewhere when the server's week no longer has it in
