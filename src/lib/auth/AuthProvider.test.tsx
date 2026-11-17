@@ -11,7 +11,7 @@ import { clearWorkoutData } from "@/lib/workoutSession/outbox";
 import { queryClient } from "@/lib/query-client";
 
 import { AuthProvider, useAuth } from "./AuthProvider";
-import { RENEWAL_INTERVAL_MS } from "./renewal";
+import { RENEWAL_FAILURE_BACKOFF_MS, RENEWAL_INTERVAL_MS } from "./renewal";
 import { readStoredSession, storeSession } from "./tokenStorage";
 
 jest.mock("@/lib/exportData", () => ({ clearExports: jest.fn() }));
@@ -71,6 +71,11 @@ async function foreground() {
     focusManager.setFocused(false);
     focusManager.setFocused(true);
   });
+}
+
+/** Lets a renewal that already got its answer finish (body read, catch, single-flight slot freed). */
+async function settle() {
+  await act(() => new Promise<void>((resolve) => setTimeout(resolve, 50)));
 }
 
 /** The connection drops and comes back (NetInfo → onlineManager). */
@@ -282,6 +287,39 @@ describe("AuthProvider session renewal", () => {
     expect(renewCalls()).toHaveLength(1);
   });
 
+  it("stops asking on a 404 NOT_FOUND from a BFF without the route", async () => {
+    await storeToken("tok", Date.now() - 2 * DAY);
+    fetchMock.mockImplementation(async () => Response.json({ error: { code: "NOT_FOUND", message: "x" } }, { status: 404 }));
+    await mount();
+    await waitFor(async () => expect((await readStoredSession())?.renewal).toBeNull());
+    expect(screen.getByText("status:signedIn")).toBeOnTheScreen();
+  });
+
+  it.each([403, 404])("a %i without the BFF's error body (a proxy's page) keeps renewing, after the backoff", async (status) => {
+    const start = Date.now();
+    await storeToken("tok", start - 2 * DAY);
+    fetchMock.mockImplementation(async () => new Response("<html>Forbidden</html>", { status, headers: { "Content-Type": "text/html" } }));
+    await mount();
+    await waitFor(() => expect(renewCalls()).toHaveLength(1));
+    await settle();
+    expect(screen.getByText("status:signedIn")).toBeOnTheScreen();
+    expect((await readStoredSession())?.renewal).not.toBeNull();
+    // Not before the hour's backoff...
+    await foreground();
+    expect(renewCalls()).toHaveLength(1);
+    // ...and again once it's over (the clock keeps running, so `waitFor` can still time out).
+    const realNow = Date.now.bind(Date);
+    const now = jest.spyOn(Date, "now").mockImplementation(() => realNow() + RENEWAL_FAILURE_BACKOFF_MS + 1);
+    try {
+      fetchMock.mockImplementation(async () => renewed("fresh"));
+      await foreground();
+      await waitFor(async () => expect((await readStoredSession())?.token).toBe("fresh"));
+      expect(renewCalls()).toHaveLength(2);
+    } finally {
+      now.mockRestore();
+    }
+  });
+
   it("retries after a network failure on the next foreground, keeping the token meanwhile", async () => {
     await storeToken("old", Date.now() - 2 * DAY);
     fetchMock.mockRejectedValueOnce(new TypeError("Network request failed"));
@@ -303,7 +341,7 @@ describe("AuthProvider session renewal", () => {
     await mount();
     await waitFor(() => expect(renewCalls()).toHaveLength(1));
     // Let the failure settle (the single-flight slot frees) before the next trigger.
-    await act(async () => {});
+    await settle();
     await foreground();
     expect(renewCalls()).toHaveLength(1);
     expect(screen.getByText("status:signedIn")).toBeOnTheScreen();

@@ -91,7 +91,7 @@ drift check stays green.
   token, and `AuthProvider` renews it (`POST /api/auth/session/renew`) on launch, foreground and
   reconnect — at most daily, online only, single-flight. A token with no renewal record (an 8 h one
   from an older build) is never renewed; a 403 drops the record and keeps the
-  session; a 401 signs out as `expired`. Sign-out reasons: `user` ("Sair": clears drafts and the
+  session (only with the BFF's code: `SESSION_NOT_RENEWABLE`, `FORBIDDEN`, or a 404 `NOT_FOUND`); a 401 signs out as `expired`. Sign-out reasons: `user` ("Sair": clears drafts and the
   workout outbox), `expired` and `passwordChanged` (both keep them).
 - **`src/lib/query-client.ts`**: 30 s `staleTime`, no retries on a 4xx (`shouldRetry`), refetch on
   app foreground (`focusManager` ← `AppState`) and pause offline (`onlineManager` ← NetInfo).

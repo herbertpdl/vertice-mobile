@@ -64,7 +64,8 @@ The login itself counts as the first use, so its renewal is due a day later.
 |---|---|
 | 200 | New token in memory at once, then stored with a new record. A failed store keeps the old (still valid) token on disk; the next launch renews again. |
 | 401 | `apiFetch`'s existing path: `signOut("expired")` — drafts and the workout outbox kept (R16), login banner "Sua sessão terminou. Entre novamente." (R15). This is the 90-days-unused case (E4) and a password/role change elsewhere. |
-| 403 (`SESSION_NOT_RENEWABLE` for an 8 h token, `FORBIDDEN` for ADMIN), 404 (a BFF without the route) | The session goes on; its record is dropped so it's never sent to renewal again; it runs out by itself. |
+| 403 (`SESSION_NOT_RENEWABLE` for an 8 h token, `FORBIDDEN` for ADMIN), 404 `NOT_FOUND` (a BFF without the route) — only with the BFF's error body | The session goes on; its record is dropped so it's never sent to renewal again; it runs out by itself. |
+| 403/404 without the BFF's body (CloudFront, WAF, ALB: `UNKNOWN_ERROR`) | Not an answer about the token: next attempt after an hour, record kept. |
 | 429 | Next attempt after `Retry-After`. |
 | other 4xx/5xx | Next attempt after an hour. |
 | no answer (`NETWORK_ERROR`, `TIMEOUT`) | Nothing changes; the next trigger retries. |
@@ -145,6 +146,6 @@ until updated (R18).
 | What marks a renewable session? | The stored record (BFF `expiresAt` + device time), written only by this build's login/register/renewal. | Never renews a legacy 8 h token (R18, assessment M1). |
 | "Due" by device time since renewal, or by server expiry? | Device time since the last renewal. | Server expiry vs a wrong device clock could renew on every foreground. |
 | Triggers | Launch, foreground, reconnect. | The moments of use; reconnect covers E4. |
-| Any 403 on renewal | Keep the session, drop the record, never retry. | Only a 401 means the session is over. |
+| 403 `SESSION_NOT_RENEWABLE`/`FORBIDDEN`, 404 `NOT_FOUND` on renewal | Keep the session, drop the record, never retry. Same statuses without the BFF's code back off an hour. | Only a 401 means the session is over; a proxy's page must not end renewal for good. |
 | Password-change copy | "Senha alterada. Entre com a nova senha." | Same as the web; assessment M3. |
 | Session-ended copy | "Sua sessão terminou. Entre novamente." | Covers every server-side end (M4). |

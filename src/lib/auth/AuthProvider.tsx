@@ -38,6 +38,13 @@ type AuthApi = {
 
 const AuthContext = createContext<AuthApi | null>(null);
 
+/** A renewal refusal from the BFF itself that will never turn into a renewal for this token. */
+function isFinalRefusal(error: unknown): boolean {
+  if (!(error instanceof ApiError)) return false;
+  if (error.status === 403) return error.code === "SESSION_NOT_RENEWABLE" || error.code === "FORBIDDEN";
+  return error.status === 404 && error.code === "NOT_FOUND";
+}
+
 /** The session, from any component under `AuthProvider`. */
 export function useAuth(): AuthApi {
   const api = use(AuthContext);
@@ -131,11 +138,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await storeSession({ token: session.token, renewal: record }).catch(() => {});
       } catch (error) {
         // 401 (`UNAUTHORIZED` or `UNAUTHENTICATED`): `apiFetch` has already signed out as expired.
-        // A 403 — `SESSION_NOT_RENEWABLE` for an 8 h token, `FORBIDDEN` for a role renewal isn't
-        // for (ADMIN) — or a BFF that predates renewal (404): the session goes on and runs out by
-        // itself, but is never sent to renewal again.
+        // The BFF's own refusals — 403 `SESSION_NOT_RENEWABLE` for an 8 h token, 403 `FORBIDDEN`
+        // for a role renewal isn't for (ADMIN), 404 `NOT_FOUND` from a BFF that predates the route:
+        // the session goes on and runs out by itself, but is never sent to renewal again. A 403 or
+        // 404 without the BFF's error body (CloudFront, WAF, ALB: `UNKNOWN_ERROR`) is not an answer
+        // about this token: it backs off like any other failure.
         if (token.current !== current) return;
-        if (error instanceof ApiError && (error.status === 403 || error.status === 404)) {
+        if (isFinalRefusal(error)) {
           renewal.current = null;
           await storeSession({ token: current, renewal: null }).catch(() => {});
           return;
