@@ -128,7 +128,7 @@ until updated (R18).
 
 ## 8. Checklist
 
-- [x] Contract synced from the BFF PR #60 head (`f9b9691`); [ ] re-pinned to the BFF merge commit on main.
+- [x] Contract synced from the BFF PR #60 head (`f9b9691`); [x] re-pinned to the BFF merge commit on main (`55d04cd`).
 - [x] Header from the API client.
 - [x] Renewal: record, triggers, guards, outcomes.
 - [x] Password change sign-out and copy.

@@ -1,6 +1,6 @@
 /**
  * Generated from vertice-bff's OpenAPI document. Do not edit by hand.
- * Source:    herbertpdl/vertice-bff@f9b96917f9074ea4962454ee862550fc1e85e0ca:docs/openapi.json
+ * Source:    herbertpdl/vertice-bff@55d04cd82f11a9dc20347d3d33ea5c5d58852809:docs/openapi.json
  * Spec:      vertice-bff 0.1.0 (OpenAPI 3.1.0)
  * Generator: openapi-typescript@7.13.0
  *
