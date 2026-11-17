@@ -83,9 +83,16 @@ drift check stays green.
   `error.message`).
 - **Auth, `src/lib/auth/`** — `AuthProvider` (root layout) restores the token from
   `expo-secure-store` (Keychain/Keystore, `WHEN_UNLOCKED_THIS_DEVICE_ONLY`; never AsyncStorage)
-  while the splash stays up, hands it to `apiFetch`, and signs out on a 401 (`sessionExpired` tells
-  the login screen why). Only the token is persisted; who the user is comes from `useMe()`
-  (`GET /api/auth/me`). Tokens last 8 h with no refresh token (a BFF decision, audit P2-05).
+  while the splash stays up, hands it to `apiFetch`, and signs out on a 401 (`sessionEnded` tells
+  the login screen why). Only the token and its renewal record (the BFF's `expiresAt` + when the
+  device got it) are persisted; who the user is comes from `useMe()` (`GET /api/auth/me`).
+  Sessions persist ([`docs/specs/mobile-persistent-session/spec.md`](docs/specs/mobile-persistent-session/spec.md)):
+  `apiFetch` sends `X-Vertice-Client: mobile` on every request, so login/register issue a 90-day
+  token, and `AuthProvider` renews it (`POST /api/auth/session/renew`) on launch, foreground and
+  reconnect — at most daily, online only, single-flight. A token with no renewal record (an 8 h one
+  from an older build) is never renewed; a 403 drops the record and keeps the
+  session (only with the BFF's code: `SESSION_NOT_RENEWABLE`, `FORBIDDEN`, or a 404 `NOT_FOUND`); a 401 signs out as `expired`. Sign-out reasons: `user` ("Sair": clears drafts and the
+  workout outbox), `expired` and `passwordChanged` (both keep them).
 - **`src/lib/query-client.ts`**: 30 s `staleTime`, no retries on a 4xx (`shouldRetry`), refetch on
   app foreground (`focusManager` ← `AppState`) and pause offline (`onlineManager` ← NetInfo).
 - **Dates**: `src/lib/{format,calendar,plans}.ts` are ports of the web's, with its rules

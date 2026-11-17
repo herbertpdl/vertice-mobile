@@ -19,6 +19,13 @@ export type ErrorCode = components["schemas"]["ErrorCode"];
  */
 export type ClientErrorCode = "NETWORK_ERROR" | "TIMEOUT" | "UNKNOWN_ERROR";
 
+/**
+ * Sent on every request: tells the BFF this is the mobile app, so login, register and session
+ * renewal issue a 90-day mobile session instead of the web's 8 h one (mobile-persistent-session
+ * spec §1). Set here once, never per call or per screen; the BFF reads it only on those routes.
+ */
+export const CLIENT_HEADERS = { "X-Vertice-Client": "mobile" } as const;
+
 /** How long a request may take before it fails with `TIMEOUT` (audit P2-05). */
 export const REQUEST_TIMEOUT_MS = 15_000;
 
@@ -134,7 +141,7 @@ type RawResponse = { response: Response; text: string; sentToken: string | null 
 
 async function send(path: string, init: ApiRequestInit = {}): Promise<RawResponse> {
   const { body, query, auth = true, headers: extraHeaders, signal, ...rest } = init;
-  const headers: Record<string, string> = { Accept: "application/json", ...extraHeaders };
+  const headers: Record<string, string> = { Accept: "application/json", ...extraHeaders, ...CLIENT_HEADERS };
   if (body !== undefined) headers["Content-Type"] = "application/json";
   const sentToken = auth ? readToken() : null;
   if (sentToken !== null) headers.Authorization = `Bearer ${sentToken}`;

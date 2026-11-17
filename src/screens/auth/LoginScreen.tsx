@@ -27,6 +27,16 @@ export function loginErrorMessage(error: unknown): string {
 }
 
 /**
+ * Why the last session ended, when it didn't end with "Sair" (mobile-persistent-session spec §4).
+ * "terminou", not "expirou": the same banner covers 90 days unused, a password changed elsewhere
+ * and a deleted account (PRD R15).
+ */
+export const SESSION_ENDED_MESSAGES = {
+  expired: "Sua sessão terminou. Entre novamente.",
+  passwordChanged: "Senha alterada. Entre com a nova senha.",
+} as const;
+
+/**
  * The e-mail a link filled in: the web's "Abrir o app" after a client sets their password opens
  * `verticemobile://login?email=<e-mail>` (web-trainer-only-access R10a). Only a single value is
  * taken, trimmed; anything else leaves the field empty.
@@ -37,7 +47,7 @@ function emailFromLink(param: string | string[] | undefined): string {
 
 /** M - Login / M - Login (Erro de Validação). */
 export function LoginScreen() {
-  const { signIn, sessionExpired } = useAuth();
+  const { signIn, sessionEnded } = useAuth();
   const linkEmail = emailFromLink(useLocalSearchParams<{ email?: string }>().email);
   const [formError, setFormError] = useState<string | null>(null);
   const {
@@ -86,8 +96,8 @@ export function LoginScreen() {
       </View>
       {banner !== null ? (
         <Banner message={banner} />
-      ) : sessionExpired ? (
-        <Banner tone="info" message="Sua sessão expirou. Entre novamente." />
+      ) : sessionEnded !== null ? (
+        <Banner tone="info" message={SESSION_ENDED_MESSAGES[sessionEnded]} />
       ) : null}
       <View style={styles.fields}>
         <FormTextField
