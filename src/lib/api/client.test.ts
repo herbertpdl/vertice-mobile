@@ -41,6 +41,14 @@ describe("apiFetch", () => {
     expect(fetchMock.mock.calls[0][1]!.body).toBe('{"name":"Ana"}');
   });
 
+  it("identifies the mobile app on every call, public or not, and a caller can't override it", async () => {
+    fetchMock.mockImplementation(async () => Response.json({}));
+    await apiFetch("/api/auth/login", { method: "POST", body: {}, auth: false, headers: { "X-Vertice-Client": "web" } });
+    await apiFetch("/api/auth/me");
+    expect(sentHeaders(0)["X-Vertice-Client"]).toBe("mobile");
+    expect(sentHeaders(1)["X-Vertice-Client"]).toBe("mobile");
+  });
+
   it("resolves undefined for 204", async () => {
     fetchMock.mockResolvedValue(new Response(null, { status: 204 }));
     await expect(apiClient.delete("/api/clients/1")).resolves.toBeUndefined();

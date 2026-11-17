@@ -8,7 +8,8 @@ type Schemas = components["schemas"];
 // The public routes (`auth: false`): no bearer token goes out, and a 401 there is "wrong e-mail or
 // password", not "session over", so it doesn't sign anyone out (see `apiFetch`). Unlike the web,
 // which goes through its own cookie-setting route handlers, the app calls the BFF directly and
-// keeps the returned token itself (`src/lib/auth/`).
+// keeps the returned token itself (`src/lib/auth/`). Every call carries `X-Vertice-Client: mobile`
+// (`CLIENT_HEADERS` in the client), so login and register issue a 90-day mobile session.
 
 /** `POST /api/auth/login`: the session token and user. 401 on a wrong e-mail or password. */
 export function login(input: Schemas["LoginRequest"]) {
@@ -21,6 +22,17 @@ export type RegisterInput = Omit<Schemas["RegisterRequest"], "role">;
 export function register(input: RegisterInput) {
   const body: Schemas["RegisterRequest"] = { ...input, role: "TRAINER" };
   return apiClient.post<AuthSession>("/api/auth/register", body, { auth: false });
+}
+
+/**
+ * `POST /api/auth/session/renew`: trades the current mobile token for one that expires 90 days
+ * from now (the old one stays valid until its own expiry). 401 when vertice-api no longer accepts
+ * the token (password changed, account deleted) — `apiFetch` signs out as expired; 403
+ * `SESSION_NOT_RENEWABLE` for an 8 h token; 429 with `retryAfter` past the refusal limit.
+ * Only `AuthProvider` calls it (once a day at most, single-flight).
+ */
+export function renewSession() {
+  return apiClient.post<AuthSession>("/api/auth/session/renew");
 }
 
 /** First access: redeem a setup token from the link the trainer shared. No session needed. */
@@ -63,8 +75,10 @@ export function updateMe(input: UpdateMeInput) {
 }
 
 /**
- * `POST /api/auth/password`: 204 on success; 400 `INVALID_CURRENT_PASSWORD` for a wrong current
- * password (the session stays valid — not a sign-out).
+ * `POST /api/auth/password`: 204 on success, which ends every session of the account, this one
+ * included (the caller signs out next: `signOut("passwordChanged")`); 400
+ * `INVALID_CURRENT_PASSWORD` for a wrong current password (the session stays valid — not a
+ * sign-out).
  */
 export async function changePassword(input: Schemas["ChangePasswordRequest"]) {
   await apiClient.post<void>("/api/auth/password", input);

@@ -6,9 +6,9 @@ import { renderScreen } from "@/test/render";
 import { LoginScreen } from "./LoginScreen";
 
 const mockSignIn = jest.fn();
-let mockSessionExpired = false;
+let mockSessionEnded: "expired" | "passwordChanged" | null = null;
 jest.mock("@/lib/auth", () => ({
-  useAuth: () => ({ signIn: mockSignIn, sessionExpired: mockSessionExpired }),
+  useAuth: () => ({ signIn: mockSignIn, sessionEnded: mockSessionEnded }),
 }));
 
 // Reactive like expo-router's: a link opened while the screen is mounted updates the params
@@ -43,7 +43,7 @@ let bff: BffMock;
 afterEach(() => {
   bff?.restore();
   mockSignIn.mockReset();
-  mockSessionExpired = false;
+  mockSessionEnded = null;
   mockParams = {};
 });
 
@@ -112,11 +112,19 @@ describe("LoginScreen", () => {
     expect(await screen.findByText("Muitas tentativas. Tente novamente em 2 minutos.")).toBeOnTheScreen();
   });
 
-  it("explains an expired session", async () => {
-    mockSessionExpired = true;
+  it("says the session ended when the BFF ended it", async () => {
+    mockSessionEnded = "expired";
     bff = mockBff({});
     await renderScreen(<LoginScreen />);
-    expect(screen.getByText("Sua sessão expirou. Entre novamente.")).toBeOnTheScreen();
+    expect(screen.getByText("Sua sessão terminou. Entre novamente.")).toBeOnTheScreen();
+  });
+
+  it("asks for the new password after a password change on this phone", async () => {
+    mockSessionEnded = "passwordChanged";
+    bff = mockBff({});
+    await renderScreen(<LoginScreen />);
+    expect(screen.getByText("Senha alterada. Entre com a nova senha.")).toBeOnTheScreen();
+    expect(screen.queryByText("Sua sessão terminou. Entre novamente.")).toBeNull();
   });
 
   it("sends one request when the keyboard's 'go' follows a tap", async () => {
