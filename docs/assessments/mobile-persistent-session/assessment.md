@@ -21,7 +21,11 @@ the screen just goes back and the next call shows "session expired" (M3).
 
 | Id | Severity | One line |
 |---|---|---|
-| M1 | High | Renewal: when and how the app trades its token for a fresh 90-day one, including offline (R4, E4). |
+| M1 | High | Renewal: when and how the app trades its token for a fresh 90-day one, including offline (R4, E4), without renewing legacy 8h tokens (R18). |
+| M2 | Medium | New contract fields: the mobile-client header, the session expiry and the renewal route. |
+| M3 | Medium | Changing the password logs this phone out; the screen promises the opposite and `signOut("expired")` would say "expirou". |
+| M4 | Low | One "expirou" banner for every server-side end of a session. |
+| M5 | Info | Ships last; a mis-order degrades to today's 8h sessions. |
 
 ## 2. PRD coverage map
 
@@ -32,12 +36,12 @@ the screen just goes back and the next call shows "session expired" (M3).
 | R5 | n/a | Web only. |
 | R6, R7 | existing | One token per install, SecureStore `WHEN_UNLOCKED_THIS_DEVICE_ONLY` (`tokenStorage.test.ts:9-10`). |
 | R8, R17 | existing: `AuthProvider.tsx:50-70` (`signOut("user")` clears drafts, workout data, exports) | |
-| R9, R11, R12 | existing 401 path | The server voids the token; the next call's 401 signs out. |
+| R9, R11, R12, R14 | existing 401 path | The server voids the token (a role change too, vertice-api F1); the next call's 401 signs out. |
 | R10 | `src/screens/profile/ChangePasswordScreen.tsx:45-47` | M3. |
-| R13, R14 | existing | |
+| R13 | existing | Removing a client never 401s. |
 | R15 | existing: `LoginScreen.tsx:89-90` | Copy says "expirou"; M4. |
 | R16 | existing: `AuthProvider.tsx` (`reason === "expired"` keeps drafts and the outbox) | |
-| R18, R19 | existing | An 8h token from an older build ends as today; the first login on the new build gets a mobile session. |
+| R18, R19 | M1 | An 8h token from an older build ends as today, provided the new build never renews it (M1); the first login on the new build gets a mobile session. |
 | E1–E3, E5–E9 | as above | |
 | E4 | M1 | Renewal needs a connection; past 90 days the next online call 401s and R16 applies. |
 
@@ -56,16 +60,26 @@ hook for "the app came to the foreground".
 
 **M3 — Medium — changing the password logs this phone out right after success.**
 - What: R10 ends the session on the phone that changed the password; `ChangePasswordScreen`
-  navigates back on success and the next request 401s into "Sua sessão expirou".
-- Where: `src/screens/profile/ChangePasswordScreen.tsx:45-47`.
+  navigates back on success and the next request 401s into "Sua sessão expirou". The screen also
+  tells the person the opposite: "Após salvar, você continua conectado neste aparelho." (`:77`),
+  and the screen docstring (`:21-25`) and `changePassword` (`src/lib/api/auth.ts:65-67`) say the
+  session stays valid.
+- Where: `src/screens/profile/ChangePasswordScreen.tsx:21-25,45-47,77`, `src/lib/api/auth.ts:65-67`,
+  `AuthProvider.tsx:55` (`setSessionExpired(reason === "expired")`), `LoginScreen.tsx:89-90`.
 - Why it matters: the person just changed their password and is told the session "expired",
-  which reads like an error.
-- Recommendation: on success, sign out with the `expired` reason right away (keeps drafts per
-  R16) and show a specific message on the login screen ("Senha alterada. Entre com a nova
-  senha."). The copy is a product decision to confirm with the owner in the spec.
+  which reads like an error, right after being promised they stay logged in.
+- Recommendation: replace the line at `:77` (for example "Após salvar, você precisará entrar
+  novamente com a nova senha.") and fix both comments. On success, sign out right away with a
+  third reason, for example `"passwordChanged"`: it keeps drafts and the outbox like `expired`
+  (R16) but sets its own state, so `LoginScreen` shows a dedicated message ("Senha alterada. Entre
+  com a nova senha."). `signOut("expired")` can't do this, since its flag is what shows
+  "expirou". This widens `AuthApi.signOut` (today `"user" | "expired"`) and replaces the
+  `sessionExpired` boolean with a reason value. The copy is a product decision to confirm with
+  the owner in the spec.
 
 **M4 — Low — "expirou" for every server-side end.**
-- What: the same banner covers 90 days unused, a password change elsewhere and a deleted account.
+- What: the same banner covers 90 days unused, a password change elsewhere, a role change and a
+  deleted account.
 - Where: `LoginScreen.tsx:89-90`.
 - Recommendation: keep one message (R15 asks only that it says the session ended); consider
   "Sua sessão terminou. Entre novamente." since it no longer only expires.
@@ -100,6 +114,13 @@ logs it. A longer-lived token makes that storage choice more important; keep it.
   foreground, only when online; one renewal in flight at a time; write the new token only if the
   stored one is still the one that was renewed. A failed renewal for a network reason changes
   nothing; a 401 goes through the existing `signOut("expired")`.
+- Legacy tokens (R18): only the token is stored today, so the app can't tell its age or kind.
+  Store the expiry the BFF returns (bff B1) next to the token in SecureStore, and renew only
+  tokens that have one. A token restored with no stored expiry came from an older build: never
+  renew it and let it run out as today. Otherwise the first launch after updating would send an
+  8h token to renewal, which bff B2 refuses, and a 401 there would sign every upgraded user out.
+  Ask vertice-bff (B2) to answer "not a mobile token" with a non-401 status (for example 403
+  `NOT_RENEWABLE`), which the app treats as "do nothing".
 
 ### Error handling
 
@@ -124,12 +145,19 @@ Section 6.
 header to an older BFF gets an 8h token (the header is ignored), so mis-ordering degrades to
 today's behavior rather than breaking.
 
+## 5. Options
+
+None beyond vertice-bff §5; renewal is client-side as in M1.
+
 ## 6. Testing strategy
 
 `AuthProvider` tests: login, register and renewal send the header; renewal on launch when the token is
 older than a day, not when fresher; no renewal offline; concurrent triggers renew once; a 401 on
-renewal signs out with `expired` and keeps drafts; "Sair" still clears. `ChangePasswordScreen`:
-success signs out with the new message (M3). Update `AuthProvider.tsx` comments and `CLAUDE.md`.
+renewal signs out with `expired` and keeps drafts; a legacy token restored without a stored expiry
+is not renewed and does not sign out; a `NOT_RENEWABLE` refusal changes nothing; "Sair" still
+clears. `ChangePasswordScreen`: success calls `signOut` with the new reason, drafts and the outbox
+are kept, the login banner shows the new copy, and the "continua conectado" text is gone (M3).
+Update `AuthProvider.tsx` comments and `CLAUDE.md`.
 
 ## 7. Rollout
 
@@ -147,6 +175,7 @@ tests, docs. Risk concentrated in M1.
 
 ## 10. Inputs to the spec
 
-- [ ] Renewal: triggers, frequency, offline behavior, race guard (M1).
+- [ ] Renewal: triggers, frequency, offline behavior, race guard, the stored expiry and never
+  renewing legacy tokens (M1).
 - [ ] Contract sync and sending the mobile-client header from login, register and renewal (M2).
-- [ ] What the phone shows after changing its own password (M3).
+- [ ] What the phone shows after changing its own password: the new sign-out reason and its copy (M3).
