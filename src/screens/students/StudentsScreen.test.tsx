@@ -17,6 +17,7 @@ const student = (id: number, name: string, plan: string | null): ClientSummary =
   activePlanCount: plan === null ? 0 : 1,
   currentPlan: plan === null ? null : { id, name: plan, endDate: "2026-12-01" },
   lastWorkoutAt: null,
+  suspended: false,
   weekActivity: [
     { date: "2026-10-19", dayOfWeek: "MONDAY", completed: true },
     { date: "2026-10-20", dayOfWeek: "TUESDAY", completed: false },

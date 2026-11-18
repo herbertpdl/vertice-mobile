@@ -105,6 +105,39 @@ describe("LoginScreen", () => {
     expect(mockSignIn).not.toHaveBeenCalled();
   });
 
+  it("says the account is suspended on a 403 ACCOUNT_SUSPENDED (admin-panel R41, E18)", async () => {
+    bff = mockBff({ "POST /api/auth/login": bffError(403, "ACCOUNT_SUSPENDED") });
+    await renderScreen(<LoginScreen />);
+    await fill("ana@vertice.fit", "segredo123");
+    expect(await screen.findByText("Sua conta está suspensa. Entre em contato com o suporte.")).toBeOnTheScreen();
+    expect(mockSignIn).not.toHaveBeenCalled();
+  });
+
+  it("shows the wrong-role notice on a 403 ADMIN_LOGIN_ELSEWHERE, not the BFF's message (R3, E2)", async () => {
+    bff = mockBff({
+      "POST /api/auth/login": Response.json(
+        { error: { code: "ADMIN_LOGIN_ELSEWHERE", message: "O acesso de alunos é feito somente pelo aplicativo Vertice." } },
+        { status: 403 },
+      ),
+    });
+    await renderScreen(<LoginScreen />);
+    await fill("admin@vertice.fit", "segredo123");
+    expect(
+      await screen.findByText(
+        "Este app é para treinadores e alunos. Contas de administração não têm acesso pelo aplicativo.",
+      ),
+    ).toBeOnTheScreen();
+    expect(screen.queryByText(/O acesso de alunos/)).toBeNull();
+    expect(mockSignIn).not.toHaveBeenCalled();
+  });
+
+  it("keeps the generic copy for an unknown 403 code from a newer BFF", async () => {
+    bff = mockBff({ "POST /api/auth/login": bffError(403, "SOME_FUTURE_CODE") });
+    await renderScreen(<LoginScreen />);
+    await fill("ana@vertice.fit", "segredo123");
+    expect(await screen.findByText("Não foi possível entrar")).toBeOnTheScreen();
+  });
+
   it("says how long to wait on a 429", async () => {
     bff = mockBff({ "POST /api/auth/login": bffError(429, "RATE_LIMITED", { "Retry-After": "120" }) });
     await renderScreen(<LoginScreen />);

@@ -23,6 +23,7 @@ describe("apiErrorMessage", () => {
     ["INVALID_CURRENT_PASSWORD", 400],
     ["ACTIVE_CLIENTS", 409],
     ["TOO_LARGE", 413],
+    ["ACCOUNT_SUSPENDED", 403],
     ["UPSTREAM_ERROR", 502],
     ["UPSTREAM_UNAVAILABLE", 503],
     ["INTERNAL_ERROR", 500],
