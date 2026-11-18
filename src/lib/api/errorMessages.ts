@@ -27,6 +27,9 @@ export const errorMessages: Readonly<Partial<Record<ApiErrorCode, string>>> = {
   ACTIVE_CLIENTS: "Encerre o acompanhamento de cada aluno antes de excluir sua conta.",
   // `GET /auth/me/export` over vertice-api's export bounds.
   TOO_LARGE: "Seus dados passam do limite da exportação automática. Fale com o suporte para recebê-los.",
+  // A suspended account's correct password on `POST /auth/login` (admin-panel R41). The BFF's
+  // `message` is this same text, but screens still key on the code.
+  ACCOUNT_SUSPENDED: "Sua conta está suspensa. Entre em contato com o suporte.",
   UPSTREAM_ERROR: "Ocorreu um erro inesperado. Tente novamente.",
   UPSTREAM_UNAVAILABLE: "O serviço está indisponível no momento. Tente novamente em instantes.",
   // The BFF's own unhandled-error body (`src/plugins/error-handler.ts`), a 500.

@@ -14,15 +14,24 @@ import { ApiError } from "@/lib/api/client";
 import { apiErrorMessage } from "@/lib/api/errorMessages";
 import { useAuth } from "@/lib/auth";
 import { loginSchema } from "@/lib/validation/auth";
+import { ROLE_NOTICE } from "@/screens/session/RoleNoticeScreen";
 import { sizes, space } from "@/theme";
 
 // The web's form also asks "remember me"; the app's session always persists (SecureStore).
 const loginFormSchema = loginSchema.omit({ remember: true });
 type LoginForm = z.infer<typeof loginFormSchema>;
 
-/** Same copy as the web's `LoginForm`. */
+/**
+ * Same copy as the web's `LoginForm` for a wrong password. With the right password the BFF can
+ * still refuse (admin-panel PRD): an admin gets the app's wrong-role notice (R3, E2; the BFF's own
+ * `message` is the web's text, about the client app) and a suspended account gets
+ * `ACCOUNT_SUSPENDED`'s copy from `apiErrorMessage` (R41, E18). Neither carries a token.
+ */
 export function loginErrorMessage(error: unknown): string {
   if (error instanceof ApiError && error.status === 401) return "E-mail ou senha inválidos";
+  if (error instanceof ApiError && error.code === "ADMIN_LOGIN_ELSEWHERE") {
+    return `${ROLE_NOTICE.title}. ${ROLE_NOTICE.message}`;
+  }
   return apiErrorMessage(error, "Não foi possível entrar");
 }
 

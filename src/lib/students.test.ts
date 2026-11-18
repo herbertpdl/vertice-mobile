@@ -8,6 +8,7 @@ const student = (name: string, plan: string | null): ClientSummary => ({
   activePlanCount: plan === null ? 0 : 1,
   currentPlan: plan === null ? null : { id: 1, name: plan, endDate: "2026-12-01" },
   lastWorkoutAt: null,
+  suspended: false,
   weekActivity: [],
 });
 

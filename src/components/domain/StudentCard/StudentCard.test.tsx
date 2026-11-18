@@ -11,6 +11,7 @@ const base = {
   activePlanCount: 0,
   currentPlan: null,
   lastWorkoutAt: null,
+  suspended: false,
   weekActivity: [{ date: "2026-10-19", dayOfWeek: "MONDAY" as const, completed: true }],
 };
 
