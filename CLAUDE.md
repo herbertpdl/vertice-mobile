@@ -190,8 +190,9 @@ update or the embedded bundle on that device.
   icon, splash, plugins and their options, `ios`/`android`, `scheme`, the App Group, widget
   config), any `eas.json` edit (it's in the fingerprint) and the version. The fingerprint makes such an update
   incompatible (installed builds don't see it) rather than broken, but the fix still needs a build.
-- **Publish** from `main` at the merged commit, preview first, then production. Only the owner
-  does this, and always through the script (run it directly; it's deliberately not an npm script,
+- **Publish** from `main` at the merged commit, preview first, then production (the script
+  refuses another branch, a dirty or untracked working tree, or a `main` that isn't at
+  `origin/main`). Only the owner does this, and always through the script (run it directly; it's deliberately not an npm script,
   since `package.json` scripts are in the fingerprint):
 
   ```bash

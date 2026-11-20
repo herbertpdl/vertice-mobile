@@ -42,6 +42,16 @@ esac
 
 cd "$(dirname "$0")/.."
 
+# Ship only reviewed code: a clean `main` checkout at exactly origin/main (CLAUDE.md "Publish").
+# A feature worktree or an uncommitted edit would otherwise reach every install on this runtime.
+[[ "$(git rev-parse --abbrev-ref HEAD)" == main ]] || { echo "Publish from main (on $(git rev-parse --abbrev-ref HEAD))." >&2; exit 1; }
+if ! git diff --quiet HEAD || [[ -n "$(git ls-files --others --exclude-standard)" ]]; then
+  echo "The working tree has uncommitted or untracked files: commit or remove them first." >&2
+  exit 1
+fi
+git fetch --quiet origin main
+[[ "$(git rev-parse HEAD)" == "$(git rev-parse origin/main)" ]] || { echo "main is not at origin/main: pull (or push) first." >&2; exit 1; }
+
 # The values every bundle needs, and the optional one.
 required=(EXPO_PUBLIC_BFF_URL EXPO_PUBLIC_WEB_URL EXPO_PUBLIC_APP_ENV)
 optional=(EXPO_PUBLIC_SENTRY_DSN)
