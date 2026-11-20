@@ -3,6 +3,9 @@
     "name": "Vertice",
     "slug": "vertice-mobile",
     "version": "1.1.0",
+    "runtimeVersion": {
+      "policy": "fingerprint"
+    },
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "verticemobile",
@@ -113,6 +116,9 @@
       "reactCompiler": true
     },
     "backgroundColor": "#0A0E14",
+    "updates": {
+      "url": "https://u.expo.dev/b670be6e-21e0-472a-a91d-30d82455a3bd"
+    },
     "extra": {
       "eas": {
         "projectId": "b670be6e-21e0-472a-a91d-30d82455a3bd"
