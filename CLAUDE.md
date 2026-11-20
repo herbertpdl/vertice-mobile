@@ -190,33 +190,37 @@ update or the embedded bundle on that device.
   icon, splash, plugins and their options, `ios`/`android`, `scheme`, the App Group, widget
   config), any `eas.json` edit (it's in the fingerprint) and the version. The fingerprint makes such an update
   incompatible (installed builds don't see it) rather than broken, but the fix still needs a build.
-- **Publish** from `main` at the merged commit, preview first (a `preview` build, channel
-  `preview`), then production. Only the owner does this:
+- **Publish** from `main` at the merged commit, preview first, then production. Only the owner
+  does this, and always through the script (run it directly; it's deliberately not an npm script,
+  since `package.json` scripts are in the fingerprint):
 
   ```bash
-  EXPO_PUBLIC_APP_ENV=production EXPO_PUBLIC_BFF_URL=https://api.vertice.fit \
-  EXPO_PUBLIC_WEB_URL=https://www.vertice.fit EAS_BUILD_PROFILE=production npm run env:check
-  EXPO_PUBLIC_APP_ENV=production EXPO_PUBLIC_BFF_URL=https://api.vertice.fit \
-  EXPO_PUBLIC_WEB_URL=https://www.vertice.fit \
-    npx eas-cli update --channel production --environment production --clear-cache --message "..."
+  scripts/publish-update.sh production "fix: …"
   ```
 
-  `build.<profile>.env` in `eas.json` **does not apply to `eas update`**. The bundle takes its
-  `EXPO_PUBLIC_*` values from the shell, the EAS environment and `.env` (which points at
-  `localhost`); with none of them `env.ts` falls back to `localhost` too, and a release throws
-  at launch. Keep the inline values equal to
-  `eas.json`'s production profile, or move them to the EAS `production` environment (then they
-  apply to both). `--clear-cache` is needed: Metro's cache can keep the previous `EXPO_PUBLIC_*`
-  values. For preview, use `--channel preview --environment preview` with the preview build's
-  values.
+  `eas update` doesn't read `build.<profile>.env` from `eas.json`. With `--environment`, eas-cli
+  ignores `.env` (`EXPO_NO_DOTENV=1`), always clears Metro's cache, and bundles with the EAS
+  environment's variables layered over the shell's. Without it, SDK 55+ makes eas-cli ask for one.
+  The EAS `preview` and `production` environments hold no variables (2026-11-20), so a bare `eas update` bundles
+  no backend URLs, `env.ts` falls back to `localhost`, and every installed release throws at
+  launch. The script prevents that. It takes the `EXPO_PUBLIC_*` values from the channel's
+  `eas.json` profile (and stops if the shell exports a different one), runs `npm run env:check`,
+  exports the bundle itself without `.env`, checks that the BFF URL is in each platform's bundle,
+  and publishes that `dist/` with `--skip-bundler`, so no EAS environment variable can change it
+  (`--environment` only labels the update).
+- **Preview has no backend URL anywhere.** `eas.json`'s preview profile sets only
+  `EXPO_PUBLIC_APP_ENV`, so the script refuses a preview publish unless `EXPO_PUBLIC_BFF_URL` and
+  `EXPO_PUBLIC_WEB_URL` are exported. A `preview` build has the same gap: its `env:check` fails
+  without them. Which backend preview uses, and where its URLs are defined (`eas.json` or the EAS
+  `preview` environment), is the owner's decision. Changing `eas.json` changes the fingerprint.
 - **Roll back:** `npx eas-cli update:republish --channel production` (choose the last good
   update group, or `--group <id>`) publishes it again as the newest update.
   `npx eas-cli update:roll-back-to-embedded --channel production --runtime-version <rv>` sends
   devices back to the bundle inside the store build. Either takes effect on each device's next
   launches, like any update.
 - **Sentry:** an update's bundle needs its own source maps, or its stack traces stay minified.
-  Nothing is automated (production has no DSN yet). When Sentry is on, after each `eas update`,
-  upload the `dist/` it leaves behind:
+  Nothing is automated (production has no DSN yet). When Sentry is on, after each publish, upload
+  the `dist/` the script leaves behind:
   `SENTRY_AUTH_TOKEN=… SENTRY_ORG=… SENTRY_PROJECT=… npx --package=@sentry/react-native sentry-expo-upload-sourcemaps dist`
   (`npx @sentry/expo-upload-sourcemaps dist` from SDK 8.9). The maps match by debug ID
   (`getSentryExpoConfig` in `metro.config.js`), not by release. `eas update --upload-source-maps`
