@@ -138,6 +138,7 @@ drift check stays green.
   Until the Sentry project exists, the production profile sets `SENTRY_DISABLE_AUTO_UPLOAD=true` and has no
   DSN, so store builds report nothing; remove that flag when adding the DSN and the three secrets.
   `eas submit` targets the App Store Connect app `6830342756` (`submit.production.ios.ascAppId`).
+  JavaScript fixes can also ship over the air: see "OTA updates (EAS Update)" below.
 - **Local native module, `modules/backup-exclusion/`**: an iOS `ExpoAppDelegateSubscriber` that
   keeps `Documents/SQLite` (the workout outbox, `expo-sqlite/kv-store`) out of iCloud backups;
   Android has `allowBackup: false` in `app.json`. Autolinked from `modules/`; a change needs a
@@ -158,6 +159,71 @@ drift check stays green.
   Jest can't see this: check keyboard layout changes on a simulator.
 - **Icons**: `lucide-react-native` (+ `react-native-svg` peer dep) mirrors `vertice-web-react`'s
   use of `lucide-react`, for icon parity between web and mobile.
+
+## OTA updates (EAS Update)
+
+`expo-updates` is set up (`app.json` `updates.url` → `https://u.expo.dev/<projectId>`,
+`runtimeVersion: { "policy": "fingerprint" }`; `eas.json` `channel` `preview` / `production`;
+`development` has none, so a dev client loads updates only through its Extensions menu). The
+behaviour is the default and has no custom UI: a release build checks on every launch
+(`ON_LOAD`), starts at once with what it already has (`fallbackToCacheTimeout` 0), downloads a
+new update in the background and runs it on the **next cold start**, so testing one takes up to
+two kill-and-reopen cycles. If an update crashes at launch, expo-updates goes back to the previous
+update or the embedded bundle on that device.
+
+- **The first OTA-capable build is the next store build.** Installed builds (1.0, 1.1.0) don't
+  include `expo-updates` and will never receive an update. `expo-updates` is a native module, so
+  development builds also need a rebuild (`npm run ios` / `npm run android`).
+- **Runtime version = fingerprint.** It's a hash of everything native: autolinked native code
+  (`node_modules/*/ios|android`, `modules/`), config plugins (`expo-widgets` included), the app
+  config, `eas.json` and the `package.json` scripts. An update only reaches builds with the same
+  hash. The remote `buildNumber` / `versionCode` (`appVersionSource: remote`) aren't in it, but
+  changing `version` in `app.json`, `eas.json` or an npm script is, so updates published after
+  that change only reach the next build. Before publishing, compare
+  `npx expo-updates runtimeversion:resolve --platform ios` (and `android`) with the runtime
+  version on the build's expo.dev page.
+- **Over the air:** JS/TS, styling, copy, bundled images, fonts and sounds, and the Live Activity
+  layout (`RestActivity.ios.tsx` runs in the main app, which hands the layout to the widget
+  extension at runtime; the extension has no `expo-updates` of its own). **Store build only:**
+  adding, removing or upgrading a native package (any `npx expo install` of a native module, an
+  Expo SDK bump), anything in `modules/`, permissions, `app.json` native fields (bundle id,
+  icon, splash, plugins and their options, `ios`/`android`, `scheme`, the App Group, widget
+  config), `eas.json` env values and the version. The fingerprint makes such an update
+  incompatible (installed builds don't see it) rather than broken, but the fix still needs a build.
+- **Publish** from `main` at the merged commit, preview first (a `preview` build, channel
+  `preview`), then production. Only the owner does this:
+
+  ```bash
+  EXPO_PUBLIC_APP_ENV=production EXPO_PUBLIC_BFF_URL=https://api.vertice.fit \
+  EXPO_PUBLIC_WEB_URL=https://www.vertice.fit EAS_BUILD_PROFILE=production npm run env:check
+  EXPO_PUBLIC_APP_ENV=production EXPO_PUBLIC_BFF_URL=https://api.vertice.fit \
+  EXPO_PUBLIC_WEB_URL=https://www.vertice.fit \
+    npx eas-cli update --channel production --environment production --clear-cache --message "..."
+  ```
+
+  `build.<profile>.env` in `eas.json` **does not apply to `eas update`**. The bundle takes its
+  `EXPO_PUBLIC_*` values from the shell, the EAS environment and `.env` (which points at
+  `localhost`); with none of them `env.ts` falls back to `localhost` too, and a release throws
+  at launch. Keep the inline values equal to
+  `eas.json`'s production profile, or move them to the EAS `production` environment (then they
+  apply to both). `--clear-cache` is needed: Metro's cache can keep the previous `EXPO_PUBLIC_*`
+  values. For preview, use `--channel preview --environment preview` with the preview build's
+  values.
+- **Roll back:** `npx eas-cli update:republish --channel production` (choose the last good
+  update group, or `--group <id>`) publishes it again as the newest update.
+  `npx eas-cli update:roll-back-to-embedded --channel production --runtime-version <rv>` sends
+  devices back to the bundle inside the store build. Either takes effect on each device's next
+  launches, like any update.
+- **Sentry:** an update's bundle needs its own source maps, or its stack traces stay minified.
+  Nothing is automated (production has no DSN yet). When Sentry is on, after each `eas update`,
+  upload the `dist/` it leaves behind:
+  `SENTRY_AUTH_TOKEN=… SENTRY_ORG=… SENTRY_PROJECT=… npx --package=@sentry/react-native sentry-expo-upload-sourcemaps dist`
+  (`npx @sentry/expo-upload-sourcemaps dist` from SDK 8.9). The maps match by debug ID
+  (`getSentryExpoConfig` in `metro.config.js`), not by release. `eas update --upload-source-maps`
+  sends them to EAS, not Sentry.
+- **Cost** (expo.dev/pricing, checked 2026-11-20): the Free plan includes 1,000 monthly active
+  users for updates, 100 GiB bandwidth and 20 GiB storage, with unlimited updates. It has
+  no overage pricing: it's limited to those 1,000 MAU, so upgrade before the user base reaches it. Starter includes 3,000 MAU, then $0.005/MAU.
 
 ## Running
 
