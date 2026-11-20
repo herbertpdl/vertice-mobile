@@ -1,7 +1,7 @@
 import { ChevronRight, Timer } from "lucide-react-native";
 import { Pressable, StyleSheet, View } from "react-native";
 
-import { Avatar, Text, WeekDots, weekSummary } from "@/components/ui";
+import { Avatar, Badge, Text, WeekDots, weekSummary } from "@/components/ui";
 import type { ClientSummary } from "@/lib/api/types";
 import { formatRecentInstant } from "@/lib/format";
 import { DAY_INITIAL, DAY_NAMES } from "@/lib/labels";
@@ -10,7 +10,8 @@ import { colors, radius, sizes, space } from "@/theme";
 /**
  * M Student Card: avatar, name, current plan ("Sem plano ativo" in warning), this week's last
  * workout ("Sem treino nesta semana" — the BFF only reports the current week) and the Mon–Fri
- * M Week Dots.
+ * M Week Dots. A client an admin suspended stays on the roster with a "Suspenso" danger badge next
+ * to the name (admin-panel PRD R46, E22): they can't sign in until reactivated.
  */
 export function StudentCard({ student, onPress }: { student: ClientSummary; onPress: () => void }) {
   const plan = student.currentPlan?.name ?? "Sem plano ativo";
@@ -26,15 +27,18 @@ export function StudentCard({ student, onPress }: { student: ClientSummary; onPr
       onPress={onPress}
       accessibilityRole="button"
       // One element for the whole card, so the week (otherwise hidden inside it) is read too.
-      accessibilityLabel={`${student.name}, ${plan}, último treino: ${last}. ${weekSummary(days)}`}
+      accessibilityLabel={`${student.name}, ${student.suspended ? "Suspenso, " : ""}${plan}, último treino: ${last}. ${weekSummary(days)}`}
       style={({ pressed }) => [styles.card, pressed ? styles.pressed : null]}
     >
       <View style={styles.top}>
         <Avatar name={student.name} size={48} />
         <View style={styles.identity}>
-          <Text variant="bodyLgStrong" numberOfLines={1}>
-            {student.name}
-          </Text>
+          <View style={styles.nameRow}>
+            <Text variant="bodyLgStrong" numberOfLines={1} style={styles.name}>
+              {student.name}
+            </Text>
+            {student.suspended ? <Badge tone="danger" label="Suspenso" style={styles.badge} /> : null}
+          </View>
           <Text variant="caption" color={student.currentPlan === null ? "warning" : "textSecondary"} numberOfLines={1}>
             {plan}
           </Text>
@@ -66,6 +70,10 @@ const styles = StyleSheet.create({
   pressed: { backgroundColor: colors.surfaceHover },
   top: { flexDirection: "row", alignItems: "center", gap: space[3] },
   identity: { flex: 1, gap: sizes.rowLinesGap },
+  // The name truncates; the badge never shrinks, so a long name can't push it out of the card.
+  nameRow: { flexDirection: "row", alignItems: "center", gap: space[2] },
+  name: { flexShrink: 1 },
+  badge: { alignSelf: "center", flexShrink: 0 },
   bottom: { flexDirection: "row", alignItems: "center", gap: space[3] },
   last: { flex: 1, flexDirection: "row", alignItems: "center", gap: sizes.inlineLinkGap },
   flex: { flex: 1 },
