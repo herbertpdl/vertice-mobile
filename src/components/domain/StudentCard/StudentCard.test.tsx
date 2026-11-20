@@ -35,4 +35,22 @@ describe("StudentCard", () => {
     );
     expect(screen.getByRole("button", { name: /^Diego Martins, Base, último treino: 06 jan, 07:40\. Esta semana/ })).toBeOnTheScreen();
   });
+
+  it("shows no badge for an active client", async () => {
+    await render(<StudentCard student={base} onPress={() => {}} />);
+    expect(screen.queryByText("Suspenso", { includeHiddenElements: true })).toBeNull();
+  });
+
+  it("badges a suspended client and says so to screen readers (admin-panel R46, E22)", async () => {
+    await render(<StudentCard student={{ ...base, suspended: true }} onPress={() => {}} />);
+    expect(
+      screen.getByRole("button", {
+        name: "Diego Martins, Suspenso, Sem plano ativo, último treino: Sem treino nesta semana. Esta semana: Segunda concluído",
+      }),
+    ).toBeOnTheScreen();
+    const badge = screen.getByText("Suspenso", { includeHiddenElements: true });
+    expect(StyleSheet.flatten(badge.props.style).color).toBe(colors.danger);
+    // The name still truncates to one line beside it.
+    expect(screen.getByText("Diego Martins", { includeHiddenElements: true }).props.numberOfLines).toBe(1);
+  });
 });
