@@ -188,7 +188,7 @@ update or the embedded bundle on that device.
   adding, removing or upgrading a native package (any `npx expo install` of a native module, an
   Expo SDK bump), anything in `modules/`, permissions, `app.json` native fields (bundle id,
   icon, splash, plugins and their options, `ios`/`android`, `scheme`, the App Group, widget
-  config), `eas.json` env values and the version. The fingerprint makes such an update
+  config), any `eas.json` edit (it's in the fingerprint) and the version. The fingerprint makes such an update
   incompatible (installed builds don't see it) rather than broken, but the fix still needs a build.
 - **Publish** from `main` at the merged commit, preview first (a `preview` build, channel
   `preview`), then production. Only the owner does this:
@@ -223,7 +223,8 @@ update or the embedded bundle on that device.
   sends them to EAS, not Sentry.
 - **Cost** (expo.dev/pricing, checked 2026-11-20): the Free plan includes 1,000 monthly active
   users for updates, 100 GiB bandwidth and 20 GiB storage, with unlimited updates. It has
-  no overage pricing: it's limited to those 1,000 MAU, so upgrade before the user base reaches it. Starter includes 3,000 MAU, then $0.005/MAU.
+  no overage pricing: it's limited to those 1,000 MAU, so upgrade before the user base reaches
+  it. Starter includes 3,000 MAU, then $0.005/MAU.
 
 ## Running
 
