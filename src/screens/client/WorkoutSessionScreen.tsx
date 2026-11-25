@@ -738,9 +738,13 @@ function SessionView({ snapshot, restored, initialIndex, initialView }: SessionV
 
   // ---- render -----------------------------------------------------------------------------------
   const index = state.exerciseIndex;
-  // Which way the session last moved, so the exercise slides in from that side.
-  const [shown, setShown] = useState<{ index: number; from: "next" | "previous" | null }>({ index, from: null });
-  if (shown.index !== index) setShown({ index, from: index > shown.index ? "next" : "previous" });
+  // Which way the session last moved, so the exercise slides in from that side. Only a change of
+  // exercise while the exercise view is shown slides; entering it from the overview does not.
+  const [shown, setShown] = useState<{ index: number; view: typeof view; from: "next" | "previous" | null }>({ index, view, from: null });
+  if (shown.index !== index || shown.view !== view) {
+    const stepped = view === "exercise" && shown.view === "exercise" && shown.index !== index;
+    setShown({ index, view, from: stepped ? (index > shown.index ? "next" : "previous") : null });
+  }
   const exerciseEntering = shown.from === null ? undefined : shown.from === "next" ? SLIDE_FROM_NEXT : SLIDE_FROM_PREVIOUS;
   const last = onLastOpenExercise(state);
   const video = exercise === undefined || youtubeVideoId(exercise.exercise.videoUrl) === null ? null : exercise.exercise.videoUrl;
