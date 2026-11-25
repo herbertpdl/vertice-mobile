@@ -53,6 +53,10 @@ jobs:
       # signal the old blocking `npx expo-doctor` step was here for, without depending on the
       # remotely fetched Expo config schema (see the advisory step below).
       - name: Expo SDK version drift
+        # TEMPORARY: non-blocking while the Expo 57.0.x patch bump waits for the next store build
+        # (it changes the runtime fingerprint, so JS fixes are published over the air first).
+        # Make it blocking again in the PR that runs `npx expo install --fix`.
+        continue-on-error: true
         run: npx expo install --check
       # Blocking again: the one check it failed (`ios.icon` pointing at an Icon Composer `.icon`
       # directory) went away with the app's own icons (spec PR 14).
