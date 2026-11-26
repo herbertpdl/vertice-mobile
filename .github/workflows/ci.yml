@@ -61,6 +61,10 @@ jobs:
       # Blocking again: the one check it failed (`ios.icon` pointing at an Icon Composer `.icon`
       # directory) went away with the app's own icons (spec PR 14).
       - name: Expo doctor
+        env:
+          # TEMPORARY (owner-approved): same 57.0.x patch drift as the step above; doctor's other
+          # checks stay blocking. Remove in the `npx expo install --fix` PR.
+          EXPO_DOCTOR_SKIP_DEPENDENCY_VERSION_CHECK: "1"
         run: npx expo-doctor
       - name: Audit production dependencies
         # TODO(P2-05): make this blocking. Today it reports high/critical transitive advisories
