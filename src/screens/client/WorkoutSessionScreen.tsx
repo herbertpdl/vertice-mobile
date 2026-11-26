@@ -6,6 +6,7 @@ import { ChartColumn, ChevronLeft, CircleCheck, CirclePlay, Ellipsis, List, Repe
 import { useEffect, useEffectEvent, useReducer, useRef, useState } from "react";
 import { AppState, Platform, Pressable, StyleSheet, View } from "react-native";
 import type { KeyboardAwareScrollViewRef } from "react-native-keyboard-controller";
+import Animated, { Easing, FadeInLeft, FadeInRight } from "react-native-reanimated";
 
 import { ProgressSheet, StrategySheet, VideoSheet, WorkoutPickerSheet } from "@/components/domain";
 import { NavBar, Screen } from "@/components/layout";
@@ -737,6 +738,14 @@ function SessionView({ snapshot, restored, initialIndex, initialView }: SessionV
 
   // ---- render -----------------------------------------------------------------------------------
   const index = state.exerciseIndex;
+  // Which way the session last moved, so the exercise slides in from that side. Only a change of
+  // exercise while the exercise view is shown slides; entering it from the overview does not.
+  const [shown, setShown] = useState<{ index: number; view: typeof view; from: "next" | "previous" | null }>({ index, view, from: null });
+  if (shown.index !== index || shown.view !== view) {
+    const stepped = view === "exercise" && shown.view === "exercise" && shown.index !== index;
+    setShown({ index, view, from: stepped ? (index > shown.index ? "next" : "previous") : null });
+  }
+  const exerciseEntering = shown.from === null ? undefined : shown.from === "next" ? SLIDE_FROM_NEXT : SLIDE_FROM_PREVIOUS;
   const last = onLastOpenExercise(state);
   const video = exercise === undefined || youtubeVideoId(exercise.exercise.videoUrl) === null ? null : exercise.exercise.videoUrl;
   const restCaption = nextSet === undefined ? "Exercício concluído" : nextSetText(nextSet);
@@ -945,73 +954,75 @@ function SessionView({ snapshot, restored, initialIndex, initialView }: SessionV
           </View>
         </View>
 
-        <View style={styles.head}>
-          <Text variant="title" accessibilityRole="header">
-            {exercise.exercise.name}
-          </Text>
-          <Text variant="label" color="primary">
-            {exerciseSummary(exercise)}
-          </Text>
-          {[exercise.exercise.description, exercise.notes].filter((t) => t.trim() !== "").map((text, i) => (
-            <Text key={i} variant="bodyRelaxed" color="textSecondary">
-              {text.trim()}
+        <Animated.View key={index} entering={exerciseEntering} style={styles.exercise}>
+          <View style={styles.head}>
+            <Text variant="title" accessibilityRole="header">
+              {exercise.exercise.name}
             </Text>
-          ))}
-          <View style={styles.actions}>
-            {video === null ? null : (
-              <Button label="Ver execução" variant="secondary" icon={CirclePlay} style={styles.flex} onPress={() => setOverlay("video")} />
-            )}
-            <Button label="Ver progresso" variant="secondary" icon={ChartColumn} style={styles.flex} onPress={() => setOverlay("progress")} />
+            <Text variant="label" color="primary">
+              {exerciseSummary(exercise)}
+            </Text>
+            {[exercise.exercise.description, exercise.notes].filter((t) => t.trim() !== "").map((text, i) => (
+              <Text key={i} variant="bodyRelaxed" color="textSecondary">
+                {text.trim()}
+              </Text>
+            ))}
+            <View style={styles.actions}>
+              {video === null ? null : (
+                <Button label="Ver execução" variant="secondary" icon={CirclePlay} style={styles.flex} onPress={() => setOverlay("video")} />
+              )}
+              <Button label="Ver progresso" variant="secondary" icon={ChartColumn} style={styles.flex} onPress={() => setOverlay("progress")} />
+            </View>
           </View>
-        </View>
 
-        <View style={styles.sets}>
-          {exercise.sets.map((set) => {
-            const holding = state.hold?.setId === set.id;
-            const guide = strategyGuide(set);
-            return (
-              <WorkoutSetRow
-                key={set.id}
-                number={set.setNumber}
-                target={setGoal(set)}
-                hint={holding ? `de ${set.durationSeconds} s` : setHint(set)}
-                weight={state.weights[set.id] ?? ""}
-                onWeightChange={(text) => dispatch({ type: "setWeight", setId: set.id, text })}
-                done={state.ticked[set.id] === true}
-                onToggle={() => (state.ticked[set.id] ? untick(set.id) : tickSet(set.id, Date.now()))}
-                current={set.id === current}
-                strategy={
-                  guide === null
-                    ? undefined
-                    : {
-                        ...guide,
-                        expanded: set.id === current,
-                        onOpen: () => {
-                          setStrategySet(set);
-                          setOverlay("strategy");
-                        },
-                      }
-                }
-                timed={
-                  isTimed(set)
-                    ? {
-                        holding,
-                        remaining: holding && state.hold !== null ? clockText(secondsLeft(state.hold, now)) : undefined,
-                        onHoldPress: () => {
-                          if (holding) dispatch({ type: "stopHold" });
-                          else {
-                            const at = Date.now();
-                            setNow(at);
-                            dispatch({ type: "startHold", setId: set.id, now: at });
-                          }
-                        },
-                      }
-                    : undefined
-                }
-              />
-            );
-          })}
-        </View>
+          <View style={styles.sets}>
+            {exercise.sets.map((set) => {
+              const holding = state.hold?.setId === set.id;
+              const guide = strategyGuide(set);
+              return (
+                <WorkoutSetRow
+                  key={set.id}
+                  number={set.setNumber}
+                  target={setGoal(set)}
+                  hint={holding ? `de ${set.durationSeconds} s` : setHint(set)}
+                  weight={state.weights[set.id] ?? ""}
+                  onWeightChange={(text) => dispatch({ type: "setWeight", setId: set.id, text })}
+                  done={state.ticked[set.id] === true}
+                  onToggle={() => (state.ticked[set.id] ? untick(set.id) : tickSet(set.id, Date.now()))}
+                  current={set.id === current}
+                  strategy={
+                    guide === null
+                      ? undefined
+                      : {
+                          ...guide,
+                          expanded: set.id === current,
+                          onOpen: () => {
+                            setStrategySet(set);
+                            setOverlay("strategy");
+                          },
+                        }
+                  }
+                  timed={
+                    isTimed(set)
+                      ? {
+                          holding,
+                          remaining: holding && state.hold !== null ? clockText(secondsLeft(state.hold, now)) : undefined,
+                          onHoldPress: () => {
+                            if (holding) dispatch({ type: "stopHold" });
+                            else {
+                              const at = Date.now();
+                              setNow(at);
+                              dispatch({ type: "startHold", setId: set.id, now: at });
+                            }
+                          },
+                        }
+                      : undefined
+                  }
+                />
+              );
+            })}
+          </View>
+        </Animated.View>
       </Screen>
       {overlays}
     </>
@@ -1028,6 +1039,17 @@ function finishErrorMessage(error: unknown): string {
 function totalOf(state: SessionState): number {
   return state.snapshot.exercises.reduce((total, e) => total + e.sets.length, 0);
 }
+
+/**
+ * Changing exercise: the content fades in from the side the session moved toward (the right going
+ * forward, the left going back), so the change reads as a step and not an in-place edit. Short and
+ * ease-out with no exit, so tapping quickly through exercises never waits on it. The progress bar
+ * and footer stay still as the anchor. Reduce Motion skips it (Reanimated's default).
+ */
+const EXERCISE_EASE_OUT = Easing.bezier(0.23, 1, 0.32, 1);
+const EXERCISE_SLIDE_MS = 260;
+const SLIDE_FROM_NEXT = FadeInRight.duration(EXERCISE_SLIDE_MS).easing(EXERCISE_EASE_OUT).withInitialValues({ translateX: space[8] });
+const SLIDE_FROM_PREVIOUS = FadeInLeft.duration(EXERCISE_SLIDE_MS).easing(EXERCISE_EASE_OUT).withInitialValues({ translateX: -space[8] });
 
 const styles = StyleSheet.create({
   overview: { paddingTop: space[2], gap: space[4] },
@@ -1052,6 +1074,7 @@ const styles = StyleSheet.create({
   segment: { flex: 1, height: space[1], borderRadius: radius.full },
   progressRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
   seeAll: { flexDirection: "row", alignItems: "center", gap: space[1] },
+  exercise: { gap: space[5] },
   head: { gap: sizes.dayRowGap },
   actions: { flexDirection: "row", gap: space[3], paddingTop: space[1] },
   sets: { gap: sizes.dayRowGap },
